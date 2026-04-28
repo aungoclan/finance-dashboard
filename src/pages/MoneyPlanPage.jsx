@@ -1,0 +1,1605 @@
+import { useEffect, useMemo, useState } from 'react'
+import { supabase } from '../lib/supabase'
+import { DEFAULT_APP_SETTINGS, loadUserSettings } from '../lib/appSettings'
+import { getCategoryDisplayName, normalizeCategoryName } from '../lib/cashflowCategories'
+
+const ALLOCATION_MODES = {
+  conservative: {
+    label: 'Conservative',
+    description: 'Ưu tiên giữ cash buffer và giảm rủi ro trước.',
+    buffer: 40,
+    debt: 25,
+    goals: 20,
+    investment: 15
+  },
+  balanced: {
+    label: 'Balanced',
+    description: 'Cân bằng giữa buffer, debt, goals và đầu tư.',
+    buffer: 25,
+    debt: 25,
+    goals: 25,
+    investment: 25
+  },
+  aggressive: {
+    label: 'Aggressive',
+    description: 'Ưu tiên goals và investment nhiều hơn, chỉ hợp khi cashflow ổn.',
+    buffer: 15,
+    debt: 20,
+    goals: 25,
+    investment: 40
+  }
+}
+
+const CASH_ACCOUNT_TYPES = ['cash', 'checking', 'savings', 'business']
+
+function toNumber(value) {
+  const number = Number(value || 0)
+  return Number.isFinite(number) ? number : 0
+}
+
+function formatMoney(value) {
+  return toNumber(value).toLocaleString(undefined, {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })
+}
+
+function formatPercent(value) {
+  return `${toNumber(value).toLocaleString(undefined, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1
+  })}%`
+}
+
+function normalize(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
+function getTodayKey() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function getMonthRange(date = new Date()) {
+  const year = date.getFullYear()
+  const monthIndex = date.getMonth()
+  const start = new Date(year, monthIndex, 1)
+  const end = new Date(year, monthIndex + 1, 1)
+
+  return {
+    year,
+    month: monthIndex + 1,
+    monthIndex,
+    startDate: start.toISOString().slice(0, 10),
+    endDate: end.toISOString().slice(0, 10),
+    label: date.toLocaleDateString(undefined, {
+      month: 'long',
+      year: 'numeric'
+    })
+  }
+}
+
+function getDaysInMonth(year, monthIndex) {
+  return new Date(year, monthIndex + 1, 0).getDate()
+}
+
+function formatDateForInput(date) {
+  return date.toISOString().slice(0, 10)
+}
+
+function getBillDueDate(bill, year, monthIndex) {
+  const maxDay = getDaysInMonth(year, monthIndex)
+  const dueDay = Math.max(1, Math.min(toNumber(bill.due_day || 1), maxDay))
+  return new Date(year, monthIndex, dueDay)
+}
+
+function formatShortDate(date) {
+  return date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric'
+  })
+}
+
+function getBillDescription(bill) {
+  const name = String(bill?.name || '').trim()
+  return name ? `Bill: ${name}` : 'Bill'
+}
+
+function isBillAddedToCashflow(cashflowEntries, bill, monthInfo) {
+  const dueDate = formatDateForInput(getBillDueDate(bill, monthInfo.year, monthInfo.monthIndex))
+  const description = normalize(getBillDescription(bill))
+  const amount = toNumber(bill.amount)
+
+  return cashflowEntries.some((entry) => {
+    const sameDate = entry.entry_date === dueDate
+    const sameType = entry.type === 'expense'
+    const sameAmount = Math.abs(toNumber(entry.amount) - amount) < 0.005
+    const sameDescription = normalize(entry.description) === description
+
+    return sameDate && sameType && sameAmount && sameDescription
+  })
+}
+
+function getGoalProgress(goal) {
+  const target = toNumber(goal.target_amount)
+  const current = toNumber(goal.current_amount)
+
+  if (target <= 0) return 0
+  return Math.max(0, Math.min(100, (current / target) * 100))
+}
+
+function getGoalRemaining(goal) {
+  return Math.max(toNumber(goal.target_amount) - toNumber(goal.current_amount), 0)
+}
+
+function getMonthsUntil(dateString) {
+  if (!dateString) return null
+
+  const today = new Date(`${getTodayKey()}T00:00:00`)
+  const target = new Date(`${dateString}T00:00:00`)
+
+  if (Number.isNaN(target.getTime())) return null
+
+  const days = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  if (days <= 0) return 1
+
+  return Math.max(days / 30.4375, 1)
+}
+
+function getMonthlyNeededForGoal(goal) {
+  const remaining = getGoalRemaining(goal)
+  const months = getMonthsUntil(goal.target_date)
+
+  if (!remaining || !months) return 0
+  return remaining / months
+}
+
+function getPriorityRank(priority) {
+  if (priority === 'High') return 1
+  if (priority === 'Medium') return 2
+  if (priority === 'Low') return 3
+  return 4
+}
+
+function getCategoryKey(record) {
+  if (record?.category_id) return `id:${record.category_id}`
+
+  const categoryName = getCategoryDisplayName(record)
+  return `text:${normalizeCategoryName(categoryName) || 'uncategorized'}`
+}
+
+function getTextCategoryKey(record) {
+  const categoryName = getCategoryDisplayName(record)
+  return `text:${normalizeCategoryName(categoryName) || 'uncategorized'}`
+}
+
+function buildBudgetRows(budgets, cashflowEntries) {
+  const expenseEntries = cashflowEntries.filter((entry) => entry.type === 'expense')
+  const actualByCategory = {}
+
+  for (const entry of expenseEntries) {
+    const amount = toNumber(entry.amount)
+    const idKey = getCategoryKey(entry)
+    const textKey = getTextCategoryKey(entry)
+
+    actualByCategory[idKey] = (actualByCategory[idKey] || 0) + amount
+
+    if (textKey !== idKey) {
+      actualByCategory[textKey] = (actualByCategory[textKey] || 0) + amount
+    }
+  }
+
+  return budgets
+    .map((budget) => {
+      const category = getCategoryDisplayName(budget)
+      const idKey = getCategoryKey(budget)
+      const textKey = getTextCategoryKey(budget)
+      const planned = toNumber(budget.planned_amount)
+
+      let actual = toNumber(actualByCategory[idKey])
+      if (actual === 0 && textKey !== idKey) {
+        actual = toNumber(actualByCategory[textKey])
+      }
+
+      const remaining = planned - actual
+      const usagePercent = planned > 0 ? (actual / planned) * 100 : 0
+
+      let status = 'On Track'
+      if (planned > 0 && usagePercent > 100) status = 'Over Budget'
+      else if (planned > 0 && usagePercent === 100) status = 'At Limit'
+      else if (planned > 0 && usagePercent >= 80) status = 'Near Limit'
+
+      return {
+        id: budget.id,
+        category,
+        category_id: budget.category_id || null,
+        planned,
+        actual,
+        remaining,
+        usagePercent,
+        status
+      }
+    })
+    .sort((a, b) => b.usagePercent - a.usagePercent)
+}
+
+function isDebtLikeBill(bill) {
+  const text = normalize(`${bill.name || ''} ${bill.category || ''} ${getCategoryDisplayName(bill)}`)
+
+  return (
+    text.includes('debt') ||
+    text.includes('loan') ||
+    text.includes('credit card') ||
+    text.includes('minimum') ||
+    text.includes('car payment')
+  )
+}
+
+function isDebtPaymentEntry(entry) {
+  const text = normalize(
+    `${entry.category || ''} ${entry.description || ''} ${getCategoryDisplayName(entry)}`
+  )
+
+  return (
+    text.includes('debt payment') ||
+    text.includes('loan') ||
+    text.includes('credit card') ||
+    text.includes('minimum payment') ||
+    text.includes('car payment')
+  )
+}
+
+function isArchivedAccount(account) {
+  return String(account?.name || '').startsWith('[ARCHIVED]')
+}
+
+function displayAccountName(account) {
+  const name = String(account?.name || 'Unnamed Account')
+  return name.startsWith('[ARCHIVED] ') ? name.replace('[ARCHIVED] ', '') : name
+}
+
+function getAccountCashNet(accounts, cashflowEntries) {
+  const cashAccountIds = new Set(
+    accounts
+      .filter((account) => !isArchivedAccount(account))
+      .filter((account) => CASH_ACCOUNT_TYPES.includes(account.account_type))
+      .map((account) => account.id)
+  )
+
+  let income = 0
+  let expense = 0
+
+  for (const entry of cashflowEntries) {
+    if (!cashAccountIds.has(entry.account_id)) continue
+
+    if (entry.type === 'income') income += toNumber(entry.amount)
+    if (entry.type === 'expense') expense += toNumber(entry.amount)
+  }
+
+  return income - expense
+}
+
+function buildAllocation({ amount, mode }) {
+  const selectedMode = ALLOCATION_MODES[mode] || ALLOCATION_MODES.balanced
+
+  return {
+    buffer: amount * (selectedMode.buffer / 100),
+    debt: amount * (selectedMode.debt / 100),
+    goals: amount * (selectedMode.goals / 100),
+    investment: amount * (selectedMode.investment / 100)
+  }
+}
+
+function buildInsights(plan) {
+  const insights = []
+
+  if (plan.actualIncome <= 0) {
+    insights.push({
+      tone: 'warning',
+      title: 'Income chưa có trong tháng này',
+      text: 'Money Plan cần income tháng hiện tại để tính Safe-to-Spend chính xác hơn.'
+    })
+  }
+
+  if (plan.unpostedBillReserve > 0) {
+    insights.push({
+      tone: 'warning',
+      title: 'Còn bill chưa đưa vào Cashflow',
+      text: `Bạn còn ${formatMoney(plan.unpostedBillReserve)} active monthly bills chưa được post vào Cashflow tháng này.`
+    })
+  }
+
+  if (plan.overdueUnpostedBills.length > 0) {
+    insights.push({
+      tone: 'danger',
+      title: 'Có bill quá hạn nhưng chưa post',
+      text: `${plan.overdueUnpostedBills.length} bill đã qua due date nhưng chưa thấy trong Cashflow. Nên kiểm tra ở Bills hoặc Month Setup.`
+    })
+  }
+
+  if (plan.safeToSpend < 0) {
+    insights.push({
+      tone: 'danger',
+      title: 'Safe-to-Spend đang âm',
+      text: `Bạn đang thiếu khoảng ${formatMoney(Math.abs(plan.safeToSpend))} sau khi giữ tiền cho bill/debt cần thiết.`
+    })
+  } else if (plan.safeToSpend > 0) {
+    insights.push({
+      tone: 'success',
+      title: 'Có tiền dư để phân bổ',
+      text: `Safe-to-Spend hiện khoảng ${formatMoney(plan.safeToSpend)}. Có thể chia cho buffer, debt, goals hoặc investment theo mode đã chọn.`
+    })
+  }
+
+  if (plan.cashBufferGap > 0) {
+    insights.push({
+      tone: 'info',
+      title: 'Cash buffer chưa đủ mục tiêu',
+      text: `Cash buffer còn thiếu khoảng ${formatMoney(plan.cashBufferGap)} so với target 1 tháng essential reserve.`
+    })
+  }
+
+  if (plan.overBudgetRows.length > 0) {
+    const top = plan.overBudgetRows[0]
+    insights.push({
+      tone: 'danger',
+      title: 'Có budget bị vượt',
+      text: `${top.category} đang dùng ${formatPercent(top.usagePercent)} của plan. Nên hạn chế chi thêm ở category này.`
+    })
+  }
+
+  if (plan.goalMonthlyNeedTotal > plan.allocation.goals && plan.allocatableAmount > 0) {
+    insights.push({
+      tone: 'warning',
+      title: 'Goal need cao hơn phần gợi ý',
+      text: `Goals cần khoảng ${formatMoney(plan.goalMonthlyNeedTotal)}/tháng, nhưng allocation mode hiện chỉ gợi ý ${formatMoney(plan.allocation.goals)}.`
+    })
+  }
+
+  if (!insights.length) {
+    insights.push({
+      tone: 'neutral',
+      title: 'Dữ liệu hiện khá ổn',
+      text: 'Money Plan chưa phát hiện vấn đề lớn. Tiếp tục cập nhật income, expense, bills và goals đều đặn.'
+    })
+  }
+
+  return insights
+}
+
+function getToneStyle(tone) {
+  if (tone === 'success') return styles.successPill
+  if (tone === 'danger') return styles.dangerPill
+  if (tone === 'warning') return styles.warningPill
+  if (tone === 'info') return styles.infoPill
+  return styles.neutralPill
+}
+
+export default function MoneyPlanPage() {
+  const monthInfo = useMemo(() => getMonthRange(), [])
+  const today = useMemo(() => new Date(`${getTodayKey()}T00:00:00`), [])
+
+  const [loading, setLoading] = useState(true)
+  const [message, setMessage] = useState('')
+  const [cashflowEntries, setCashflowEntries] = useState([])
+  const [allCashflowEntries, setAllCashflowEntries] = useState([])
+  const [budgets, setBudgets] = useState([])
+  const [bills, setBills] = useState([])
+  const [goals, setGoals] = useState([])
+  const [liabilities, setLiabilities] = useState([])
+  const [accounts, setAccounts] = useState([])
+  const [appSettings, setAppSettings] = useState(DEFAULT_APP_SETTINGS)
+  const [allocationMode, setAllocationMode] = useState('balanced')
+
+  useEffect(() => {
+    loadMoneyPlan()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function loadMoneyPlan() {
+    setLoading(true)
+    setMessage('')
+
+    try {
+      const {
+        data: { user },
+        error: userError
+      } = await supabase.auth.getUser()
+
+      if (userError || !user) {
+        throw new Error('Unable to get current user.')
+      }
+
+const loadedSettings = await loadUserSettings()
+setAppSettings(loadedSettings)
+
+if (
+  loadedSettings.moneyPlanDefaultMode &&
+  ALLOCATION_MODES[loadedSettings.moneyPlanDefaultMode]
+) {
+  setAllocationMode(loadedSettings.moneyPlanDefaultMode)
+}
+
+      const [
+        cashflowResult,
+        allCashflowResult,
+        budgetResult,
+        billResult,
+        goalResult,
+        liabilityResult,
+        accountResult
+      ] = await Promise.all([
+        supabase
+          .from('cashflow_entries')
+          .select(`
+            id,
+            user_id,
+            account_id,
+            entry_date,
+            type,
+            amount,
+            category,
+            category_id,
+            description,
+            created_at,
+            accounts (
+              id,
+              name,
+              account_type
+            ),
+            cashflow_categories (
+              id,
+              name,
+              type,
+              group_name,
+              icon,
+              color
+            )
+          `)
+          .eq('user_id', user.id)
+          .gte('entry_date', monthInfo.startDate)
+          .lt('entry_date', monthInfo.endDate)
+          .order('entry_date', { ascending: false })
+          .order('created_at', { ascending: false }),
+
+        supabase
+          .from('cashflow_entries')
+          .select(`
+            id,
+            user_id,
+            account_id,
+            entry_date,
+            type,
+            amount,
+            category,
+            category_id,
+            description,
+            created_at
+          `)
+          .eq('user_id', user.id)
+          .order('entry_date', { ascending: false })
+          .order('created_at', { ascending: false }),
+
+        supabase
+          .from('budgets')
+          .select(`
+            id,
+            user_id,
+            month,
+            year,
+            category,
+            category_id,
+            planned_amount,
+            created_at,
+            cashflow_categories (
+              id,
+              name,
+              type,
+              group_name,
+              icon,
+              color
+            )
+          `)
+          .eq('user_id', user.id)
+          .eq('month', monthInfo.month)
+          .eq('year', monthInfo.year)
+          .order('category', { ascending: true }),
+
+        supabase
+          .from('bills')
+          .select(`
+            id,
+            user_id,
+            name,
+            category,
+            category_id,
+            amount,
+            due_day,
+            frequency,
+            status,
+            note,
+            created_at,
+            cashflow_categories (
+              id,
+              name,
+              type,
+              group_name,
+              icon,
+              color
+            )
+          `)
+          .eq('user_id', user.id)
+          .order('due_day', { ascending: true }),
+
+        supabase
+          .from('financial_goals')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('priority', { ascending: true })
+          .order('target_date', { ascending: true, nullsFirst: false }),
+
+        supabase
+          .from('liabilities')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('current_balance', { ascending: false }),
+
+        supabase
+          .from('accounts')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+      ])
+
+      if (cashflowResult.error) throw cashflowResult.error
+      if (allCashflowResult.error) throw allCashflowResult.error
+      if (budgetResult.error) throw budgetResult.error
+      if (billResult.error) throw billResult.error
+      if (goalResult.error) throw goalResult.error
+      if (liabilityResult.error) throw liabilityResult.error
+      if (accountResult.error) throw accountResult.error
+
+      setCashflowEntries(cashflowResult.data || [])
+      setAllCashflowEntries(allCashflowResult.data || [])
+      setBudgets(budgetResult.data || [])
+      setBills(billResult.data || [])
+      setGoals(goalResult.data || [])
+      setLiabilities(liabilityResult.data || [])
+      setAccounts(accountResult.data || [])
+    } catch (error) {
+      console.error('MoneyPlanPage load error:', error)
+      setMessage(error.message || 'Failed to load money plan.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const plan = useMemo(() => {
+    const incomeEntries = cashflowEntries.filter((entry) => entry.type === 'income')
+    const expenseEntries = cashflowEntries.filter((entry) => entry.type === 'expense')
+
+    const actualIncome = incomeEntries.reduce((sum, entry) => sum + toNumber(entry.amount), 0)
+    const actualExpenses = expenseEntries.reduce((sum, entry) => sum + toNumber(entry.amount), 0)
+    const postedNet = actualIncome - actualExpenses
+
+    const activeMonthlyBills = bills.filter((bill) => {
+      const status = normalize(bill.status || 'active')
+      const frequency = normalize(bill.frequency || 'monthly')
+      return status === 'active' && frequency === 'monthly'
+    })
+
+    const billRows = activeMonthlyBills
+      .map((bill) => {
+        const dueDate = getBillDueDate(bill, monthInfo.year, monthInfo.monthIndex)
+        const dueDateKey = formatDateForInput(dueDate)
+        const isAdded = isBillAddedToCashflow(cashflowEntries, bill, monthInfo)
+        const isPastDue = dueDate < today
+        const isTodayOrFuture = dueDate >= today
+
+        return {
+          ...bill,
+          dueDate,
+          dueDateKey,
+          dueDateLabel: formatShortDate(dueDate),
+          amountNumber: toNumber(bill.amount),
+          isAdded,
+          isPastDue,
+          isTodayOrFuture,
+          categoryLabel: getCategoryDisplayName(bill)
+        }
+      })
+      .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime())
+
+    const unpostedBills = billRows.filter((bill) => !bill.isAdded)
+    const upcomingUnpostedBills = unpostedBills.filter((bill) => bill.isTodayOrFuture)
+    const overdueUnpostedBills = unpostedBills.filter((bill) => bill.isPastDue)
+
+    const activeBillTotal = billRows.reduce((sum, bill) => sum + bill.amountNumber, 0)
+    const postedBillTotal = billRows
+      .filter((bill) => bill.isAdded)
+      .reduce((sum, bill) => sum + bill.amountNumber, 0)
+    const unpostedBillReserve = unpostedBills.reduce((sum, bill) => sum + bill.amountNumber, 0)
+    const upcomingBillReserve = upcomingUnpostedBills.reduce((sum, bill) => sum + bill.amountNumber, 0)
+
+    const budgetRows = buildBudgetRows(budgets, cashflowEntries)
+    const totalBudgetPlanned = budgetRows.reduce((sum, row) => sum + row.planned, 0)
+    const totalBudgetActual = budgetRows.reduce((sum, row) => sum + row.actual, 0)
+    const budgetRemaining = totalBudgetPlanned - totalBudgetActual
+    const positiveBudgetRemaining = Math.max(budgetRemaining, 0)
+    const budgetUsagePercent =
+      totalBudgetPlanned > 0 ? (totalBudgetActual / totalBudgetPlanned) * 100 : 0
+
+    const overBudgetRows = budgetRows.filter((row) => row.status === 'Over Budget')
+    const nearLimitRows = budgetRows.filter(
+      (row) => row.status === 'Near Limit' || row.status === 'At Limit'
+    )
+
+    const activeGoals = goals
+      .filter((goal) => normalize(goal.status || 'active') === 'active')
+      .map((goal) => ({
+        ...goal,
+        progress: getGoalProgress(goal),
+        remaining: getGoalRemaining(goal),
+        monthlyNeeded: getMonthlyNeededForGoal(goal)
+      }))
+      .filter((goal) => goal.remaining > 0)
+      .sort((a, b) => {
+        const priorityDiff = getPriorityRank(a.priority) - getPriorityRank(b.priority)
+        if (priorityDiff !== 0) return priorityDiff
+        return toNumber(b.monthlyNeeded) - toNumber(a.monthlyNeeded)
+      })
+
+    const goalRemainingTotal = activeGoals.reduce((sum, goal) => sum + toNumber(goal.remaining), 0)
+    const goalMonthlyNeedTotal = activeGoals.reduce(
+      (sum, goal) => sum + toNumber(goal.monthlyNeeded),
+      0
+    )
+
+    const debtBalanceTotal = liabilities.reduce(
+      (sum, item) => sum + toNumber(item.current_balance),
+      0
+    )
+    const debtMinimumTotal = liabilities.reduce(
+      (sum, item) => sum + toNumber(item.minimum_payment),
+      0
+    )
+
+    const debtPaymentsPosted = expenseEntries
+      .filter(isDebtPaymentEntry)
+      .reduce((sum, entry) => sum + toNumber(entry.amount), 0)
+
+    const debtLikeUnpostedBillsTotal = unpostedBills
+      .filter(isDebtLikeBill)
+      .reduce((sum, bill) => sum + toNumber(bill.amount), 0)
+
+    const debtMinimumRemaining = Math.max(
+      debtMinimumTotal - debtPaymentsPosted - debtLikeUnpostedBillsTotal,
+      0
+    )
+
+    const essentialReserve = unpostedBillReserve + debtMinimumRemaining
+    const safeToSpend = postedNet - essentialReserve
+    const allocatableAmount = Math.max(safeToSpend, 0)
+
+    const allocation = buildAllocation({
+      amount: allocatableAmount,
+      mode: allocationMode
+    })
+
+    const cashBufferCurrent = getAccountCashNet(accounts, allCashflowEntries)
+    const essentialMonthlyBurn = Math.max(activeBillTotal + debtMinimumTotal, actualExpenses, 0)
+    const cashBufferTarget = essentialMonthlyBurn > 0 ? essentialMonthlyBurn : 1000
+    const cashBufferGap = Math.max(cashBufferTarget - cashBufferCurrent, 0)
+    const cashBufferPercent =
+      cashBufferTarget > 0 ? Math.max(0, Math.min(100, (cashBufferCurrent / cashBufferTarget) * 100)) : 0
+
+    let planStatus = 'Needs Data'
+    let planTone = 'neutral'
+
+    if (actualIncome > 0 && safeToSpend > 0 && cashBufferGap <= 0) {
+      planStatus = 'Strong'
+      planTone = 'success'
+    } else if (actualIncome > 0 && safeToSpend > 0) {
+      planStatus = 'Flexible'
+      planTone = 'success'
+    } else if (actualIncome > 0 && safeToSpend <= 0) {
+      planStatus = 'Tight'
+      planTone = 'warning'
+    }
+
+    if (actualIncome > 0 && safeToSpend < -500) {
+      planStatus = 'Defensive'
+      planTone = 'danger'
+    }
+
+    const result = {
+      actualIncome,
+      actualExpenses,
+      postedNet,
+      activeMonthlyBills,
+      billRows,
+      activeBillTotal,
+      postedBillTotal,
+      unpostedBills,
+      upcomingUnpostedBills,
+      overdueUnpostedBills,
+      unpostedBillReserve,
+      upcomingBillReserve,
+      budgetRows,
+      totalBudgetPlanned,
+      totalBudgetActual,
+      budgetRemaining,
+      positiveBudgetRemaining,
+      budgetUsagePercent,
+      overBudgetRows,
+      nearLimitRows,
+      activeGoals,
+      goalRemainingTotal,
+      goalMonthlyNeedTotal,
+      liabilities,
+      debtBalanceTotal,
+      debtMinimumTotal,
+      debtPaymentsPosted,
+      debtMinimumRemaining,
+      essentialReserve,
+      safeToSpend,
+      allocatableAmount,
+      allocation,
+      cashBufferCurrent,
+      cashBufferTarget,
+      cashBufferGap,
+      cashBufferPercent,
+      planStatus,
+      planTone,
+      accountCount: accounts.length
+    }
+
+    return {
+      ...result,
+      insights: buildInsights(result)
+    }
+  }, [
+    accounts,
+    allCashflowEntries,
+    allocationMode,
+    bills,
+    budgets,
+    cashflowEntries,
+    goals,
+    liabilities,
+    monthInfo,
+    today
+  ])
+
+  const selectedMode = ALLOCATION_MODES[allocationMode]
+  const topBudgetRows = plan.budgetRows.slice(0, 6)
+  const topGoals = plan.activeGoals.slice(0, 5)
+  const topBills = plan.unpostedBills.slice(0, 6)
+  const topDebts = plan.liabilities.slice(0, 5)
+
+  return (
+    <div style={styles.page}>
+      <div style={styles.header}>
+        <div>
+          <div style={styles.kicker}>Bài 37 · Money Plan Pro</div>
+          <h1 style={styles.title}>Money Plan Pro</h1>
+          <p style={styles.subtitle}>
+            Monthly command center for safe-to-spend, bill reserve, debt minimums, goals,
+            cash buffer and suggested allocation. This page only reads your current data and does not create new records.
+          </p>
+        </div>
+
+        <div style={styles.headerRight}>
+          <div style={styles.monthBadge}>{monthInfo.label}</div>
+          <button type="button" style={styles.refreshButton} onClick={loadMoneyPlan}>
+            Refresh Plan
+          </button>
+        </div>
+      </div>
+
+      {message ? <div style={styles.message}>{message}</div> : null}
+
+      {loading ? (
+        <div style={styles.loadingCard}>Loading Money Plan Pro...</div>
+      ) : (
+        <>
+          <section style={styles.heroGrid}>
+            <div style={styles.heroCard}>
+              <div style={styles.cardLabel}>Safe-to-Spend</div>
+              <div style={styles.heroStatusRow}>
+                <div style={styles.heroValue}>{plan.planStatus}</div>
+                <span style={{ ...styles.statusPill, ...getToneStyle(plan.planTone) }}>
+                  {plan.safeToSpend >= 0 ? 'Positive' : 'Shortfall'}
+                </span>
+              </div>
+
+              <div
+                style={{
+                  ...styles.bigNumber,
+                  color: plan.safeToSpend >= 0 ? '#86efac' : '#fca5a5'
+                }}
+              >
+                {formatMoney(plan.safeToSpend)}
+              </div>
+
+              <div style={styles.heroSubtext}>
+                Posted net cashflow minus unposted active bills and remaining debt minimum reserve.
+              </div>
+            </div>
+
+            <StatBox
+              label="Income This Month"
+              value={formatMoney(plan.actualIncome)}
+              sub={`${plan.accountCount} account${plan.accountCount === 1 ? '' : 's'} connected`}
+              tone="success"
+            />
+
+            <StatBox
+              label="Posted Expenses"
+              value={formatMoney(plan.actualExpenses)}
+              sub={`Posted net: ${formatMoney(plan.postedNet)}`}
+              tone={plan.postedNet >= 0 ? 'success' : 'danger'}
+            />
+
+            <StatBox
+              label="Essential Reserve"
+              value={formatMoney(plan.essentialReserve)}
+              sub={`Bills ${formatMoney(plan.unpostedBillReserve)} · Debt ${formatMoney(plan.debtMinimumRemaining)}`}
+              tone={plan.essentialReserve > 0 ? 'warning' : 'success'}
+            />
+          </section>
+
+          <section style={styles.gridTwo}>
+            <div style={styles.card}>
+              <div style={styles.sectionHeader}>
+                <div>
+                  <h2 style={styles.sectionTitle}>Allocation Mode</h2>
+<p style={styles.sectionSubtitle}>
+  {selectedMode.description} Default mode from Settings: {appSettings.moneyPlanDefaultMode}.
+</p>                </div>
+              </div>
+
+              <div style={styles.modeRow}>
+                {Object.entries(ALLOCATION_MODES).map(([key, mode]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setAllocationMode(key)}
+                    style={allocationMode === key ? styles.activeModeButton : styles.modeButton}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+
+              {plan.allocatableAmount <= 0 ? (
+                <div style={styles.emptyState}>
+                  No positive Safe-to-Spend available for allocation yet. Focus on required bills,
+                  minimum payments and reducing flexible spending first.
+                </div>
+              ) : (
+                <div style={styles.allocationGrid}>
+                  <AllocationItem
+                    label="Cash Buffer"
+                    value={plan.allocation.buffer}
+                    percent={`${selectedMode.buffer}%`}
+                    note="Build safety first"
+                  />
+                  <AllocationItem
+                    label="Extra Debt"
+                    value={plan.allocation.debt}
+                    percent={`${selectedMode.debt}%`}
+                    note="Reduce interest"
+                  />
+                  <AllocationItem
+                    label="Goals"
+                    value={plan.allocation.goals}
+                    percent={`${selectedMode.goals}%`}
+                    note="Fund priorities"
+                  />
+                  <AllocationItem
+                    label="Investment DCA"
+                    value={plan.allocation.investment}
+                    percent={`${selectedMode.investment}%`}
+                    note="Long-term growth"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div style={styles.card}>
+              <div style={styles.sectionHeader}>
+                <div>
+                  <h2 style={styles.sectionTitle}>Action Center</h2>
+                  <p style={styles.sectionSubtitle}>What needs attention this month.</p>
+                </div>
+              </div>
+
+              <div style={styles.insightList}>
+                {plan.insights.map((item, index) => (
+                  <div key={`${item.title}-${index}`} style={styles.insightItem}>
+                    <span style={{ ...styles.dot, ...getToneStyle(item.tone) }} />
+                    <div>
+                      <div style={styles.insightTitle}>{item.title}</div>
+                      <div style={styles.insightText}>{item.text}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section style={styles.gridFour}>
+            <MiniPanel
+              label="Cash Buffer"
+              value={formatMoney(plan.cashBufferCurrent)}
+              sub={`${formatPercent(plan.cashBufferPercent)} of ${formatMoney(plan.cashBufferTarget)} target`}
+              tone={plan.cashBufferGap <= 0 ? 'success' : 'warning'}
+            />
+            <MiniPanel
+              label="Unposted Bills"
+              value={formatMoney(plan.unpostedBillReserve)}
+              sub={`${plan.unpostedBills.length} active monthly bill${plan.unpostedBills.length === 1 ? '' : 's'} not posted`}
+              tone={plan.unpostedBillReserve > 0 ? 'warning' : 'success'}
+            />
+            <MiniPanel
+              label="Budget Remaining"
+              value={formatMoney(plan.budgetRemaining)}
+              sub={`${formatPercent(plan.budgetUsagePercent)} used`}
+              tone={plan.budgetRemaining >= 0 ? 'success' : 'danger'}
+            />
+            <MiniPanel
+              label="Goal Monthly Need"
+              value={formatMoney(plan.goalMonthlyNeedTotal)}
+              sub={`${plan.activeGoals.length} active goal${plan.activeGoals.length === 1 ? '' : 's'}`}
+              tone={plan.goalMonthlyNeedTotal > 0 ? 'info' : 'success'}
+            />
+          </section>
+
+          <section style={styles.gridThree}>
+            <PlanPanel title="Bills Reserve" subtitle={formatMoney(plan.unpostedBillReserve)}>
+              {topBills.length ? (
+                <div style={styles.list}>
+                  {topBills.map((bill) => (
+                    <div key={bill.id} style={styles.listRow}>
+                      <div>
+                        <div style={styles.listTitle}>{bill.name}</div>
+                        <div style={styles.listSub}>
+                          Due {bill.dueDateLabel} · {bill.categoryLabel}
+                        </div>
+                      </div>
+                      <div style={styles.rightText}>
+                        <div style={bill.isPastDue ? styles.negativeText : styles.warningText}>
+                          {formatMoney(bill.amount)}
+                        </div>
+                        <div style={styles.miniText}>{bill.isPastDue ? 'past due' : 'reserve'}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={styles.emptyState}>
+                  All active monthly bills appear to be posted to Cashflow for this month.
+                </div>
+              )}
+            </PlanPanel>
+
+            <PlanPanel title="Budget Watch" subtitle={`${formatPercent(plan.budgetUsagePercent)} used`}>
+              {topBudgetRows.length ? (
+                <div style={styles.list}>
+                  {topBudgetRows.map((row) => (
+                    <div key={row.id || row.category} style={styles.listRow}>
+                      <div>
+                        <div style={styles.listTitle}>{row.category}</div>
+                        <div style={styles.listSub}>
+                          {formatMoney(row.actual)} / {formatMoney(row.planned)}
+                        </div>
+                      </div>
+                      <div style={styles.rightText}>
+                        <div style={row.remaining >= 0 ? styles.positiveText : styles.negativeText}>
+                          {formatMoney(row.remaining)}
+                        </div>
+                        <div style={styles.miniText}>{row.status}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={styles.emptyState}>No budget rows for this month yet.</div>
+              )}
+            </PlanPanel>
+
+            <PlanPanel
+              title="Goals Pace"
+              subtitle={`${topGoals.length} active priority goal${topGoals.length === 1 ? '' : 's'}`}
+            >
+              {topGoals.length ? (
+                <div style={styles.list}>
+                  {topGoals.map((goal) => (
+                    <div key={goal.id} style={styles.listRow}>
+                      <div>
+                        <div style={styles.listTitle}>{goal.name}</div>
+                        <div style={styles.listSub}>
+                          {formatPercent(goal.progress)} funded · {goal.priority || 'Medium'}
+                        </div>
+                      </div>
+                      <div style={styles.rightText}>
+                        <div style={styles.infoText}>{formatMoney(goal.monthlyNeeded)}</div>
+                        <div style={styles.miniText}>needed/mo</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={styles.emptyState}>No active goal needing monthly funding.</div>
+              )}
+            </PlanPanel>
+          </section>
+
+          <section style={styles.gridTwo}>
+            <div style={styles.card}>
+              <div style={styles.sectionHeader}>
+                <div>
+                  <h2 style={styles.sectionTitle}>Debt Snapshot</h2>
+                  <p style={styles.sectionSubtitle}>
+                    Minimum payments and balances from your liabilities data.
+                  </p>
+                </div>
+                <div style={styles.sectionMetric}>
+                  {formatMoney(plan.debtMinimumTotal)}
+                  <span> minimum/mo</span>
+                </div>
+              </div>
+
+              {topDebts.length ? (
+                <div style={styles.list}>
+                  {topDebts.map((debt) => (
+                    <div key={debt.id} style={styles.listRow}>
+                      <div>
+                        <div style={styles.listTitle}>{debt.name}</div>
+                        <div style={styles.listSub}>
+                          {debt.liability_type || 'Debt'} · APR {formatPercent(debt.interest_rate)}
+                        </div>
+                      </div>
+                      <div style={styles.rightText}>
+                        <div style={styles.negativeText}>{formatMoney(debt.current_balance)}</div>
+                        <div style={styles.miniText}>Min {formatMoney(debt.minimum_payment)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={styles.emptyState}>No liabilities found.</div>
+              )}
+            </div>
+
+            <div style={styles.card}>
+              <div style={styles.sectionHeader}>
+                <div>
+                  <h2 style={styles.sectionTitle}>Safe-to-Spend Formula</h2>
+                  <p style={styles.sectionSubtitle}>
+                    This formula is designed to avoid mixing category names with bill details.
+                  </p>
+                </div>
+              </div>
+
+              <div style={styles.formulaBox}>
+                <FormulaRow label="Income this month" value={plan.actualIncome} positive />
+                <FormulaRow label="Posted expenses" value={-plan.actualExpenses} />
+                <FormulaRow label="Unposted active bills" value={-plan.unpostedBillReserve} />
+                <FormulaRow label="Debt minimum remaining" value={-plan.debtMinimumRemaining} />
+                <div style={styles.formulaDivider} />
+                <FormulaRow label="Safe-to-Spend" value={plan.safeToSpend} strong />
+              </div>
+
+              <div style={styles.noteBox}>
+                Budget Remaining is shown as a spending runway, but it is not subtracted again from
+                Safe-to-Spend because posted expenses and bill reserve already cover the main cash movement.
+              </div>
+            </div>
+          </section>
+        </>
+      )}
+    </div>
+  )
+}
+
+function StatBox({ label, value, sub, tone }) {
+  const color =
+    tone === 'success'
+      ? '#22c55e'
+      : tone === 'danger'
+        ? '#ef4444'
+        : tone === 'warning'
+          ? '#f59e0b'
+          : '#38bdf8'
+
+  return (
+    <div style={styles.statCard}>
+      <div style={styles.cardLabel}>{label}</div>
+      <div style={{ ...styles.statValue, color }}>{value}</div>
+      <div style={styles.statSub}>{sub}</div>
+    </div>
+  )
+}
+
+function MiniPanel({ label, value, sub, tone }) {
+  const color =
+    tone === 'success'
+      ? '#86efac'
+      : tone === 'danger'
+        ? '#fca5a5'
+        : tone === 'warning'
+          ? '#fde68a'
+          : '#7dd3fc'
+
+  return (
+    <div style={styles.miniPanel}>
+      <div style={styles.cardLabel}>{label}</div>
+      <div style={{ ...styles.miniPanelValue, color }}>{value}</div>
+      <div style={styles.statSub}>{sub}</div>
+    </div>
+  )
+}
+
+function AllocationItem({ label, value, percent, note }) {
+  return (
+    <div style={styles.allocationItem}>
+      <div style={styles.allocationTop}>
+        <div style={styles.allocationLabel}>{label}</div>
+        <div style={styles.allocationPercent}>{percent}</div>
+      </div>
+      <div style={styles.allocationValue}>{formatMoney(value)}</div>
+      <div style={styles.allocationNote}>{note}</div>
+    </div>
+  )
+}
+
+function PlanPanel({ title, subtitle, children }) {
+  return (
+    <div style={styles.card}>
+      <div style={styles.panelHeader}>
+        <div>
+          <h2 style={styles.sectionTitle}>{title}</h2>
+          <p style={styles.sectionSubtitle}>{subtitle}</p>
+        </div>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function FormulaRow({ label, value, strong = false, positive = false }) {
+  const isPositive = value >= 0 || positive
+
+  return (
+    <div style={strong ? styles.formulaRowStrong : styles.formulaRow}>
+      <span>{label}</span>
+      <strong style={isPositive ? styles.positiveText : styles.negativeText}>
+        {value < 0 ? '-' : ''}
+        {formatMoney(Math.abs(value))}
+      </strong>
+    </div>
+  )
+}
+
+const styles = {
+  page: {
+    color: '#f9fafb'
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: 20,
+    alignItems: 'flex-start',
+    marginBottom: 24
+  },
+  kicker: {
+    color: '#38bdf8',
+    fontSize: 12,
+    fontWeight: 900,
+    letterSpacing: '0.12em',
+    textTransform: 'uppercase',
+    marginBottom: 8
+  },
+  title: {
+    margin: 0,
+    fontSize: 36,
+    lineHeight: 1.05,
+    letterSpacing: '-0.04em',
+    fontWeight: 900
+  },
+  subtitle: {
+    margin: '10px 0 0',
+    maxWidth: 820,
+    color: '#9ca3af',
+    lineHeight: 1.6,
+    fontSize: 14
+  },
+  headerRight: {
+    display: 'flex',
+    gap: 10,
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end'
+  },
+  monthBadge: {
+    border: '1px solid rgba(56, 189, 248, 0.35)',
+    background: 'rgba(56, 189, 248, 0.1)',
+    color: '#bae6fd',
+    borderRadius: 999,
+    padding: '10px 14px',
+    fontWeight: 800,
+    fontSize: 13
+  },
+  refreshButton: {
+    border: '1px solid rgba(55, 65, 81, 0.9)',
+    background: '#111827',
+    color: '#f9fafb',
+    borderRadius: 12,
+    padding: '10px 14px',
+    fontWeight: 800,
+    cursor: 'pointer'
+  },
+  message: {
+    border: '1px solid rgba(245, 158, 11, 0.35)',
+    background: 'rgba(245, 158, 11, 0.1)',
+    color: '#fde68a',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 18
+  },
+  loadingCard: {
+    border: '1px solid #253044',
+    background: '#111827',
+    borderRadius: 18,
+    padding: 24,
+    color: '#9ca3af'
+  },
+  heroGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(280px, 1.35fr) repeat(3, minmax(190px, 1fr))',
+    gap: 16,
+    marginBottom: 16
+  },
+  heroCard: {
+    border: '1px solid rgba(56, 189, 248, 0.25)',
+    borderRadius: 20,
+    padding: 22,
+    background:
+      'radial-gradient(circle at top right, rgba(56, 189, 248, 0.14), transparent 36%), #111827',
+    boxShadow: '0 18px 45px rgba(0,0,0,0.22)'
+  },
+  statCard: {
+    border: '1px solid #253044',
+    borderRadius: 20,
+    padding: 18,
+    background: '#111827',
+    boxShadow: '0 18px 45px rgba(0,0,0,0.18)'
+  },
+  miniPanel: {
+    border: '1px solid #253044',
+    borderRadius: 18,
+    padding: 18,
+    background: '#111827',
+    boxShadow: '0 18px 45px rgba(0,0,0,0.14)'
+  },
+  card: {
+    border: '1px solid #253044',
+    borderRadius: 20,
+    padding: 20,
+    background:
+      'linear-gradient(180deg, rgba(17, 24, 39, 0.98), rgba(15, 23, 42, 0.98))',
+    boxShadow: '0 18px 45px rgba(0,0,0,0.18)'
+  },
+  cardLabel: {
+    color: '#9ca3af',
+    fontSize: 13,
+    fontWeight: 800
+  },
+  heroStatusRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 12
+  },
+  heroValue: {
+    fontSize: 30,
+    fontWeight: 900,
+    letterSpacing: '-0.04em'
+  },
+  heroSubtext: {
+    marginTop: 12,
+    color: '#9ca3af',
+    fontSize: 13,
+    lineHeight: 1.55,
+    maxWidth: 520
+  },
+  bigNumber: {
+    marginTop: 18,
+    fontSize: 44,
+    fontWeight: 950,
+    letterSpacing: '-0.05em'
+  },
+  statValue: {
+    marginTop: 14,
+    fontSize: 27,
+    fontWeight: 900,
+    letterSpacing: '-0.04em'
+  },
+  miniPanelValue: {
+    marginTop: 12,
+    fontSize: 25,
+    fontWeight: 900,
+    letterSpacing: '-0.04em'
+  },
+  statSub: {
+    marginTop: 9,
+    color: '#9ca3af',
+    fontSize: 12,
+    lineHeight: 1.45
+  },
+  gridTwo: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: 16,
+    marginBottom: 16
+  },
+  gridThree: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gap: 16,
+    marginBottom: 16
+  },
+  gridFour: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+    gap: 16,
+    marginBottom: 16
+  },
+  sectionHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: 14,
+    alignItems: 'flex-start',
+    marginBottom: 16
+  },
+  panelHeader: {
+    marginBottom: 16
+  },
+  sectionTitle: {
+    margin: 0,
+    fontSize: 18,
+    fontWeight: 900,
+    letterSpacing: '-0.02em'
+  },
+  sectionSubtitle: {
+    margin: '6px 0 0',
+    color: '#9ca3af',
+    fontSize: 12,
+    lineHeight: 1.45
+  },
+  sectionMetric: {
+    color: '#f9fafb',
+    fontWeight: 900,
+    textAlign: 'right'
+  },
+  modeRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 16
+  },
+  modeButton: {
+    border: '1px solid #374151',
+    background: '#111827',
+    color: '#d1d5db',
+    borderRadius: 999,
+    padding: '10px 13px',
+    cursor: 'pointer',
+    fontWeight: 850
+  },
+  activeModeButton: {
+    border: '1px solid #60a5fa',
+    background: '#1d4ed8',
+    color: 'white',
+    borderRadius: 999,
+    padding: '10px 13px',
+    cursor: 'pointer',
+    fontWeight: 850
+  },
+  allocationGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: 12
+  },
+  allocationItem: {
+    border: '1px solid rgba(55, 65, 81, 0.75)',
+    borderRadius: 16,
+    padding: 14,
+    background: 'rgba(2, 6, 23, 0.35)'
+  },
+  allocationTop: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: 10,
+    alignItems: 'center'
+  },
+  allocationLabel: {
+    fontSize: 13,
+    color: '#d1d5db',
+    fontWeight: 800
+  },
+  allocationPercent: {
+    color: '#38bdf8',
+    fontWeight: 900,
+    fontSize: 12
+  },
+  allocationValue: {
+    marginTop: 10,
+    fontSize: 22,
+    fontWeight: 900
+  },
+  allocationNote: {
+    marginTop: 5,
+    color: '#9ca3af',
+    fontSize: 12
+  },
+  insightList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12
+  },
+  insightItem: {
+    display: 'grid',
+    gridTemplateColumns: '12px 1fr',
+    gap: 11,
+    alignItems: 'flex-start',
+    border: '1px solid rgba(55, 65, 81, 0.65)',
+    borderRadius: 16,
+    padding: 13,
+    background: 'rgba(2, 6, 23, 0.28)'
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    marginTop: 5
+  },
+  insightTitle: {
+    fontWeight: 900,
+    fontSize: 13
+  },
+  insightText: {
+    marginTop: 5,
+    color: '#9ca3af',
+    fontSize: 12,
+    lineHeight: 1.5
+  },
+  list: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10
+  },
+  listRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: 12,
+    alignItems: 'center',
+    border: '1px solid rgba(55, 65, 81, 0.62)',
+    borderRadius: 15,
+    padding: 12,
+    background: 'rgba(2, 6, 23, 0.28)'
+  },
+  listTitle: {
+    fontWeight: 850,
+    fontSize: 13
+  },
+  listSub: {
+    marginTop: 5,
+    color: '#9ca3af',
+    fontSize: 12,
+    lineHeight: 1.35
+  },
+  rightText: {
+    textAlign: 'right',
+    flexShrink: 0,
+    fontWeight: 850
+  },
+  miniText: {
+    color: '#9ca3af',
+    fontSize: 11,
+    marginTop: 4,
+    fontWeight: 700
+  },
+  emptyState: {
+    border: '1px dashed rgba(75, 85, 99, 0.78)',
+    borderRadius: 16,
+    padding: 16,
+    color: '#9ca3af',
+    fontSize: 13,
+    lineHeight: 1.55,
+    background: 'rgba(2, 6, 23, 0.22)'
+  },
+  formulaBox: {
+    border: '1px solid rgba(55, 65, 81, 0.72)',
+    borderRadius: 16,
+    padding: 14,
+    background: 'rgba(2, 6, 23, 0.32)'
+  },
+  formulaRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: 14,
+    padding: '8px 0',
+    color: '#d1d5db',
+    fontSize: 13
+  },
+  formulaRowStrong: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: 14,
+    padding: '10px 0 4px',
+    color: '#f9fafb',
+    fontSize: 15,
+    fontWeight: 900
+  },
+  formulaDivider: {
+    height: 1,
+    background: 'rgba(75, 85, 99, 0.75)',
+    margin: '8px 0'
+  },
+  noteBox: {
+    marginTop: 13,
+    color: '#9ca3af',
+    fontSize: 12,
+    lineHeight: 1.55
+  },
+  statusPill: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 999,
+    padding: '6px 10px',
+    fontSize: 12,
+    fontWeight: 900
+  },
+  successPill: {
+    background: 'rgba(34, 197, 94, 0.14)',
+    color: '#86efac',
+    border: '1px solid rgba(34, 197, 94, 0.32)'
+  },
+  dangerPill: {
+    background: 'rgba(239, 68, 68, 0.14)',
+    color: '#fca5a5',
+    border: '1px solid rgba(239, 68, 68, 0.32)'
+  },
+  warningPill: {
+    background: 'rgba(245, 158, 11, 0.14)',
+    color: '#fcd34d',
+    border: '1px solid rgba(245, 158, 11, 0.32)'
+  },
+  infoPill: {
+    background: 'rgba(56, 189, 248, 0.14)',
+    color: '#7dd3fc',
+    border: '1px solid rgba(56, 189, 248, 0.32)'
+  },
+  neutralPill: {
+    background: 'rgba(148, 163, 184, 0.12)',
+    color: '#cbd5e1',
+    border: '1px solid rgba(148, 163, 184, 0.3)'
+  },
+  positiveText: {
+    color: '#22c55e'
+  },
+  negativeText: {
+    color: '#ef4444'
+  },
+  warningText: {
+    color: '#f59e0b'
+  },
+  infoText: {
+    color: '#38bdf8'
+  }
+}

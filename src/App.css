@@ -1,0 +1,68 @@
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import Layout from './components/Layout'
+import ProtectedRoute from './components/ProtectedRoute'
+
+import LoginPage from './pages/LoginPage'
+import DashboardPage from './pages/DashboardPage'
+import MoneyPlanPage from './pages/MoneyPlanPage'
+import AccountsPage from './pages/AccountsPage'
+import InvestmentsPage from './pages/InvestmentsPage'
+import CashflowPage from './pages/CashflowPage'
+import HoldingsPage from './pages/HoldingsPage'
+import BudgetPage from './pages/BudgetPage'
+import NetWorthPage from './pages/NetWorthPage'
+import ImportPage from './pages/ImportPage'
+import DebtPayoffPage from './pages/DebtPayoffPage'
+import DebtStrategyPage from './pages/DebtStrategyPage'
+import BillsPage from './pages/BillsPage'
+import DataHealthPage from './pages/DataHealthPage'
+import PortfolioIntelligencePage from './pages/PortfolioIntelligencePage'
+import DividendIncomePage from './pages/DividendIncomePage'
+import FinancialGoalsPage from './pages/FinancialGoalsPage'
+import SettingsPage from './pages/SettingsPage'
+
+import { APP_ROUTE_SEGMENTS, APP_ROUTES } from './lib/routes'
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path={APP_ROUTES.login} element={<LoginPage />} />
+
+        <Route
+          path={APP_ROUTES.overview}
+          element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<DashboardPage />} />
+          <Route path={APP_ROUTE_SEGMENTS.moneyPlan} element={<MoneyPlanPage />} />
+          <Route path={APP_ROUTE_SEGMENTS.accounts} element={<AccountsPage />} />
+          <Route path={APP_ROUTE_SEGMENTS.investments} element={<InvestmentsPage />} />
+          <Route path={APP_ROUTE_SEGMENTS.holdings} element={<HoldingsPage />} />
+          <Route
+            path={APP_ROUTE_SEGMENTS.portfolioIntelligence}
+            element={<PortfolioIntelligencePage />}
+          />
+          <Route path={APP_ROUTE_SEGMENTS.dividendIncome} element={<DividendIncomePage />} />
+          <Route path={APP_ROUTE_SEGMENTS.financialGoals} element={<FinancialGoalsPage />} />
+          <Route path={APP_ROUTE_SEGMENTS.cashflow} element={<CashflowPage />} />
+          <Route path={APP_ROUTE_SEGMENTS.budget} element={<BudgetPage />} />
+          <Route path={APP_ROUTE_SEGMENTS.netWorth} element={<NetWorthPage />} />
+          <Route path={APP_ROUTE_SEGMENTS.bills} element={<BillsPage />} />
+          <Route path={APP_ROUTE_SEGMENTS.imports} element={<ImportPage />} />
+          <Route path={APP_ROUTE_SEGMENTS.debtPayoff} element={<DebtPayoffPage />} />
+          <Route path={APP_ROUTE_SEGMENTS.debtStrategy} element={<DebtStrategyPage />} />
+          <Route path={APP_ROUTE_SEGMENTS.dataHealth} element={<DataHealthPage />} />
+          <Route path={APP_ROUTE_SEGMENTS.settings} element={<SettingsPage />} />
+
+          <Route path="*" element={<Navigate to={APP_ROUTES.overview} replace />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to={APP_ROUTES.overview} replace />} />
+      </Routes>
+    </BrowserRouter>
+  )
+}
