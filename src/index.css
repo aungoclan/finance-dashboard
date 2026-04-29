@@ -909,3 +909,193 @@ code {
     width: 100%;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Bài 56C - Data-heavy mobile safety pass                                    */
+/* Keeps desktop tables/forms intact while preventing phone-wide overflow.    */
+/* -------------------------------------------------------------------------- */
+
+@media (max-width: 760px) {
+  .app-main {
+    isolation: isolate;
+  }
+
+  .app-main *,
+  .app-main *::before,
+  .app-main *::after {
+    box-sizing: border-box;
+  }
+
+  .app-main h1,
+  .app-main h2,
+  .app-main h3,
+  .app-main p,
+  .app-main strong,
+  .app-main span,
+  .app-main div {
+    overflow-wrap: anywhere;
+  }
+
+  .app-main form {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .app-main label {
+    min-width: 0;
+  }
+
+  .app-main input,
+  .app-main select,
+  .app-main textarea {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0 !important;
+    font-size: 16px;
+  }
+
+  .app-main input[type='date'],
+  .app-main input[type='month'],
+  .app-main input[type='number'],
+  .app-main select {
+    min-width: 0 !important;
+  }
+
+  .app-main button,
+  .app-main a {
+    max-width: 100%;
+  }
+
+  .app-main [style*='width: 220px'],
+  .app-main [style*='width: 280px'],
+  .app-main [style*='width: 260px'],
+  .app-main [style*='width: 240px'],
+  .app-main [style*='width: 200px'],
+  .app-main [style*='width: 190px'],
+  .app-main [style*='width: 180px'],
+  .app-main [style*='width: 170px'],
+  .app-main [style*='width: 160px'],
+  .app-main [style*='width: 150px'],
+  .app-main [style*='width: 140px'],
+  .app-main [style*='width: 130px'],
+  .app-main [style*='width: 120px'] {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .app-main [style*='min-width: 220px'],
+  .app-main [style*='min-width: 230px'],
+  .app-main [style*='min-width: 240px'],
+  .app-main [style*='min-width: 260px'],
+  .app-main [style*='min-width: 280px'],
+  .app-main [style*='min-width: 320px'],
+  .app-main [style*='minWidth: 220px'],
+  .app-main [style*='minWidth: 230px'],
+  .app-main [style*='minWidth: 240px'],
+  .app-main [style*='minWidth: 260px'],
+  .app-main [style*='minWidth: 280px'],
+  .app-main [style*='minWidth: 320px'] {
+    min-width: 0 !important;
+  }
+
+  .app-main [style*='grid-template-columns'] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-main [style*='display: flex'] {
+    flex-wrap: wrap !important;
+  }
+
+  .app-main [style*='align-items: center'] {
+    align-items: flex-start !important;
+  }
+
+  .app-main table {
+    width: max-content;
+    min-width: min(720px, calc(100vw - 24px));
+    max-width: none;
+    table-layout: auto;
+  }
+
+  .app-main th,
+  .app-main td {
+    white-space: normal;
+    vertical-align: top;
+  }
+
+  .fd-scroll-x,
+  .app-main [style*='overflow-x: auto'],
+  .app-main [style*='overflowX: auto'],
+  .app-main [style*='overflow: auto'] {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .app-main [style*='min-width: 760px'],
+  .app-main [style*='min-width: 780px'],
+  .app-main [style*='min-width: 820px'],
+  .app-main [style*='min-width: 900px'],
+  .app-main [style*='min-width: 980px'],
+  .app-main [style*='min-width: 1060px'],
+  .app-main [style*='min-width: 1180px'],
+  .app-main [style*='min-width: 1320px'],
+  .app-main [style*='minWidth: 760px'],
+  .app-main [style*='minWidth: 780px'],
+  .app-main [style*='minWidth: 820px'],
+  .app-main [style*='minWidth: 900px'],
+  .app-main [style*='minWidth: 980px'],
+  .app-main [style*='minWidth: 1060px'],
+  .app-main [style*='minWidth: 1180px'],
+  .app-main [style*='minWidth: 1320px'] {
+    width: max-content !important;
+    max-width: none !important;
+  }
+
+  .app-main [style*='min-width: 760px'] table,
+  .app-main [style*='min-width: 780px'] table,
+  .app-main [style*='min-width: 820px'] table,
+  .app-main [style*='min-width: 900px'] table,
+  .app-main [style*='min-width: 980px'] table,
+  .app-main [style*='min-width: 1060px'] table,
+  .app-main [style*='min-width: 1180px'] table,
+  .app-main [style*='min-width: 1320px'] table {
+    min-width: inherit;
+  }
+
+  .app-main .recharts-responsive-container,
+  .app-main .recharts-wrapper,
+  .app-main svg {
+    max-width: 100% !important;
+  }
+
+  .app-main .recharts-wrapper {
+    overflow: hidden;
+  }
+}
+
+@supports selector(:has(*)) {
+  @media (max-width: 760px) {
+    .app-main div:has(> table),
+    .app-main section:has(> table),
+    .app-main article:has(> table),
+    .app-main div:has(> [style*='min-width: 760px']),
+    .app-main div:has(> [style*='min-width: 780px']),
+    .app-main div:has(> [style*='min-width: 820px']),
+    .app-main div:has(> [style*='min-width: 900px']),
+    .app-main div:has(> [style*='min-width: 980px']),
+    .app-main div:has(> [style*='min-width: 1060px']),
+    .app-main div:has(> [style*='min-width: 1180px']),
+    .app-main div:has(> [style*='min-width: 1320px']) {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto !important;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      border-radius: var(--radius-md);
+    }
+  }
+}
