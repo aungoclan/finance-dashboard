@@ -264,6 +264,17 @@ function getAccountSeed(account) {
     currentMonthActualCashCount: null,
     currentMonthExpectedClosing: 0,
     currentMonthLedgerStatus: '',
+    currentMonthLedgerLocked: false,
+    currentMonthHasLedger: false,
+    currentMonthFinalCashBalance: 0,
+
+    previousMonthOpeningBalance: 0,
+    previousMonthActualCashCount: null,
+    previousMonthExpectedClosing: 0,
+    previousMonthLedgerStatus: '',
+    previousMonthLedgerLocked: false,
+    previousMonthHasLedger: false,
+    previousMonthFinalCashBalance: 0,
 
     needsReview: false,
     reviewReasons: []
@@ -335,6 +346,32 @@ function getOpeningToneStyle(tone) {
   if (tone === 'good') return activeBadgeStyle
   if (tone === 'warn') return reviewBadgeStyle
   return neutralBadgeStyle
+}
+
+function getCashLedgerFinalBalance(row, period = 'current') {
+  const hasLedger = period === 'previous' ? row.previousMonthHasLedger : row.currentMonthHasLedger
+
+  if (!hasLedger) {
+    return period === 'previous' ? row.lastMonthNet : row.allTimeNet
+  }
+
+  const actualValue =
+    period === 'previous' ? row.previousMonthActualCashCount : row.currentMonthActualCashCount
+  const expectedValue =
+    period === 'previous' ? row.previousMonthExpectedClosing : row.currentMonthExpectedClosing
+
+  return actualValue === null || actualValue === undefined ? toNumber(expectedValue) : toNumber(actualValue)
+}
+
+function getCashLedgerStatusLabel(row) {
+  if (!row.currentMonthHasLedger) return 'No ledger yet'
+  if (row.currentMonthLedgerLocked) return 'Locked / Reconciled'
+  if (row.currentMonthActualCashCount !== null && row.currentMonthActualCashCount !== undefined) return 'Saved Snapshot'
+  return row.currentMonthLedgerStatus || 'Open Ledger'
+}
+
+function getCashBalanceTone(value) {
+  return toNumber(value) >= 0 ? 'good' : 'bad'
 }
 
 function getReconciliationTone(row) {
@@ -730,6 +767,7 @@ export default function AccountsPage() {
       row.cashLedgerCount += 1
       row.cashLedgerMonths.push(ledger.month_key)
       if (ledger.month_key === monthKey) {
+        row.currentMonthHasLedger = true
         row.currentMonthOpeningBalance = toNumber(ledger.opening_balance)
         row.currentMonthActualCashCount =
           ledger.actual_cash_count === null || ledger.actual_cash_count === undefined
@@ -737,6 +775,19 @@ export default function AccountsPage() {
             : toNumber(ledger.actual_cash_count)
         row.currentMonthExpectedClosing = toNumber(ledger.expected_closing_balance)
         row.currentMonthLedgerStatus = ledger.status || ''
+        row.currentMonthLedgerLocked = Boolean(ledger.locked)
+      }
+
+      if (ledger.month_key === previousMonthKey) {
+        row.previousMonthHasLedger = true
+        row.previousMonthOpeningBalance = toNumber(ledger.opening_balance)
+        row.previousMonthActualCashCount =
+          ledger.actual_cash_count === null || ledger.actual_cash_count === undefined
+            ? null
+            : toNumber(ledger.actual_cash_count)
+        row.previousMonthExpectedClosing = toNumber(ledger.expected_closing_balance)
+        row.previousMonthLedgerStatus = ledger.status || ''
+        row.previousMonthLedgerLocked = Boolean(ledger.locked)
       }
     })
 
@@ -865,11 +916,22 @@ export default function AccountsPage() {
 
       const openingGuide = getOpeningBalanceGuide(row)
 
-      return {
+      const rowWithNets = {
         ...row,
         monthlyNet,
         lastMonthNet,
-        allTimeNet,
+        allTimeNet
+      }
+
+      const currentMonthFinalCashBalance =
+        row.account_type === 'cash' ? getCashLedgerFinalBalance(rowWithNets, 'current') : allTimeNet
+      const previousMonthFinalCashBalance =
+        row.account_type === 'cash' ? getCashLedgerFinalBalance(rowWithNets, 'previous') : lastMonthNet
+
+      return {
+        ...rowWithNets,
+        currentMonthFinalCashBalance,
+        previousMonthFinalCashBalance,
         monthOverMonthChange: monthlyNet - lastMonthNet,
         openingGuide,
         reviewReasons,
@@ -970,6 +1032,8 @@ export default function AccountsPage() {
         group: typeGroup(key),
         count: 0,
         investmentValue: 0,
+        finalCashBalance: 0,
+        displayValue: 0,
         allTimeNet: 0,
         monthlyNet: 0,
         cashflowCount: 0,
@@ -977,7 +1041,15 @@ export default function AccountsPage() {
       }
 
       item.count += 1
-      item.investmentValue += row.investmentValue
+
+      if (row.account_type === 'cash') {
+        item.finalCashBalance += toNumber(row.currentMonthFinalCashBalance)
+        item.displayValue += toNumber(row.currentMonthFinalCashBalance)
+      } else {
+        item.investmentValue += row.investmentValue
+        item.displayValue += row.investmentValue
+      }
+
       item.allTimeNet += row.allTimeNet
       item.monthlyNet += row.monthlyNet
       item.cashflowCount += row.cashflowCount
@@ -1090,9 +1162,9 @@ export default function AccountsPage() {
         if (groupDiff !== 0) return groupDiff
 
         return (
-          b.investmentValue +
+          Math.abs(b.displayValue) +
           Math.abs(b.allTimeNet) -
-          (a.investmentValue + Math.abs(a.allTimeNet))
+          (Math.abs(a.displayValue) + Math.abs(a.allTimeNet))
         )
       }),
       healthWarnings: warnings,
@@ -1293,7 +1365,7 @@ export default function AccountsPage() {
           <div style={cardStyle}>
             <h2 style={{ marginTop: 0 }}>Cash Wallet Movement</h2>
             <p style={smallTextStyle}>
-              Cash Wallet still uses all-time net from cashflow entries. This panel adds monthly movement without a new ledger table.
+              Cash Wallet balance uses the selected month's ledger formula: opening balance + cash in - cash out. Monthly movement remains separate.
             </p>
 
             {cashWalletRows.length === 0 ? (
@@ -1304,14 +1376,36 @@ export default function AccountsPage() {
                   <div key={row.id} style={cashWalletItemStyle}>
                     <div style={accountTitleRowStyle}>
                       <strong>{row.name}</strong>
-                      <span style={row.monthlyNet >= 0 ? activeBadgeStyle : reviewBadgeStyle}>
-                        {row.monthlyNet >= 0 ? 'Positive' : 'Negative'}
+                      <span style={getCashBalanceTone(row.currentMonthFinalCashBalance) === 'good' ? activeBadgeStyle : reviewBadgeStyle}>
+                        {getCashLedgerStatusLabel(row)}
                       </span>
                     </div>
                     <div style={miniMetricGridStyle}>
-                      <Metric label="All-Time Cash" value={money(row.allTimeNet)} tone={row.allTimeNet >= 0 ? 'good' : 'bad'} />
-                      <Metric label="This Month" value={money(row.monthlyNet)} tone={row.monthlyNet >= 0 ? 'good' : 'bad'} />
-                      <Metric label="Last Month" value={money(row.lastMonthNet)} tone={row.lastMonthNet >= 0 ? 'good' : 'bad'} />
+                      <Metric
+                        label="Final Cash Balance"
+                        value={money(row.currentMonthFinalCashBalance)}
+                        tone={getCashBalanceTone(row.currentMonthFinalCashBalance)}
+                      />
+                      <Metric
+                        label="This Month Movement"
+                        value={money(row.monthlyNet)}
+                        tone={getCashBalanceTone(row.monthlyNet)}
+                      />
+                      <Metric
+                        label="Opening Balance"
+                        value={money(row.currentMonthHasLedger ? row.currentMonthOpeningBalance : 0)}
+                        tone={getCashBalanceTone(row.currentMonthHasLedger ? row.currentMonthOpeningBalance : 0)}
+                      />
+                      <Metric
+                        label="Previous Final"
+                        value={money(row.previousMonthHasLedger ? row.previousMonthFinalCashBalance : row.lastMonthNet)}
+                        tone={getCashBalanceTone(row.previousMonthHasLedger ? row.previousMonthFinalCashBalance : row.lastMonthNet)}
+                      />
+                    </div>
+                    <div style={cashLedgerFormulaStyle}>
+                      {row.currentMonthHasLedger
+                        ? `Formula: ${money(row.currentMonthOpeningBalance)} opening + ${money(row.monthlyIncome)} cash in - ${money(row.monthlyExpense)} cash out = ${money(row.currentMonthExpectedClosing)} expected`
+                        : 'No monthly ledger found yet. Fallback is cashflow movement only until you create a Cash Wallet Ledger snapshot.'}
                     </div>
                   </div>
                 ))}
@@ -1455,7 +1549,11 @@ export default function AccountsPage() {
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <strong>{money(row.investmentValue)}</strong>
+<strong style={row.displayValue >= 0 ? positiveTextStyle : negativeTextStyle}>                        {money(row.displayValue)}
+                      </strong>
+                      <div style={mutedStyle}>
+                        {row.type === 'cash' ? 'Final cash balance' : 'Account value'}
+                      </div>
                       <div style={mutedStyle}>Month net {money(row.monthlyNet)}</div>
                     </div>
                   </div>
@@ -1721,6 +1819,18 @@ function AccountCard({
               sub={formatPercent(account.unrealizedPLPercent)}
               tone={account.unrealizedPL >= 0 ? 'good' : 'bad'}
             />
+            {isCashAccount(account.account_type) && (
+              <Metric
+                label="Final Cash Balance"
+                value={money(account.currentMonthFinalCashBalance)}
+                sub={
+                  account.currentMonthHasLedger
+                    ? getCashLedgerStatusLabel(account)
+                    : 'No ledger yet · fallback from cashflow'
+                }
+                tone={getCashBalanceTone(account.currentMonthFinalCashBalance)}
+              />
+            )}
             <Metric label="Month Income" value={money(account.monthlyIncome)} />
             <Metric label="Month Expense" value={money(account.monthlyExpense)} />
             <Metric
@@ -1729,8 +1839,9 @@ function AccountCard({
               tone={account.monthlyNet >= 0 ? 'good' : 'bad'}
             />
             <Metric
-              label="All-Time Net"
+              label={isCashAccount(account.account_type) ? 'Cashflow All-Time Net' : 'All-Time Net'}
               value={money(account.allTimeNet)}
+              sub={isCashAccount(account.account_type) ? 'Movement only, not final cash balance' : undefined}
               tone={account.allTimeNet >= 0 ? 'good' : 'bad'}
             />
             <Metric label="Bills Posted" value={money(account.monthlyBillExpense)} sub={`${account.monthlyBillCount} entries`} />
@@ -2332,9 +2443,20 @@ const metricGridStyle = {
 
 const miniMetricGridStyle = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
   gap: '8px',
   marginTop: '12px'
+}
+
+const cashLedgerFormulaStyle = {
+  marginTop: '12px',
+  padding: '10px 12px',
+  borderRadius: '12px',
+  background: '#111827',
+  border: '1px solid rgba(148, 163, 184, 0.22)',
+  color: '#cbd5e1',
+  fontSize: '12px',
+  lineHeight: 1.45
 }
 
 const metricStyle = {

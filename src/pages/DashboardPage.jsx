@@ -400,6 +400,82 @@ function getAccountCashNet(accounts, allCashflowEntries) {
   return income - expense
 }
 
+function getAccountCashNetForAccount(accountId, allCashflowEntries) {
+  let income = 0
+  let expense = 0
+
+  for (const entry of allCashflowEntries || []) {
+    if (entry.account_id !== accountId) continue
+
+    if (entry.type === 'income') income += toNumber(entry.amount)
+    if (entry.type === 'expense') expense += toNumber(entry.amount)
+  }
+
+  return income - expense
+}
+
+function getLedgerFinalBalance(ledger) {
+  if (!ledger) return 0
+
+  const actual = ledger.actual_cash_count
+  const expected = ledger.expected_closing_balance
+
+  return actual === null || actual === undefined ? toNumber(expected) : toNumber(actual)
+}
+
+function getCashBalanceInfo({ accounts = [], allCashflowEntries = [], cashWalletLedgers = [], targetMonthKey }) {
+  const activeCashAccounts = accounts
+    .filter((account) => !isArchivedAccount(account))
+    .filter((account) => CASH_ACCOUNT_TYPES.includes(account.account_type))
+
+  const ledgerByCashAccount = new Map()
+
+  for (const ledger of cashWalletLedgers || []) {
+    if (ledger.month_key !== targetMonthKey) continue
+    if (!ledger.cash_account_id) continue
+    ledgerByCashAccount.set(ledger.cash_account_id, ledger)
+  }
+
+  let finalBalance = 0
+  let ledgerFinalTotal = 0
+  let fallbackCashflowTotal = 0
+  let ledgerCount = 0
+
+  for (const account of activeCashAccounts) {
+    const fallbackNet = getAccountCashNetForAccount(account.id, allCashflowEntries)
+
+    if (account.account_type === 'cash') {
+      const ledger = ledgerByCashAccount.get(account.id)
+
+      if (ledger) {
+        const finalValue = getLedgerFinalBalance(ledger)
+        finalBalance += finalValue
+        ledgerFinalTotal += finalValue
+        ledgerCount += 1
+      } else {
+        finalBalance += fallbackNet
+        fallbackCashflowTotal += fallbackNet
+      }
+
+      continue
+    }
+
+    finalBalance += fallbackNet
+    fallbackCashflowTotal += fallbackNet
+  }
+
+  return {
+    finalBalance,
+    ledgerFinalTotal,
+    fallbackCashflowTotal,
+    ledgerCount,
+    hasLedger: ledgerCount > 0,
+    sourceLabel: ledgerCount > 0
+      ? 'Cash Wallet Ledger final balance + non-ledger cashflow fallback'
+      : 'Cashflow net fallback'
+  }
+}
+
 function calculateDashboardHealth({
   accounts,
   cashflowEntries,
@@ -488,6 +564,7 @@ function calculateMoneyPlanSnapshot({
   accounts,
   cashflowEntries,
   allCashflowEntries,
+  cashWalletLedgers = [],
   budgets,
   bills,
   goals,
@@ -552,7 +629,14 @@ function calculateMoneyPlanSnapshot({
   const debtMinimumRemaining = Math.max(debtMinimumTotal - debtPosted - debtLikeUnpostedBillTotal, 0)
 
   const essentialReserve = unpostedBillReserve + debtMinimumRemaining
-  const safeToSpend = postedNet - essentialReserve
+  const cashBalanceInfo = getCashBalanceInfo({
+    accounts,
+    allCashflowEntries,
+    cashWalletLedgers,
+    targetMonthKey
+  })
+  const cashBufferCurrent = cashBalanceInfo.finalBalance
+  const safeToSpend = cashBufferCurrent - essentialReserve
 
   const totalBudgetPlanned = budgetRows.reduce((sum, row) => sum + toNumber(row.planned), 0)
   const totalBudgetActual = budgetRows.reduce((sum, row) => sum + toNumber(row.actual), 0)
@@ -561,7 +645,6 @@ function calculateMoneyPlanSnapshot({
   const activeGoals = goals.filter((goal) => normalize(goal.status || 'active') === 'active')
   const goalMonthlyNeed = activeGoals.reduce((sum, goal) => sum + getGoalMonthlyNeed(goal), 0)
 
-  const cashBufferCurrent = getAccountCashNet(accounts, allCashflowEntries)
   const cashBufferTarget = Math.max(unpostedBillReserve + debtMinimumTotal + expense, 1000)
   const cashBufferPercent =
     cashBufferTarget > 0 ? Math.max(0, Math.min(100, (cashBufferCurrent / cashBufferTarget) * 100)) : 0
@@ -598,6 +681,9 @@ function calculateMoneyPlanSnapshot({
     budgetRemaining,
     goalMonthlyNeed,
     cashBufferCurrent,
+    cashBufferSourceLabel: cashBalanceInfo.sourceLabel,
+    cashBufferHasLedger: cashBalanceInfo.hasLedger,
+    cashBufferLedgerCount: cashBalanceInfo.ledgerCount,
     cashBufferTarget,
     cashBufferPercent
   }
@@ -621,7 +707,10 @@ export default function DashboardPage() {
     externalAssetsTotal: 0,
     totalAssets: 0,
     liabilitiesTotal: 0,
-    netWorth: 0
+    netWorth: 0,
+    cashBalance: 0,
+    cashBalanceHasLedger: false,
+    cashBalanceSourceLabel: 'Cashflow net fallback'
   })
 
   const [holdings, setHoldings] = useState([])
@@ -664,7 +753,8 @@ export default function DashboardPage() {
         assetAccountResult,
         liabilityResult,
         billResult,
-        goalResult
+        goalResult,
+        cashLedgerResult
       ] = await Promise.all([
         supabase
           .from('investment_transactions')
@@ -801,7 +891,25 @@ export default function DashboardPage() {
           .from('financial_goals')
           .select('*')
           .eq('user_id', user.id)
-          .order('priority', { ascending: true })
+          .order('priority', { ascending: true }),
+
+        supabase
+          .from('cash_wallet_monthly_ledger')
+          .select(`
+            id,
+            user_id,
+            cash_account_id,
+            month_key,
+            opening_balance,
+            actual_cash_count,
+            expected_closing_balance,
+            status,
+            locked,
+            created_at
+          `)
+          .eq('user_id', user.id)
+          .eq('month_key', `${year}-${pad2(month)}`)
+          .order('created_at', { ascending: false })
       ])
 
       if (txResult.error) throw txResult.error
@@ -814,6 +922,9 @@ export default function DashboardPage() {
       if (liabilityResult.error) throw liabilityResult.error
       if (billResult.error) throw billResult.error
       if (goalResult.error) throw goalResult.error
+      if (cashLedgerResult.error) {
+        console.warn('Cash Wallet Ledger unavailable in Dashboard:', cashLedgerResult.error.message)
+      }
 
       const txData = txResult.data || []
       const pricesData = priceResult.data || []
@@ -825,6 +936,15 @@ export default function DashboardPage() {
       const liabilityData = liabilityResult.data || []
       const billData = billResult.data || []
       const goalData = goalResult.data || []
+      const cashLedgerData = cashLedgerResult.error ? [] : cashLedgerResult.data || []
+      const targetMonthKey = `${year}-${pad2(month)}`
+
+      const cashBalanceInfo = getCashBalanceInfo({
+        accounts: accountData,
+        allCashflowEntries: allCashflowData,
+        cashWalletLedgers: cashLedgerData,
+        targetMonthKey
+      })
 
       const holdingsData = calculateHoldings(txData, pricesData)
       const portfolioSummary = calculatePortfolioSummary(holdingsData)
@@ -840,19 +960,23 @@ export default function DashboardPage() {
         ...portfolioSummary,
         ...cashflowSummary,
         ...budgetSummary,
-        ...netWorthSummary
+        ...netWorthSummary,
+        cashBalance: cashBalanceInfo.finalBalance,
+        cashBalanceHasLedger: cashBalanceInfo.hasLedger,
+        cashBalanceSourceLabel: cashBalanceInfo.sourceLabel
       }
 
       const nextMoneyPlan = calculateMoneyPlanSnapshot({
         accounts: accountData,
         cashflowEntries: cashflowData,
         allCashflowEntries: allCashflowData,
+        cashWalletLedgers: cashLedgerData,
         budgets: budgetData,
         bills: billData,
         goals: goalData,
         liabilities: liabilityData,
         budgetRows: budgetSummary.rows || [],
-        targetMonthKey: `${year}-${pad2(month)}`
+        targetMonthKey
       })
 
       const nextHealth = calculateDashboardHealth({
@@ -998,6 +1122,7 @@ export default function DashboardPage() {
           </div>
           <div style={styles.note}>
             {money(moneyPlan.cashBufferCurrent)} / {money(moneyPlan.cashBufferTarget)}
+            {moneyPlan.cashBufferHasLedger ? ' · ledger synced' : ' · cashflow fallback'}
           </div>
         </div>
       </div>
@@ -1015,6 +1140,13 @@ export default function DashboardPage() {
           value={loading ? '...' : money(moneyPlan.safeToSpend)}
           tone={moneyPlan.safeToSpend >= 0 ? 'green' : 'red'}
           note={`Reserve: ${money(moneyPlan.essentialReserve)}`}
+        />
+
+        <StatCard
+          label="Cash Balance"
+          value={loading ? '...' : money(summary.cashBalance)}
+          tone={summary.cashBalance >= 0 ? 'green' : 'red'}
+          note={summary.cashBalanceHasLedger ? 'Cash Wallet Ledger synced' : 'Cashflow fallback'}
         />
 
         <StatCard
@@ -1209,6 +1341,7 @@ export default function DashboardPage() {
             <SnapshotRow label="Investment Assets" value={`$${formatNetWorthMoney(summary.investmentAssetsTotal)}`} />
             <SnapshotRow label="External Assets" value={`$${formatNetWorthMoney(summary.externalAssetsTotal)}`} />
             <SnapshotRow label="Total Debt" value={`$${formatNetWorthMoney(summary.liabilitiesTotal)}`} />
+            <SnapshotRow label="Cash Balance" value={money(summary.cashBalance)} />
             <SnapshotRow label="Monthly Income" value={`$${formatCashflowMoney(summary.totalIncome)}`} />
             <SnapshotRow label="Monthly Expenses" value={`$${formatCashflowMoney(summary.totalExpenses)}`} />
             <SnapshotRow label="Goal Monthly Need" value={money(moneyPlan.goalMonthlyNeed)} />

@@ -80,6 +80,10 @@ function getMonthRange(date = new Date()) {
   }
 }
 
+function getMonthKey(monthInfo) {
+  return `${monthInfo.year}-${String(monthInfo.month).padStart(2, '0')}`
+}
+
 function getDaysInMonth(year, monthIndex) {
   return new Date(year, monthIndex + 1, 0).getDate()
 }
@@ -280,6 +284,84 @@ function getAccountCashNet(accounts, cashflowEntries) {
   return income - expense
 }
 
+function getAccountCashNetForAccount(accountId, cashflowEntries) {
+  let income = 0
+  let expense = 0
+
+  for (const entry of cashflowEntries) {
+    if (entry.account_id !== accountId) continue
+
+    if (entry.type === 'income') income += toNumber(entry.amount)
+    if (entry.type === 'expense') expense += toNumber(entry.amount)
+  }
+
+  return income - expense
+}
+
+function getLedgerFinalBalance(ledger) {
+  if (!ledger) return 0
+
+  const actual = ledger.actual_cash_count
+  const expected = ledger.expected_closing_balance
+
+  return actual === null || actual === undefined ? toNumber(expected) : toNumber(actual)
+}
+
+function getCashBalanceInfo({ accounts = [], allCashflowEntries = [], cashWalletLedgers = [], monthInfo }) {
+  const monthKey = getMonthKey(monthInfo)
+  const activeCashAccounts = accounts
+    .filter((account) => !isArchivedAccount(account))
+    .filter((account) => CASH_ACCOUNT_TYPES.includes(account.account_type))
+
+  const ledgerByCashAccount = new Map()
+
+  for (const ledger of cashWalletLedgers || []) {
+    if (ledger.month_key !== monthKey) continue
+    if (!ledger.cash_account_id) continue
+    ledgerByCashAccount.set(ledger.cash_account_id, ledger)
+  }
+
+  let finalBalance = 0
+  let ledgerFinalTotal = 0
+  let fallbackCashflowTotal = 0
+  let ledgerCount = 0
+
+  for (const account of activeCashAccounts) {
+    const accountType = account.account_type
+    const fallbackNet = getAccountCashNetForAccount(account.id, allCashflowEntries)
+
+    if (accountType === 'cash') {
+      const ledger = ledgerByCashAccount.get(account.id)
+
+      if (ledger) {
+        const finalValue = getLedgerFinalBalance(ledger)
+        finalBalance += finalValue
+        ledgerFinalTotal += finalValue
+        ledgerCount += 1
+      } else {
+        finalBalance += fallbackNet
+        fallbackCashflowTotal += fallbackNet
+      }
+
+      continue
+    }
+
+    finalBalance += fallbackNet
+    fallbackCashflowTotal += fallbackNet
+  }
+
+  return {
+    finalBalance,
+    ledgerFinalTotal,
+    fallbackCashflowTotal,
+    ledgerCount,
+    hasLedger: ledgerCount > 0,
+    sourceLabel: ledgerCount > 0
+      ? 'Cash Wallet Ledger final balance + non-ledger cashflow fallback'
+      : 'Cashflow net fallback'
+  }
+}
+
 function buildAllocation({ amount, mode }) {
   const selectedMode = ALLOCATION_MODES[mode] || ALLOCATION_MODES.balanced
 
@@ -389,6 +471,7 @@ export default function MoneyPlanPage() {
   const [goals, setGoals] = useState([])
   const [liabilities, setLiabilities] = useState([])
   const [accounts, setAccounts] = useState([])
+  const [cashWalletLedgers, setCashWalletLedgers] = useState([])
   const [appSettings, setAppSettings] = useState(DEFAULT_APP_SETTINGS)
   const [allocationMode, setAllocationMode] = useState('balanced')
 
@@ -428,7 +511,8 @@ if (
         billResult,
         goalResult,
         liabilityResult,
-        accountResult
+        accountResult,
+        cashLedgerResult
       ] = await Promise.all([
         supabase
           .from('cashflow_entries')
@@ -549,6 +633,24 @@ if (
           .from('accounts')
           .select('*')
           .eq('user_id', user.id)
+          .order('created_at', { ascending: false }),
+
+        supabase
+          .from('cash_wallet_monthly_ledger')
+          .select(`
+            id,
+            user_id,
+            cash_account_id,
+            month_key,
+            opening_balance,
+            actual_cash_count,
+            expected_closing_balance,
+            status,
+            locked,
+            created_at
+          `)
+          .eq('user_id', user.id)
+          .eq('month_key', getMonthKey(monthInfo))
           .order('created_at', { ascending: false })
       ])
 
@@ -559,6 +661,9 @@ if (
       if (goalResult.error) throw goalResult.error
       if (liabilityResult.error) throw liabilityResult.error
       if (accountResult.error) throw accountResult.error
+      if (cashLedgerResult.error) {
+        console.warn('Cash Wallet Ledger unavailable in Money Plan:', cashLedgerResult.error.message)
+      }
 
       setCashflowEntries(cashflowResult.data || [])
       setAllCashflowEntries(allCashflowResult.data || [])
@@ -567,6 +672,7 @@ if (
       setGoals(goalResult.data || [])
       setLiabilities(liabilityResult.data || [])
       setAccounts(accountResult.data || [])
+      setCashWalletLedgers(cashLedgerResult.error ? [] : cashLedgerResult.data || [])
     } catch (error) {
       console.error('MoneyPlanPage load error:', error)
       setMessage(error.message || 'Failed to load money plan.')
@@ -679,7 +785,14 @@ if (
     )
 
     const essentialReserve = unpostedBillReserve + debtMinimumRemaining
-    const safeToSpend = postedNet - essentialReserve
+    const cashBalanceInfo = getCashBalanceInfo({
+      accounts,
+      allCashflowEntries,
+      cashWalletLedgers,
+      monthInfo
+    })
+    const cashBufferCurrent = cashBalanceInfo.finalBalance
+    const safeToSpend = cashBufferCurrent - essentialReserve
     const allocatableAmount = Math.max(safeToSpend, 0)
 
     const allocation = buildAllocation({
@@ -687,7 +800,6 @@ if (
       mode: allocationMode
     })
 
-    const cashBufferCurrent = getAccountCashNet(accounts, allCashflowEntries)
     const essentialMonthlyBurn = Math.max(activeBillTotal + debtMinimumTotal, actualExpenses, 0)
     const cashBufferTarget = essentialMonthlyBurn > 0 ? essentialMonthlyBurn : 1000
     const cashBufferGap = Math.max(cashBufferTarget - cashBufferCurrent, 0)
@@ -747,6 +859,9 @@ if (
       allocatableAmount,
       allocation,
       cashBufferCurrent,
+      cashBufferSourceLabel: cashBalanceInfo.sourceLabel,
+      cashBufferHasLedger: cashBalanceInfo.hasLedger,
+      cashBufferLedgerCount: cashBalanceInfo.ledgerCount,
       cashBufferTarget,
       cashBufferGap,
       cashBufferPercent,
@@ -766,6 +881,7 @@ if (
     bills,
     budgets,
     cashflowEntries,
+    cashWalletLedgers,
     goals,
     liabilities,
     monthInfo,
@@ -824,7 +940,7 @@ if (
               </div>
 
               <div style={styles.heroSubtext}>
-                Posted net cashflow minus unposted active bills and remaining debt minimum reserve.
+                Current cash balance minus unposted active bills and remaining debt minimum reserve.
               </div>
             </div>
 
@@ -934,7 +1050,7 @@ if (
             <MiniPanel
               label="Cash Buffer"
               value={formatMoney(plan.cashBufferCurrent)}
-              sub={`${formatPercent(plan.cashBufferPercent)} of ${formatMoney(plan.cashBufferTarget)} target`}
+              sub={`${formatPercent(plan.cashBufferPercent)} of ${formatMoney(plan.cashBufferTarget)} target · ${plan.cashBufferHasLedger ? 'ledger synced' : 'cashflow fallback'}`}
               tone={plan.cashBufferGap <= 0 ? 'success' : 'warning'}
             />
             <MiniPanel
@@ -1079,14 +1195,13 @@ if (
                 <div>
                   <h2 style={styles.sectionTitle}>Safe-to-Spend Formula</h2>
                   <p style={styles.sectionSubtitle}>
-                    This formula is designed to avoid mixing category names with bill details.
+                    Uses current cash balance first, then subtracts unposted bills and remaining debt minimums.
                   </p>
                 </div>
               </div>
 
               <div style={styles.formulaBox}>
-                <FormulaRow label="Income this month" value={plan.actualIncome} positive />
-                <FormulaRow label="Posted expenses" value={-plan.actualExpenses} />
+                <FormulaRow label="Current cash balance" value={plan.cashBufferCurrent} />
                 <FormulaRow label="Unposted active bills" value={-plan.unpostedBillReserve} />
                 <FormulaRow label="Debt minimum remaining" value={-plan.debtMinimumRemaining} />
                 <div style={styles.formulaDivider} />
@@ -1094,8 +1209,8 @@ if (
               </div>
 
               <div style={styles.noteBox}>
-                Budget Remaining is shown as a spending runway, but it is not subtracted again from
-                Safe-to-Spend because posted expenses and bill reserve already cover the main cash movement.
+                Source: {plan.cashBufferSourceLabel}. Monthly income and posted expenses are already reflected
+                in the current cash balance when the Cash Wallet Ledger is saved for this month.
               </div>
             </div>
           </section>
