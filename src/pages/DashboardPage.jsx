@@ -69,18 +69,99 @@ function isArchivedAccount(account) {
   return String(account?.name || '').startsWith('[ARCHIVED]')
 }
 
+function pad2(value) {
+  return String(value).padStart(2, '0')
+}
+
+function formatMonthKey(year, month) {
+  return `${year}-${pad2(month)}`
+}
+
 function getTodayKey() {
   return new Date().toISOString().slice(0, 10)
 }
 
-function getBillDueDate(bill) {
-  const now = new Date()
-  const year = now.getFullYear()
-  const monthIndex = now.getMonth()
-  const maxDay = new Date(year, monthIndex + 1, 0).getDate()
-  const dueDay = Math.max(1, Math.min(toNumber(bill.due_day || 1), maxDay))
+function getCurrentMonthKey() {
+  return getTodayKey().slice(0, 7)
+}
 
-  return new Date(year, monthIndex, dueDay)
+function parseMonthKey(monthKey) {
+  const [yearText, monthText] = String(monthKey || '').split('-')
+  const year = Number(yearText)
+  const month = Number(monthText)
+
+  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
+    const now = new Date()
+    return {
+      year: now.getFullYear(),
+      month: now.getMonth() + 1
+    }
+  }
+
+  return { year, month }
+}
+
+function addMonthsToMonthKey(monthKey, offset) {
+  const { year, month } = parseMonthKey(monthKey)
+  const date = new Date(year, month - 1 + offset, 1)
+  return formatMonthKey(date.getFullYear(), date.getMonth() + 1)
+}
+
+function getMonthDateRangeFromKey(monthKey) {
+  const { year, month } = parseMonthKey(monthKey)
+  const next = new Date(year, month, 1)
+
+  return {
+    startDate: `${year}-${pad2(month)}-01`,
+    endDate: `${next.getFullYear()}-${pad2(next.getMonth() + 1)}-01`
+  }
+}
+
+function getSafeDueDate(monthKey, dueDay) {
+  const { year, month } = parseMonthKey(monthKey)
+  const requestedDay = Number(dueDay || 1)
+  const safeRequestedDay = Math.min(
+    Math.max(Number.isFinite(requestedDay) ? requestedDay : 1, 1),
+    31
+  )
+  const lastDay = new Date(year, month, 0).getDate()
+  const safeDay = Math.min(safeRequestedDay, lastDay)
+
+  return `${year}-${pad2(month)}-${pad2(safeDay)}`
+}
+
+function getDateFromMonthDayAfterDate(baseDate, dueDay) {
+  const n = Number(dueDay)
+  if (!baseDate || !Number.isFinite(n) || n < 1 || n > 31) return ''
+
+  const base = new Date(`${baseDate}T00:00:00`)
+  if (Number.isNaN(base.getTime())) return ''
+
+  let candidateMonthKey = formatMonthKey(base.getFullYear(), base.getMonth() + 1)
+  let candidate = getSafeDueDate(candidateMonthKey, n)
+
+  if (new Date(`${candidate}T00:00:00`).getTime() <= base.getTime()) {
+    candidateMonthKey = addMonthsToMonthKey(candidateMonthKey, 1)
+    candidate = getSafeDueDate(candidateMonthKey, n)
+  }
+
+  return candidate
+}
+
+function getLiabilityStatementDate(liability, statementMonthKey) {
+  if (!liability?.statement_day) return ''
+  return getSafeDueDate(statementMonthKey, liability.statement_day)
+}
+
+function getLiabilityDueDateForStatementMonth(liability, statementMonthKey) {
+  const statementDate = getLiabilityStatementDate(liability, statementMonthKey)
+  if (!statementDate) return getSafeDueDate(statementMonthKey, liability?.due_day)
+  return getDateFromMonthDayAfterDate(statementDate, liability?.due_day)
+}
+
+function dateKeyToDate(value) {
+  const date = new Date(`${value}T00:00:00`)
+  return Number.isNaN(date.getTime()) ? null : date
 }
 
 function formatDateForInput(date) {
@@ -99,14 +180,82 @@ function getBillDescription(bill) {
   return name ? `Bill: ${name}` : 'Bill'
 }
 
-function isBillAddedToCashflow(cashflowEntries, bill) {
-  const dueDateKey = formatDateForInput(getBillDueDate(bill))
+function getLinkedLiabilityIdFromBill(bill) {
+  const note = String(bill?.note || '')
+  const match = note.match(/linked_liability_id:([0-9a-fA-F-]{20,})/)
+  return match?.[1] || null
+}
+
+function getLinkedLiabilityForBill(bill, liabilities = []) {
+  const linkedId = getLinkedLiabilityIdFromBill(bill)
+  if (!linkedId) return null
+
+  return liabilities.find((item) => item.id === linkedId) || null
+}
+
+function getLinkedLiabilityPaymentDescription(liability) {
+  const name = String(liability?.name || '').trim()
+  return name ? `Debt Payment: ${name}` : 'Debt Payment:'
+}
+
+function getDashboardBillSchedule({ bill, liabilities = [], targetMonthKey }) {
+  const linkedLiability = getLinkedLiabilityForBill(bill, liabilities)
+  const isDebtLinkedBill = Boolean(linkedLiability)
+  const statementDateKey = isDebtLinkedBill
+    ? getLiabilityStatementDate(linkedLiability, targetMonthKey)
+    : ''
+  const dueDateKey = isDebtLinkedBill
+    ? getLiabilityDueDateForStatementMonth(linkedLiability, targetMonthKey)
+    : getSafeDueDate(targetMonthKey, bill.due_day)
+
+  return {
+    linkedLiability,
+    isDebtLinkedBill,
+    statementDateKey,
+    dueDateKey,
+    dueDate: dateKeyToDate(dueDateKey) || new Date(`${getTodayKey()}T00:00:00`)
+  }
+}
+
+function isDateInRangeInclusive(value, start, end) {
+  if (!value || !start || !end) return false
+  return value >= start && value <= end
+}
+
+function isDebtPaymentPostedForBill({ bill, liabilities = [], allCashflowEntries = [], targetMonthKey }) {
+  const schedule = getDashboardBillSchedule({ bill, liabilities, targetMonthKey })
+  if (!schedule.isDebtLinkedBill || !schedule.linkedLiability) return false
+
+  const paymentDescription = normalize(getLinkedLiabilityPaymentDescription(schedule.linkedLiability))
+  const monthRange = getMonthDateRangeFromKey(targetMonthKey)
+  const windowStart = schedule.statementDateKey || monthRange.startDate
+  const windowEnd = schedule.dueDateKey || getMonthDateRangeFromKey(addMonthsToMonthKey(targetMonthKey, 1)).startDate
+
+  return allCashflowEntries.some((entry) => {
+    const isDebtPayment =
+      normalize(entry.type) === 'expense' &&
+      toNumber(entry.amount) > 0 &&
+      normalize(entry.description).includes(paymentDescription)
+
+    if (!isDebtPayment) return false
+    return isDateInRangeInclusive(entry.entry_date, windowStart, windowEnd)
+  })
+}
+
+function isBillAddedToCashflow({ cashflowEntries, allCashflowEntries, bill, liabilities, targetMonthKey }) {
+  const schedule = getDashboardBillSchedule({ bill, liabilities, targetMonthKey })
+
+  if (schedule.isDebtLinkedBill) {
+    return isDebtPaymentPostedForBill({ bill, liabilities, allCashflowEntries, targetMonthKey })
+  }
+
+  const dueDateKey = schedule.dueDateKey
   const description = normalize(getBillDescription(bill))
   const amount = toNumber(bill.amount)
 
   return cashflowEntries.some((entry) => {
     const sameDate = entry.entry_date === dueDateKey
-    const sameType = entry.type === 'expense'
+    const sameType = normalize(entry.type) === 'expense'
     const sameAmount = Math.abs(toNumber(entry.amount) - amount) < 0.005
     const sameDescription = normalize(entry.description) === description
 
@@ -343,7 +492,8 @@ function calculateMoneyPlanSnapshot({
   bills,
   goals,
   liabilities,
-  budgetRows
+  budgetRows,
+  targetMonthKey = getCurrentMonthKey()
 }) {
   const income = cashflowEntries
     .filter((entry) => entry.type === 'income')
@@ -360,19 +510,31 @@ function calculateMoneyPlanSnapshot({
   )
 
   const unpostedBills = activeBills
-    .filter((bill) => !isBillAddedToCashflow(cashflowEntries, bill))
     .map((bill) => {
-      const dueDate = getBillDueDate(bill)
+      const schedule = getDashboardBillSchedule({ bill, liabilities, targetMonthKey })
+      const alreadyPosted = isBillAddedToCashflow({
+        cashflowEntries,
+        allCashflowEntries,
+        bill,
+        liabilities,
+        targetMonthKey
+      })
 
       return {
         ...bill,
         amountNumber: toNumber(bill.amount),
-        dueDate,
-        dueDateLabel: formatShortDate(dueDate),
+        dueDate: schedule.dueDate,
+        dueDateKey: schedule.dueDateKey,
+        dueDateLabel: formatShortDate(schedule.dueDate),
+        statementDateKey: schedule.statementDateKey,
         categoryLabel: getCategoryDisplayName(bill),
-        isPastDue: dueDate < new Date(`${getTodayKey()}T00:00:00`)
+        isDebtLinkedBill: schedule.isDebtLinkedBill,
+        linkedLiability: schedule.linkedLiability,
+        alreadyPosted,
+        isPastDue: schedule.dueDate < new Date(`${getTodayKey()}T00:00:00`)
       }
     })
+    .filter((bill) => !bill.alreadyPosted)
     .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime())
 
   const unpostedBillReserve = unpostedBills.reduce((sum, bill) => sum + toNumber(bill.amount), 0)
@@ -689,7 +851,8 @@ export default function DashboardPage() {
         bills: billData,
         goals: goalData,
         liabilities: liabilityData,
-        budgetRows: budgetSummary.rows || []
+        budgetRows: budgetSummary.rows || [],
+        targetMonthKey: `${year}-${pad2(month)}`
       })
 
       const nextHealth = calculateDashboardHealth({
@@ -926,7 +1089,7 @@ export default function DashboardPage() {
             <div style={styles.panelHeader}>
               <div>
                 <h2 style={styles.panelTitle}>Upcoming / Unposted Bills</h2>
-                <p style={styles.panelSubtitle}>Bills still reserved by Money Plan.</p>
+                <p style={styles.panelSubtitle}>Bills still reserved by Money Plan. Debt reminders are synced with Net Worth.</p>
               </div>
             </div>
 
@@ -939,14 +1102,22 @@ export default function DashboardPage() {
                     <div>
                       <div style={styles.listTitle}>{bill.name}</div>
                       <div style={styles.listSub}>
-                        Due {bill.dueDateLabel} · {bill.categoryLabel}
+                        {bill.isDebtLinkedBill ? 'Payment due' : 'Due'} {bill.dueDateLabel} · {bill.categoryLabel}
                       </div>
                     </div>
                     <div style={styles.rightText}>
                       <div style={bill.isPastDue ? styles.redText : styles.yellowText}>
                         ${formatCashflowMoney(bill.amount)}
                       </div>
-                      <div style={styles.miniText}>{bill.isPastDue ? 'past due' : 'reserve'}</div>
+                      <div style={styles.miniText}>
+                        {bill.isDebtLinkedBill
+                          ? bill.isPastDue
+                            ? 'record in Net Worth'
+                            : 'debt reminder'
+                          : bill.isPastDue
+                            ? 'past due'
+                            : 'reserve'}
+                      </div>
                     </div>
                   </div>
                 ))}

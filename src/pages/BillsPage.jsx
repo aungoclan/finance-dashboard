@@ -96,6 +96,95 @@ function getSafeDueDate(monthKey, dueDay) {
   return `${year}-${pad2(month)}-${pad2(safeDay)}`
 }
 
+
+function addMonthsToMonthKey(monthKey, offset) {
+  const { year, month } = parseMonthKey(monthKey)
+  const date = new Date(year, month - 1 + offset, 1)
+  return formatMonthKey(date.getFullYear(), date.getMonth() + 1)
+}
+
+function getDateFromMonthDayAfterDate(baseDate, dueDay) {
+  const n = Number(dueDay)
+  if (!baseDate || !Number.isFinite(n) || n < 1 || n > 31) return ''
+
+  const base = new Date(`${baseDate}T00:00:00`)
+  if (Number.isNaN(base.getTime())) return ''
+
+  let candidateMonthKey = formatMonthKey(base.getFullYear(), base.getMonth() + 1)
+  let candidate = getSafeDueDate(candidateMonthKey, n)
+
+  if (new Date(`${candidate}T00:00:00`).getTime() <= base.getTime()) {
+    candidateMonthKey = addMonthsToMonthKey(candidateMonthKey, 1)
+    candidate = getSafeDueDate(candidateMonthKey, n)
+  }
+
+  return candidate
+}
+
+function getLiabilityStatementDate(liability, statementMonthKey) {
+  if (!liability?.statement_day) return ''
+  return getSafeDueDate(statementMonthKey, liability.statement_day)
+}
+
+function getLiabilityDueDateForStatementMonth(liability, statementMonthKey) {
+  const statementDate = getLiabilityStatementDate(liability, statementMonthKey)
+  if (!statementDate) return getSafeDueDate(statementMonthKey, liability?.due_day)
+  return getDateFromMonthDayAfterDate(statementDate, liability?.due_day)
+}
+
+function getPreviousMonthStart(monthKey) {
+  return `${addMonthsToMonthKey(monthKey, -1)}-01`
+}
+
+function getNextMonthEnd(monthKey) {
+  return getMonthDateRange(addMonthsToMonthKey(monthKey, 2)).startDate
+}
+
+const LIABILITY_BILL_NOTE_PREFIX = 'linked_liability_id:'
+
+function getLinkedLiabilityIdFromBill(bill) {
+  const note = String(bill?.note || '')
+  const match = note.match(/linked_liability_id:([0-9a-fA-F-]{20,})/)
+  return match?.[1] || null
+}
+
+function getLinkedLiabilityForBill(bill, liabilities = []) {
+  const linkedId = getLinkedLiabilityIdFromBill(bill)
+  if (!linkedId) return null
+  return liabilities.find((item) => item.id === linkedId) || null
+}
+
+function isTechnicalLiabilityBillNote(note) {
+  const text = String(note || '')
+  return text.includes('linked_liability_id:') || text.includes('default_payment_account_id:') || text.includes('Auto-created from Net Worth Liability Bill Sync')
+}
+
+function getFriendlyBillNote(row) {
+  const note = String(row?.bill?.note || '').trim()
+
+  if (!note) return ''
+
+  if (row?.isDebtLinkedBill && isTechnicalLiabilityBillNote(note)) {
+    if (row.alreadyAdded) {
+      return 'Debt payment was recorded from Net Worth. This bill is locked to prevent duplicate cashflow.'
+    }
+
+    return 'Debt payment reminder linked to Net Worth. Record payment from Net Worth to update cashflow, liability balance, and statement together.'
+  }
+
+  return note
+}
+
+function getLinkedLiabilityPaymentDescription(liability) {
+  const name = String(liability?.name || '').trim()
+  return name ? `Debt Payment: ${name}` : 'Debt Payment:'
+}
+
+function isDateInRangeInclusive(value, start, end) {
+  if (!value || !start || !end) return false
+  return value >= start && value <= end
+}
+
 function getTodayKey() {
   return new Date().toISOString().slice(0, 10)
 }
@@ -204,7 +293,8 @@ function buildBillControlRows({
   accounts = [],
   targetMonthKey,
   billAccountMap = {},
-  dueSoonDays = 7
+  dueSoonDays = 7,
+  liabilities = []
 }) {
   const existingEntryMap = new Map()
 
@@ -213,17 +303,44 @@ function buildBillControlRows({
   })
 
   return bills.map((bill) => {
-    const entryDate = getSafeDueDate(targetMonthKey, bill.due_day)
+    const linkedLiability = getLinkedLiabilityForBill(bill, liabilities)
+    const isDebtLinkedBill = Boolean(linkedLiability)
+    const statementDate = isDebtLinkedBill
+      ? getLiabilityStatementDate(linkedLiability, targetMonthKey)
+      : ''
+    const entryDate = isDebtLinkedBill
+      ? getLiabilityDueDateForStatementMonth(linkedLiability, targetMonthKey)
+      : getSafeDueDate(targetMonthKey, bill.due_day)
     const amount = toMoneyNumber(bill.amount)
     const category = getBillCategoryName(bill)
     const description = getBillDescription(bill)
-    const matchKey = getBillRowMatchKey(bill, targetMonthKey)
-    const postedEntry = existingEntryMap.get(matchKey) || null
+    const matchKey = getBillMatchKey({ entryDate, amount: bill.amount, description })
+
+    const exactPostedEntry = existingEntryMap.get(matchKey) || null
+    const debtPaymentPostedEntry = isDebtLinkedBill
+      ? cashflowEntries.find((entry) => {
+          const entryDescription = String(entry.description || '')
+          const paymentDescription = getLinkedLiabilityPaymentDescription(linkedLiability)
+          const isDebtPayment =
+            normalize(entry.type) === 'expense' &&
+            toMoneyNumber(entry.amount) > 0 &&
+            entryDescription.toLowerCase().includes(paymentDescription.toLowerCase())
+
+          if (!isDebtPayment) return false
+
+          const windowStart = statementDate || getMonthDateRange(targetMonthKey).startDate
+          const windowEnd = entryDate || getMonthDateRange(addMonthsToMonthKey(targetMonthKey, 1)).startDate
+          return isDateInRangeInclusive(entry.entry_date, windowStart, windowEnd)
+        })
+      : null
+
+    const postedEntry = exactPostedEntry || debtPaymentPostedEntry || null
     const alreadyAdded = Boolean(postedEntry)
 
     const savedAccountId = billAccountMap[bill.id] || ''
+    const defaultDebtAccountId = linkedLiability?.default_payment_account_id || ''
     const postedAccountId = postedEntry?.account_id || ''
-    const accountId = alreadyAdded ? postedAccountId : savedAccountId
+    const accountId = alreadyAdded ? postedAccountId : savedAccountId || defaultDebtAccountId
 
     const due = getDueLabel(entryDate, dueSoonDays)
 
@@ -244,13 +361,16 @@ function buildBillControlRows({
       reason = 'Not Monthly'
     } else if (alreadyAdded) {
       status = BILL_STATUS.ADDED
-      reason = 'Added This Month'
+      reason = isDebtLinkedBill ? 'Paid / Posted' : 'Added This Month'
     } else if (missingAmount) {
       status = BILL_STATUS.BLOCKED
       reason = 'Missing Amount'
     } else if (missingCategory) {
       status = BILL_STATUS.BLOCKED
       reason = 'Missing Category'
+    } else if (isDebtLinkedBill) {
+      status = BILL_STATUS.REVIEW
+      reason = 'Record in Net Worth'
     } else if (missingCategoryId) {
       status = BILL_STATUS.REVIEW
       reason = 'Category Review'
@@ -263,6 +383,9 @@ function buildBillControlRows({
       amount,
       dueDay: Number(bill.due_day || 1),
       entryDate,
+      linkedLiability,
+      isDebtLinkedBill,
+      statementDate,
       category,
       description,
       matchKey,
@@ -284,7 +407,7 @@ function buildBillControlRows({
       status,
       reason,
       due,
-      canAdd: status === BILL_STATUS.READY,
+      canAdd: status === BILL_STATUS.READY && !isDebtLinkedBill,
       canUpdatePostedAccount: alreadyAdded && Boolean(postedEntry?.id)
     }
   })
@@ -317,6 +440,7 @@ function summarizeRows(rows = []) {
 export default function BillsPage() {
   const [targetMonthKey, setTargetMonthKey] = useState(getCurrentMonthKey())
   const [bills, setBills] = useState([])
+  const [liabilities, setLiabilities] = useState([])
   const [accounts, setAccounts] = useState([])
   const [categories, setCategories] = useState([])
   const [monthlyCashflowEntries, setMonthlyCashflowEntries] = useState([])
@@ -370,7 +494,10 @@ export default function BillsPage() {
       const loadedSettings = await loadUserSettings()
       const categoryData = await ensureDefaultCashflowCategories(supabase, user.id)
 
-      const [billResult, accountResult, cashflowResult] = await Promise.all([
+      const cashflowLookupStart = getPreviousMonthStart(targetMonthKey)
+      const cashflowLookupEnd = getNextMonthEnd(targetMonthKey)
+
+      const [billResult, accountResult, liabilityResult, cashflowResult] = await Promise.all([
         supabase
           .from('bills')
           .select(`
@@ -389,6 +516,12 @@ export default function BillsPage() {
 
         supabase
           .from('accounts')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }),
+
+        supabase
+          .from('liabilities')
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false }),
@@ -415,13 +548,14 @@ export default function BillsPage() {
             )
           `)
           .eq('user_id', user.id)
-          .gte('entry_date', targetRange.startDate)
-          .lt('entry_date', targetRange.endDate)
+          .gte('entry_date', cashflowLookupStart)
+          .lt('entry_date', cashflowLookupEnd)
           .order('entry_date', { ascending: false })
       ])
 
       if (billResult.error) throw billResult.error
       if (accountResult.error) throw accountResult.error
+      if (liabilityResult.error) throw liabilityResult.error
       if (cashflowResult.error) throw cashflowResult.error
 
       let savedMap = {}
@@ -436,6 +570,7 @@ export default function BillsPage() {
       setAppSettings(loadedSettings)
       setCategories(categoryData)
       setBills(billResult.data || [])
+      setLiabilities(liabilityResult.data || [])
       setAccounts(accountResult.data || [])
       setMonthlyCashflowEntries(cashflowResult.data || [])
       setBillAccountMap(savedMap && typeof savedMap === 'object' ? savedMap : {})
@@ -777,7 +912,8 @@ export default function BillsPage() {
         accounts,
         targetMonthKey,
         billAccountMap,
-        dueSoonDays: appSettings.billDueSoonDays
+        dueSoonDays: appSettings.billDueSoonDays,
+        liabilities
       }),
     [
       bills,
@@ -1112,18 +1248,26 @@ export default function BillsPage() {
                         </div>
 
                         <div style={mutedTextStyle}>
-                          {row.category || 'Missing category'} · Due day {row.dueDay} · {row.frequency} · {row.billStatus}
+                          {row.category || 'Missing category'} · {row.isDebtLinkedBill ? `Statement due ${row.entryDate}` : `Due day ${row.dueDay}`} · {row.frequency} · {row.billStatus}
                         </div>
 
                         <div style={detailTextStyle}>Cashflow detail: {row.description}</div>
 
-                        {row.missingCategoryId && (
+                        {row.missingCategoryId && !row.isDebtLinkedBill && (
                           <div style={reviewTextStyle}>
                             Needs database category mapping before safe recurring posting.
                           </div>
                         )}
 
-                        {bill.note && <div style={mutedTextStyle}>{bill.note}</div>}
+                        {row.isDebtLinkedBill && !row.alreadyAdded && (
+                          <div style={reviewTextStyle}>
+                            Debt bills are reminders only. Record the payment from Net Worth so the cashflow, liability balance, and statement stay in sync.
+                          </div>
+                        )}
+
+                        {getFriendlyBillNote(row) && (
+                          <div style={mutedTextStyle}>{getFriendlyBillNote(row)}</div>
+                        )}
                       </div>
 
                       <div style={amountBoxStyle}>
@@ -1167,7 +1311,7 @@ export default function BillsPage() {
                         disabled={!row.canAdd || generating}
                         style={row.canAdd ? addCashflowButtonStyle : disabledSmallButtonStyle}
                       >
-                        {row.alreadyAdded ? 'Posted' : row.canAdd ? 'Add to Cashflow' : row.reason}
+                        {row.alreadyAdded ? 'Posted' : row.isDebtLinkedBill ? 'Record in Net Worth' : row.canAdd ? 'Add to Cashflow' : row.reason}
                       </button>
                     </div>
 

@@ -1,10 +1,39 @@
 import { NavLink } from 'react-router-dom'
 import { NAV_SECTIONS } from '../lib/routes'
 
-export default function Sidebar({ onLogout }) {
+export default function Sidebar({ onLogout, isMobileOpen = false, onCloseMobile }) {
+  const sidebarClassName = isMobileOpen ? 'app-sidebar app-sidebar-open' : 'app-sidebar'
+
+  function handleNavClick() {
+    if (typeof onCloseMobile === 'function') {
+      onCloseMobile()
+    }
+  }
+
+  function handleLogoutClick() {
+    if (typeof onCloseMobile === 'function') {
+      onCloseMobile()
+    }
+
+    onLogout()
+  }
+
   return (
-    <aside className="app-sidebar" aria-label="Financial dashboard navigation">
+    <aside className={sidebarClassName} aria-label="Financial dashboard navigation">
       <div>
+        <div className="sidebar-mobile-header">
+          <div className="sidebar-mobile-title">Menu</div>
+
+          <button
+            type="button"
+            className="sidebar-mobile-close"
+            aria-label="Close navigation menu"
+            onClick={onCloseMobile}
+          >
+            ×
+          </button>
+        </div>
+
         <div className="sidebar-brand">
           <div className="sidebar-logo-mark" aria-hidden="true">
             $
@@ -31,6 +60,7 @@ export default function Sidebar({ onLogout }) {
                       isActive ? 'sidebar-link sidebar-link-active' : 'sidebar-link'
                     }
                     title={item.description}
+                    onClick={handleNavClick}
                   >
                     <span className="sidebar-link-icon" aria-hidden="true">
                       {item.icon}
@@ -51,7 +81,7 @@ export default function Sidebar({ onLogout }) {
           Production readiness mode
         </div>
 
-        <button type="button" className="sidebar-logout-button" onClick={onLogout}>
+        <button type="button" className="sidebar-logout-button" onClick={handleLogoutClick}>
           Logout
         </button>
       </div>
