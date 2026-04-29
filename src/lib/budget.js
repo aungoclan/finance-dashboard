@@ -114,17 +114,26 @@ export function getBudgetStatus({ planned, usagePercent, settings = DEFAULT_APP_
   return 'On Track'
 }
 
+export function getActualCategoryKey(record) {
+  // Bài 59B:
+  // A cashflow entry should be counted into exactly one actual bucket.
+  // If category_id exists, use the category id bucket only.
+  // If category_id is missing, fall back to the legacy text bucket.
+  //
+  // This prevents one expense row from being counted twice when the app has a
+  // mixed cleanup state: new category_id budgets plus old text-only budgets.
+  return getCategoryIdKey(record) || getCategoryTextKey(record)
+}
+
 export function calculateActualByCategory(cashflowEntries = []) {
   const expenseEntries = cashflowEntries.filter((entry) => entry.type === 'expense')
   const actualByCategory = {}
 
   for (const entry of expenseEntries) {
     const amount = toMoneyNumber(entry.amount)
-    const keys = getCategoryKeys(entry)
+    const key = getActualCategoryKey(entry)
 
-    for (const key of keys) {
-      actualByCategory[key] = toMoneyNumber((actualByCategory[key] || 0) + amount)
-    }
+    actualByCategory[key] = toMoneyNumber((actualByCategory[key] || 0) + amount)
   }
 
   return actualByCategory
@@ -146,6 +155,11 @@ export function calculateBudgetSummary(
 
     let actual = toMoneyNumber(actualByCategory[primaryKey])
 
+    // Legacy fallback only:
+    // New category_id budgets read id:<uuid>.
+    // Text-only legacy budgets read text:<name>.
+    // This fallback lets an id-based budget still pick up old cashflow rows that
+    // do not have category_id yet, without double-counting id-based rows.
     if (actual === 0 && textKey !== primaryKey) {
       actual = toMoneyNumber(actualByCategory[textKey])
     }

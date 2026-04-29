@@ -718,7 +718,7 @@ export default function BudgetPage() {
         </div>
 
         <div style={rightColumnStyle}>
-          <div style={cardStyle}>
+          <div style={budgetActualCardStyle}>
             <h2 style={{ marginTop: 0 }}>Budget vs Actual</h2>
 
             {loading ? (
@@ -726,7 +726,7 @@ export default function BudgetPage() {
             ) : budgetSummary.rows.length === 0 ? (
               <p>No budgets found for {getMonthLabel(selectedMonthKey)}.</p>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
+              <div style={budgetActualScrollStyle}>
                 <table style={tableStyle}>
                   <thead>
                     <tr>
@@ -1049,6 +1049,24 @@ const cardStyle = {
   minWidth: 0
 }
 
+const budgetActualCardStyle = {
+  ...cardStyle,
+  display: 'flex',
+  flexDirection: 'column',
+  maxHeight: 'min(680px, calc(100vh - 220px))',
+  overflow: 'hidden'
+}
+
+const budgetActualScrollStyle = {
+  width: '100%',
+  maxWidth: '100%',
+  overflowX: 'auto',
+  overflowY: 'auto',
+  WebkitOverflowScrolling: 'touch',
+  paddingRight: '4px',
+  minHeight: 0
+}
+
 const sectionHeaderStyle = {
   display: 'flex',
   justifyContent: 'space-between',
@@ -1157,7 +1175,11 @@ const thStyle = {
   padding: '12px',
   borderBottom: '1px solid #374151',
   color: '#d1d5db',
-  whiteSpace: 'nowrap'
+  whiteSpace: 'nowrap',
+  position: 'sticky',
+  top: 0,
+  zIndex: 2,
+  background: '#1f2937'
 }
 
 const tdStyle = {
