@@ -179,6 +179,20 @@ function groupBy(rows, keyGetter) {
   return Array.from(map.values()).sort((a, b) => b.total - a.total)
 }
 
+function sortTransactionsForHoldings(transactions = []) {
+  return [...transactions].sort((a, b) => {
+    const dateA = new Date(`${toDateKey(a.transaction_date)}T00:00:00`).getTime()
+    const dateB = new Date(`${toDateKey(b.transaction_date)}T00:00:00`).getTime()
+
+    if (dateA !== dateB) return dateA - dateB
+
+    const createdA = a.created_at ? new Date(a.created_at).getTime() : 0
+    const createdB = b.created_at ? new Date(b.created_at).getTime() : 0
+
+    return createdA - createdB
+  })
+}
+
 function getDefaultCashflowCategoryId(categories, incomeType) {
   const targetName = incomeType === 'interest' ? 'Interest' : 'Dividend'
   const match = categories.find(
@@ -264,11 +278,6 @@ export default function DividendIncomePage() {
             unit_price,
             fee,
             created_at,
-            accounts (
-              id,
-              name,
-              account_type
-            ),
             assets (
               id,
               symbol,
@@ -352,9 +361,21 @@ export default function DividendIncomePage() {
     [categories]
   )
 
+  const accountNameMap = useMemo(() => {
+    const map = {}
+    for (const account of accounts || []) {
+      map[account.id] = account.name
+    }
+    return map
+  }, [accounts])
+
+  const transactionsForHoldings = useMemo(() => {
+    return sortTransactionsForHoldings(allTransactions)
+  }, [allTransactions])
+
   const holdings = useMemo(() => {
-    return calculateHoldings(allTransactions, priceQuotes)
-  }, [allTransactions, priceQuotes])
+    return calculateHoldings(transactionsForHoldings, priceQuotes)
+  }, [transactionsForHoldings, priceQuotes])
 
   const enrichedTransactions = useMemo(() => {
     const incomeRows = allTransactions.filter((tx) => INCOME_TYPES.includes(String(tx.type || '').toLowerCase()))
@@ -362,7 +383,7 @@ export default function DividendIncomePage() {
     return incomeRows.map((tx) => {
       const symbol = tx.assets?.symbol || 'Unknown'
       const displayName = tx.assets?.display_name || symbol
-      const accountName = tx.accounts?.name || 'Unassigned'
+      const accountName = accountNameMap[tx.account_id] || 'Unassigned'
       const incomeAmount = getIncomeAmount(tx)
       const incomeType = String(tx.type || '').toLowerCase()
       const expectedDescription = buildCashflowDescription({
@@ -405,7 +426,7 @@ export default function DividendIncomePage() {
         expectedDescription
       }
     })
-  }, [allTransactions, cashflowEntries])
+  }, [allTransactions, cashflowEntries, accountNameMap])
 
   const availableYears = useMemo(() => {
     const years = Array.from(
@@ -453,6 +474,56 @@ export default function DividendIncomePage() {
   const bySymbol = useMemo(() => groupBy(filteredTransactions, (tx) => tx.symbol), [filteredTransactions])
   const byAccount = useMemo(() => groupBy(filteredTransactions, (tx) => tx.accountName), [filteredTransactions])
 
+  const currentQuantityByAsset = useMemo(() => {
+    const map = new Map()
+
+    for (const tx of transactionsForHoldings || []) {
+      const asset = tx.assets || {}
+      const key = tx.asset_id || asset.id || asset.symbol
+      if (!key) continue
+
+      const type = String(tx.type || '').toLowerCase()
+      const quantity = Math.abs(toNumber(tx.quantity))
+      if (quantity <= 0) continue
+
+      const current = map.get(key) || 0
+
+      if (type === 'buy' || type === 'deposit') {
+        map.set(key, current + quantity)
+      }
+
+      if (type === 'sell' || type === 'withdraw') {
+        map.set(key, Math.max(0, current - quantity))
+      }
+    }
+
+    return map
+  }, [transactionsForHoldings])
+
+  const trailingDividendRateByAsset = useMemo(() => {
+    const map = new Map()
+
+    enrichedTransactions
+      .filter((tx) => tx.incomeType === 'dividend' && isWithinTrailing12Months(tx.transaction_date))
+      .forEach((tx) => {
+        const key = tx.asset_id || tx.symbol
+        if (!key) return
+
+        const dividendPerShare =
+          toNumber(tx.dividendPerShare) > 0
+            ? toNumber(tx.dividendPerShare)
+            : toNumber(tx.quantity) > 0
+              ? toNumber(tx.incomeAmount) / toNumber(tx.quantity)
+              : 0
+
+        if (dividendPerShare > 0) {
+          map.set(key, (map.get(key) || 0) + dividendPerShare)
+        }
+      })
+
+    return map
+  }, [enrichedTransactions])
+
   const trailingIncomeBySymbol = useMemo(() => {
     const map = new Map()
 
@@ -469,24 +540,38 @@ export default function DividendIncomePage() {
   const incomeProjection = useMemo(() => {
     return holdings
       .map((holding) => {
-        const trailingIncome = trailingIncomeBySymbol.get(holding.asset_id) || 0
+        const key = holding.asset_id || holding.symbol
+        const currentQuantity = currentQuantityByAsset.has(key)
+          ? currentQuantityByAsset.get(key)
+          : toNumber(holding.quantity)
+
+        const ttmDividendPerShare = trailingDividendRateByAsset.get(key) || 0
+        const actualTrailingIncome = trailingIncomeBySymbol.get(key) || 0
+        const estimatedAnnualIncome =
+          ttmDividendPerShare > 0
+            ? currentQuantity * ttmDividendPerShare
+            : actualTrailingIncome
+
         const currentMarketValue = toNumber(holding.market_value)
         const costBasis = toNumber(holding.cost_basis)
-        const projectedMonthlyAverage = trailingIncome / 12
-        const forwardYieldOnValue = currentMarketValue > 0 ? (trailingIncome / currentMarketValue) * 100 : 0
-        const yieldOnCost = costBasis > 0 ? (trailingIncome / costBasis) * 100 : 0
+        const projectedMonthlyAverage = estimatedAnnualIncome / 12
+        const forwardYieldOnValue = currentMarketValue > 0 ? (estimatedAnnualIncome / currentMarketValue) * 100 : 0
+        const yieldOnCost = costBasis > 0 ? (estimatedAnnualIncome / costBasis) * 100 : 0
 
         return {
           ...holding,
-          trailingIncome,
+          quantity: currentQuantity,
+          trailingIncome: estimatedAnnualIncome,
+          actualTrailingIncome,
+          ttmDividendPerShare,
           projectedMonthlyAverage,
           forwardYieldOnValue,
           yieldOnCost
         }
       })
-      .filter((item) => item.trailingIncome > 0 || item.symbol)
+      .filter((item) => toNumber(item.quantity) > 0 && (item.trailingIncome > 0 || item.symbol))
       .sort((a, b) => b.trailingIncome - a.trailingIncome)
-  }, [holdings, trailingIncomeBySymbol])
+  }, [currentQuantityByAsset, holdings, trailingDividendRateByAsset, trailingIncomeBySymbol])
 
   const monthlyTrend = useMemo(() => {
     const months = buildLast12Months()
@@ -1071,7 +1156,7 @@ export default function DividendIncomePage() {
         <div style={tableHeaderStyle}>
           <div>
             <h2 style={sectionTitleStyle}>Forward Income Estimate</h2>
-            <p style={mutedStyle}>Uses trailing 12-month dividend income by symbol against your current holdings. No outside dividend API needed.</p>
+            <p style={mutedStyle}>Uses trailing 12-month dividend-per-share history against your current shares after Buy/Sell. No outside dividend API needed.</p>
           </div>
           <div style={miniSummaryStyle}>
             <div style={mutedSmallStyle}>Estimated Annual</div>
@@ -1088,7 +1173,7 @@ export default function DividendIncomePage() {
                 <tr>
                   <Th>Symbol</Th>
                   <Th align="right">Shares</Th>
-                  <Th align="right">TTM Income</Th>
+                  <Th align="right">Est. Annual</Th>
                   <Th align="right">Monthly Avg</Th>
                   <Th align="right">Yield on Cost</Th>
                   <Th align="right">Yield on Value</Th>

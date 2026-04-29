@@ -539,8 +539,8 @@ export default function CashflowPage() {
           </form>
         </div>
 
-        <div style={{ display: 'grid', gap: '24px', minWidth: 0 }}>
-          <div style={cardStyle}>
+        <div style={rightStackStyle}>
+          <div style={entriesCardStyle}>
             <div style={entriesHeaderStyle}>
               <div>
                 <h2 style={{ marginTop: 0, marginBottom: '6px' }}>{viewTitle}</h2>
@@ -555,7 +555,7 @@ export default function CashflowPage() {
             ) : entries.length === 0 ? (
               <p>No cashflow entries found for this view.</p>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
+              <div style={entriesScrollStyle}>
                 <table style={tableStyle}>
                   <thead>
                     <tr>
@@ -756,6 +756,31 @@ const cardStyle = {
   minWidth: 0
 }
 
+const rightStackStyle = {
+  display: 'grid',
+  gap: '24px',
+  minWidth: 0,
+  alignSelf: 'start'
+}
+
+const entriesCardStyle = {
+  ...cardStyle,
+  display: 'flex',
+  flexDirection: 'column',
+  maxHeight: 'min(680px, calc(100vh - 220px))',
+  overflow: 'hidden'
+}
+
+const entriesScrollStyle = {
+  width: '100%',
+  maxWidth: '100%',
+  overflowX: 'auto',
+  overflowY: 'auto',
+  WebkitOverflowScrolling: 'touch',
+  paddingRight: '4px',
+  minHeight: 0
+}
+
 const formHeaderStyle = {
   display: 'flex',
   justifyContent: 'space-between',
@@ -830,7 +855,11 @@ const thStyle = {
   color: '#d1d5db',
   fontWeight: 600,
   fontSize: '14px',
-  whiteSpace: 'nowrap'
+  whiteSpace: 'nowrap',
+  position: 'sticky',
+  top: 0,
+  zIndex: 2,
+  background: '#1f2937'
 }
 
 const tdStyle = {

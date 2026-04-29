@@ -258,9 +258,83 @@ function getAccountSeed(account) {
     allTimeNet: 0,
     cashflowCount: 0,
 
+    cashLedgerCount: 0,
+    cashLedgerMonths: [],
+    currentMonthOpeningBalance: 0,
+    currentMonthActualCashCount: null,
+    currentMonthExpectedClosing: 0,
+    currentMonthLedgerStatus: '',
+
     needsReview: false,
     reviewReasons: []
   }
+}
+
+
+function getOpeningBalanceGuide(rowOrType) {
+  const accountType =
+    typeof rowOrType === 'string' ? rowOrType : rowOrType?.account_type || 'other'
+  const row = typeof rowOrType === 'string' ? null : rowOrType
+
+  if (isCashAccount(accountType)) {
+    const hasCashLedger = toNumber(row?.cashLedgerCount) > 0
+    const hasCashflow = toNumber(row?.cashflowCount) > 0
+
+    return {
+      label: hasCashLedger ? 'Cash ledger started' : hasCashflow ? 'Cashflow started' : 'Needs opening balance',
+      tone: hasCashLedger || hasCashflow ? 'good' : 'warn',
+      detail: hasCashLedger
+        ? `Opening balance exists in Cash Wallet Ledger for ${row?.cashLedgerMonths?.join(', ') || 'one or more months'}.`
+        : hasCashflow
+          ? 'Cashflow exists. If this is a real account, verify the opening balance in Cash Wallet Ledger before relying on carryover.'
+          : 'For real data, set the first month opening balance in Cash Wallet Ledger. Do not create fake income just to match cash.',
+      action: 'Use Cash Wallet Ledger for opening balance and monthly cash count.'
+    }
+  }
+
+  if (accountType === 'checking' || accountType === 'savings' || accountType === 'business') {
+    return {
+      label: row?.cashflowCount > 0 ? 'Bank activity started' : 'Needs first real activity',
+      tone: row?.cashflowCount > 0 ? 'good' : 'review',
+      detail:
+        'Starting balance is a reconciliation baseline, not income. Add real deposits/expenses from the date you start tracking.',
+      action: 'Use Cashflow for real transactions. Use Account Control to reconcile monthly.'
+    }
+  }
+
+  if (isInvestmentAccount(accountType)) {
+    return {
+      label: row?.investmentTxCount > 0 ? 'Lots connected' : 'Needs lots / import',
+      tone: row?.investmentTxCount > 0 ? 'good' : 'warn',
+      detail:
+        'Opening investment value should come from imported/manual buy lots, shares, cost basis, and market prices — not from cashflow.',
+      action: 'Use Investments / Import before trusting holdings or P&L.'
+    }
+  }
+
+  if (isDebtAccount(accountType)) {
+    return {
+      label: 'Track in Net Worth',
+      tone: 'review',
+      detail:
+        'Debt starting balance should be entered as a Liability in Net Worth. Payments should use Net Worth → Record Payment.',
+      action: 'Use Net Worth liabilities for credit cards and loans.'
+    }
+  }
+
+  return {
+    label: 'Manual review',
+    tone: 'review',
+    detail:
+      'Other accounts need a clear starting source before real reports are trusted.',
+    action: 'Document where the starting value comes from.'
+  }
+}
+
+function getOpeningToneStyle(tone) {
+  if (tone === 'good') return activeBadgeStyle
+  if (tone === 'warn') return reviewBadgeStyle
+  return neutralBadgeStyle
 }
 
 function getReconciliationTone(row) {
@@ -276,6 +350,7 @@ export default function AccountsPage() {
   const [transactions, setTransactions] = useState([])
   const [priceQuotes, setPriceQuotes] = useState([])
   const [cashflowEntries, setCashflowEntries] = useState([])
+  const [cashWalletLedgers, setCashWalletLedgers] = useState([])
   const [settings, setSettings] = useState(DEFAULT_APP_SETTINGS)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -386,12 +461,34 @@ export default function AccountsPage() {
 
       if (cashflowError) throw cashflowError
 
+      const { data: ledgerData, error: ledgerError } = await supabase
+        .from('cash_wallet_monthly_ledger')
+        .select(`
+          id,
+          user_id,
+          cash_account_id,
+          month_key,
+          opening_balance,
+          actual_cash_count,
+          expected_closing_balance,
+          status,
+          locked,
+          created_at
+        `)
+        .eq('user_id', user.id)
+        .order('month_key', { ascending: false })
+
+      if (ledgerError) {
+        console.warn('Cash Wallet Ledger unavailable in Accounts opening guard:', ledgerError.message)
+      }
+
       setSettings(settingsResult || DEFAULT_APP_SETTINGS)
       setShowArchived(Boolean(settingsResult?.showArchivedAccounts))
       setAccounts(accountData || [])
       setTransactions(txData || [])
       setPriceQuotes(quoteData || [])
       setCashflowEntries(cashflowData || [])
+      setCashWalletLedgers(ledgerError ? [] : ledgerData || [])
     } catch (error) {
       console.error('loadAccounts error:', error)
       setMessage(error.message || 'Failed to load accounts')
@@ -625,6 +722,24 @@ export default function AccountsPage() {
       map.set(account.id, getAccountSeed(account))
     })
 
+    cashWalletLedgers.forEach((ledger) => {
+      const accountId = ledger.cash_account_id
+      const row = map.get(accountId)
+      if (!row) return
+
+      row.cashLedgerCount += 1
+      row.cashLedgerMonths.push(ledger.month_key)
+      if (ledger.month_key === monthKey) {
+        row.currentMonthOpeningBalance = toNumber(ledger.opening_balance)
+        row.currentMonthActualCashCount =
+          ledger.actual_cash_count === null || ledger.actual_cash_count === undefined
+            ? null
+            : toNumber(ledger.actual_cash_count)
+        row.currentMonthExpectedClosing = toNumber(ledger.expected_closing_balance)
+        row.currentMonthLedgerStatus = ledger.status || ''
+      }
+    })
+
     const needsUnassignedInvestment = transactions.some((tx) => !tx.account_id)
     const needsUnassignedCashflow = cashflowEntries.some((entry) => !entry.account_id)
 
@@ -748,12 +863,15 @@ export default function AccountsPage() {
         reviewReasons.push(`${row.monthlyLargeExpenseCount} large expense${row.monthlyLargeExpenseCount === 1 ? '' : 's'} this month`)
       }
 
+      const openingGuide = getOpeningBalanceGuide(row)
+
       return {
         ...row,
         monthlyNet,
         lastMonthNet,
         allTimeNet,
         monthOverMonthChange: monthlyNet - lastMonthNet,
+        openingGuide,
         reviewReasons,
         needsReview: reviewReasons.length > 0
       }
@@ -984,7 +1102,7 @@ export default function AccountsPage() {
       monthLabel: getMonthLabel(monthKey),
       previousMonthLabel: getMonthLabel(previousMonthKey)
     }
-  }, [accounts, transactions, priceQuotes, cashflowEntries, monthKey])
+  }, [accounts, transactions, priceQuotes, cashflowEntries, cashWalletLedgers, monthKey])
 
   const availableTypes = useMemo(() => {
     const types = new Set(accountRows.map((row) => row.account_type || 'unknown'))
@@ -1027,10 +1145,10 @@ export default function AccountsPage() {
     <div>
       <div style={pageHeaderStyle}>
         <div>
-          <div style={eyebrowStyle}>Bài 47 · Account reconciliation</div>
+          <div style={eyebrowStyle}>Bài 57A · Real account opening balance guard</div>
           <h1 style={titleStyle}>Account Control Center</h1>
           <p style={subtitleStyle}>
-            Reconcile monthly cashflow by account, review Cash Wallet movement, catch unassigned entries, and verify posted bills.
+            Reconcile accounts, protect opening balances, catch unassigned entries, and prepare a clean real-data account setup.
           </p>
         </div>
 
@@ -1224,10 +1342,49 @@ export default function AccountsPage() {
 
       <div style={mainGridStyle}>
         <div style={leftColumnStyle}>
+
+          <div style={realDataGuardStyle}>
+            <div style={guardHeaderStyle}>
+              <div>
+                <h2 style={{ margin: 0 }}>Real Account Opening Balance Guard</h2>
+                <p style={smallTextStyle}>
+                  Use this when starting a new real-data account. Opening balance is a baseline, not cashflow income or expense.
+                </p>
+              </div>
+              <span style={pillStyle}>Manual-first</span>
+            </div>
+
+            <div style={guardRuleGridStyle}>
+              <div style={guardRuleStyle}>
+                <strong>Cash Wallet</strong>
+                <div>Set opening balance in Cash Wallet Ledger. Count actual cash monthly.</div>
+              </div>
+
+              <div style={guardRuleStyle}>
+                <strong>Checking / Savings</strong>
+                <div>Add real deposits and expenses from your start date. Do not add fake income for opening balance.</div>
+              </div>
+
+              <div style={guardRuleStyle}>
+                <strong>Brokerage / Crypto</strong>
+                <div>Use Import / Investments to add buy lots, shares, cost basis, and prices before trusting P&amp;L.</div>
+              </div>
+
+              <div style={guardRuleStyle}>
+                <strong>Credit Card / Loan</strong>
+                <div>Track starting debt in Net Worth liabilities. Payments should use Net Worth → Record Payment.</div>
+              </div>
+            </div>
+
+            <div style={guardWarningStyle}>
+              This page will not auto-create cashflow from opening balances. That protects Net Worth, Cashflow, and P&amp;L from fake activity.
+            </div>
+          </div>
+
           <div style={cardStyle}>
             <h2 style={{ marginTop: 0 }}>Add Account</h2>
             <p style={smallTextStyle}>
-              Add a cash wallet, bank account, brokerage, crypto account, credit card, or loan.
+              Add the account shell first. Then use the correct module for opening balance, cashflow, investments, or debt tracking.
             </p>
 
             <form onSubmit={handleAddAccount} style={{ marginTop: '18px' }}>
@@ -1258,6 +1415,9 @@ export default function AccountsPage() {
                   ))}
                 </select>
                 <div style={helperTextStyle}>{typeDescription(formData.account_type)}</div>
+                <div style={openingHintStyle}>
+                  <strong>Opening balance path:</strong> {getOpeningBalanceGuide(formData.account_type).action}
+                </div>
               </div>
 
               <div style={fieldStyle}>
@@ -1542,6 +1702,17 @@ function AccountCard({
             </div>
           )}
 
+          <div style={openingStatusStyle}>
+            <div>
+              <strong>Opening Balance Path</strong>
+              <div style={helperTextStyle}>{account.openingGuide?.detail}</div>
+              <div style={helperTextStyle}>{account.openingGuide?.action}</div>
+            </div>
+            <span style={getOpeningToneStyle(account.openingGuide?.tone)}>
+              {account.openingGuide?.label || 'Review'}
+            </span>
+          </div>
+
           <div style={metricGridStyle}>
             <Metric label="Investment" value={money(account.investmentValue)} />
             <Metric
@@ -1569,6 +1740,18 @@ function AccountCard({
               tone={account.monthOverMonthChange >= 0 ? 'good' : 'bad'}
             />
             <Metric label="Monthly Entries" value={account.monthlyEntryCount} />
+            {isCashAccount(account.account_type) && (
+              <Metric
+                label="Opening Ledger"
+                value={account.cashLedgerCount > 0 ? `${account.cashLedgerCount} month${account.cashLedgerCount === 1 ? '' : 's'}` : 'Not set'}
+                sub={
+                  account.cashLedgerCount > 0
+                    ? `Current opening: ${money(account.currentMonthOpeningBalance)}`
+                    : 'Use Cash Wallet Ledger'
+                }
+                tone={account.cashLedgerCount > 0 ? 'good' : 'bad'}
+              />
+            )}
           </div>
 
           <div style={activityStyle}>
@@ -2240,6 +2423,77 @@ const duplicateItemStyle = {
   background: '#111827',
   border: '1px solid rgba(245, 158, 11, 0.28)'
 }
+
+
+const realDataGuardStyle = {
+  background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.18), rgba(15, 23, 42, 0.96))',
+  padding: '20px',
+  borderRadius: '14px',
+  border: '1px solid rgba(96, 165, 250, 0.32)',
+  minWidth: 0
+}
+
+const guardHeaderStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: '14px',
+  alignItems: 'flex-start',
+  flexWrap: 'wrap'
+}
+
+const guardRuleGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+  gap: '10px',
+  marginTop: '14px'
+}
+
+const guardRuleStyle = {
+  padding: '12px',
+  borderRadius: '12px',
+  background: 'rgba(15, 23, 42, 0.72)',
+  border: '1px solid rgba(148, 163, 184, 0.18)',
+  color: '#dbeafe',
+  fontSize: '13px',
+  lineHeight: 1.45,
+  minWidth: 0
+}
+
+const guardWarningStyle = {
+  marginTop: '12px',
+  padding: '12px',
+  borderRadius: '12px',
+  background: 'rgba(245, 158, 11, 0.11)',
+  border: '1px solid rgba(245, 158, 11, 0.28)',
+  color: '#fde68a',
+  fontSize: '13px',
+  lineHeight: 1.45
+}
+
+const openingHintStyle = {
+  marginTop: '8px',
+  padding: '10px',
+  borderRadius: '10px',
+  background: 'rgba(59, 130, 246, 0.1)',
+  border: '1px solid rgba(96, 165, 250, 0.22)',
+  color: '#bfdbfe',
+  fontSize: '12px',
+  lineHeight: 1.45
+}
+
+const openingStatusStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: '12px',
+  alignItems: 'flex-start',
+  flexWrap: 'wrap',
+  marginTop: '12px',
+  padding: '12px',
+  borderRadius: '10px',
+  background: '#0b1220',
+  border: '1px solid #27364f'
+}
+
 
 const ruleListStyle = {
   display: 'grid',

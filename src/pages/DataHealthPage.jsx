@@ -354,11 +354,6 @@ export default function DataHealthPage() {
             unit_price,
             fee,
             created_at,
-            accounts (
-              id,
-              name,
-              account_type
-            ),
             assets (
               id,
               symbol,

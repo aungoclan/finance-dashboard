@@ -83,7 +83,7 @@ function getAccountKey(tx) {
 }
 
 function getAccountName(tx, accountMap) {
-  return tx.accounts?.name || accountMap[tx.account_id] || 'Unassigned'
+  return accountMap[tx.account_id] || 'Unassigned'
 }
 
 function getSymbol(tx) {
@@ -306,7 +306,6 @@ export default function PnLCenterPage() {
             unit_price,
             fee,
             created_at,
-            accounts ( id, name, account_type ),
             assets ( id, symbol, display_name, asset_type, is_price_locked, locked_price )
           `)
           .eq('user_id', user.id)
@@ -357,7 +356,7 @@ export default function PnLCenterPage() {
       rows = rows.filter((tx) => {
         const symbol = normalizeText(tx.assets?.symbol)
         const name = normalizeText(tx.assets?.display_name)
-        const accountName = normalizeText(tx.accounts?.name || accountNameMap[tx.account_id])
+        const accountName = normalizeText(accountNameMap[tx.account_id])
         return symbol.includes(q) || name.includes(q) || accountName.includes(q)
       })
     }

@@ -1,10 +1,31 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
+const INVESTMENT_ACCOUNT_TYPES = ['brokerage', 'ira', 'crypto']
+const FUNDING_ACCOUNT_TYPES = ['cash', 'checking', 'savings', 'business']
+const CASHFLOW_TRANSFER_CATEGORY = 'Transfer'
+
+function buildEmptyForm() {
+  return {
+    account_id: '',
+    symbol: '',
+    display_name: '',
+    asset_type: 'stock',
+    transaction_date: new Date().toISOString().split('T')[0],
+    type: 'buy',
+    quantity: '',
+    unit_price: '',
+    fee: '0',
+    cash_sync_enabled: true,
+    funding_account_id: ''
+  }
+}
+
 export default function InvestmentsPage() {
   const [accounts, setAccounts] = useState([])
   const [assets, setAssets] = useState([])
   const [transactions, setTransactions] = useState([])
+  const [cashflowCategories, setCashflowCategories] = useState([])
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -15,31 +36,51 @@ export default function InvestmentsPage() {
   const [typeFilter, setTypeFilter] = useState('all')
   const [sortMode, setSortMode] = useState('newest')
 
-  const [formData, setFormData] = useState({
-    account_id: '',
-    symbol: '',
-    display_name: '',
-    asset_type: 'stock',
-    transaction_date: new Date().toISOString().split('T')[0],
-    type: 'buy',
-    quantity: '',
-    unit_price: '',
-    fee: '0'
-  })
+  const [formData, setFormData] = useState(buildEmptyForm())
 
   useEffect(() => {
     loadInitialData()
   }, [])
+
+  const investmentAccounts = useMemo(() => {
+    return accounts.filter((account) => INVESTMENT_ACCOUNT_TYPES.includes(account.account_type))
+  }, [accounts])
+
+  const fundingAccounts = useMemo(() => {
+    return accounts.filter((account) => FUNDING_ACCOUNT_TYPES.includes(account.account_type))
+  }, [accounts])
+
+  const selectedInvestmentAccount = useMemo(() => {
+    return accounts.find((account) => account.id === formData.account_id) || null
+  }, [accounts, formData.account_id])
+
+  const selectedFundingAccount = useMemo(() => {
+    return accounts.find((account) => account.id === formData.funding_account_id) || null
+  }, [accounts, formData.funding_account_id])
+
+  const accountNameById = useMemo(() => {
+    const map = new Map()
+    for (const account of accounts) {
+      map.set(account.id, account.name)
+    }
+    return map
+  }, [accounts])
+
+  const isBuyTransaction = formData.type === 'buy'
+  const isSellTransaction = formData.type === 'sell'
+  const canSyncCash = isBuyTransaction || isSellTransaction
+  const syncDirection = isSellTransaction ? 'in' : 'out'
+  const estimatedCashMovement = getFormCashMovement(formData)
 
   const loadInitialData = async () => {
     setLoading(true)
     setMessage('')
 
     try {
-      await Promise.all([loadAccounts(), loadAssets(), loadTransactions()])
+      await Promise.all([loadAccounts(), loadAssets(), loadCategories(), loadTransactions()])
     } catch (error) {
       console.error(error)
-      setMessage('Failed to load investment data')
+      setMessage(error.message || 'Failed to load investment data')
     }
 
     setLoading(false)
@@ -61,7 +102,7 @@ export default function InvestmentsPage() {
 
     if (error) throw error
 
-    setAccounts(data || [])
+    setAccounts((data || []).filter((account) => !isArchivedAccount(account)))
   }
 
   const loadAssets = async () => {
@@ -75,7 +116,7 @@ export default function InvestmentsPage() {
     setAssets(data || [])
   }
 
-  const loadTransactions = async () => {
+  const loadCategories = async () => {
     const {
       data: { user },
       error: userError
@@ -84,6 +125,34 @@ export default function InvestmentsPage() {
     if (userError || !user) throw new Error('Unable to get current user')
 
     const { data, error } = await supabase
+      .from('cashflow_categories')
+      .select('id, name, type, group_name')
+      .eq('user_id', user.id)
+      .order('sort_order', { ascending: true })
+
+    if (error) {
+      // Category table can be missing in older local snapshots. Cash sync can still work with legacy category text.
+      console.warn('Unable to load cashflow categories:', error.message)
+      setCashflowCategories([])
+      return
+    }
+
+    setCashflowCategories(data || [])
+  }
+
+  const loadTransactions = async () => {
+    const {
+      data: { user },
+      error: userError
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) throw new Error('Unable to get current user')
+
+    // Bài 58A Fix 3:
+    // After adding funding_account_id, investment_transactions has two links to accounts:
+    // account_id and funding_account_id. A plain accounts(...) embed becomes ambiguous.
+    // So we do not embed accounts here. We resolve account names from the separate accounts list.
+    const newColumnsQuery = await supabase
       .from('investment_transactions')
       .select(`
         id,
@@ -94,12 +163,12 @@ export default function InvestmentsPage() {
         quantity,
         unit_price,
         fee,
+        funding_account_id,
+        cashflow_entry_id,
+        cash_sync_enabled,
+        cash_sync_direction,
+        cash_sync_amount,
         created_at,
-        accounts (
-          id,
-          name,
-          account_type
-        ),
         assets (
           id,
           symbol,
@@ -111,29 +180,75 @@ export default function InvestmentsPage() {
       .order('transaction_date', { ascending: false })
       .order('created_at', { ascending: false })
 
-    if (error) throw error
+    if (!newColumnsQuery.error) {
+      setTransactions(newColumnsQuery.data || [])
+      return
+    }
 
-    setTransactions(data || [])
+    console.warn('Bài 58A cash-sync columns query failed. Falling back to legacy investment query:', newColumnsQuery.error.message)
+
+    const legacyQuery = await supabase
+      .from('investment_transactions')
+      .select(`
+        id,
+        account_id,
+        asset_id,
+        transaction_date,
+        type,
+        quantity,
+        unit_price,
+        fee,
+        created_at,
+        assets (
+          id,
+          symbol,
+          display_name,
+          asset_type
+        )
+      `)
+      .eq('user_id', user.id)
+      .order('transaction_date', { ascending: false })
+      .order('created_at', { ascending: false })
+
+    if (legacyQuery.error) throw legacyQuery.error
+
+    setTransactions(
+      (legacyQuery.data || []).map((tx) => ({
+        ...tx,
+        funding_account_id: null,
+        cashflow_entry_id: null,
+        cash_sync_enabled: false,
+        cash_sync_direction: null,
+        cash_sync_amount: null
+      }))
+    )
   }
 
   const resetForm = () => {
-    setFormData({
-      account_id: '',
-      symbol: '',
-      display_name: '',
-      asset_type: 'stock',
-      transaction_date: new Date().toISOString().split('T')[0],
-      type: 'buy',
-      quantity: '',
-      unit_price: '',
-      fee: '0'
-    })
+    setFormData(buildEmptyForm())
     setEditingId(null)
   }
 
   const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
+    const { name, value, type, checked } = e.target
+
+    setFormData((prev) => {
+      const next = {
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }
+
+      if (name === 'type' && value !== 'buy' && value !== 'sell') {
+        next.cash_sync_enabled = false
+        next.funding_account_id = ''
+      }
+
+      if (name === 'type' && (value === 'buy' || value === 'sell')) {
+        next.cash_sync_enabled = true
+      }
+
+      return next
+    })
   }
 
   const handleSymbolChange = (e) => {
@@ -187,6 +302,93 @@ export default function InvestmentsPage() {
     return data.id
   }
 
+  const getCashflowCategoryPayload = () => {
+    const transferCategory = cashflowCategories.find(
+      (category) => String(category.name || '').toLowerCase() === CASHFLOW_TRANSFER_CATEGORY.toLowerCase()
+    )
+
+    return {
+      category_id: transferCategory?.id || null,
+      category: transferCategory?.name || CASHFLOW_TRANSFER_CATEGORY
+    }
+  }
+
+  const createInvestmentCashSyncEntry = async({
+    userId,
+    transactionId,
+    assetSymbol,
+    investmentAccount,
+    fundingAccount,
+    amount,
+    direction
+  }) => {
+    const categoryPayload = getCashflowCategoryPayload()
+    const cashflowType = direction === 'in' ? 'income' : 'expense'
+    const description = buildCashSyncDescription({
+      assetSymbol,
+      investmentAccountName: investmentAccount?.name,
+      transactionId,
+      direction
+    })
+
+    const duplicate = await findExistingCashSyncEntry({
+      userId,
+      accountId: fundingAccount.id,
+      entryDate: formData.transaction_date,
+      amount,
+      type: cashflowType,
+      description
+    })
+
+    if (duplicate) return duplicate
+
+    const { data, error } = await supabase
+      .from('cashflow_entries')
+      .insert({
+        user_id: userId,
+        account_id: fundingAccount.id,
+        entry_date: formData.transaction_date,
+        type: cashflowType,
+        amount,
+        category_id: categoryPayload.category_id,
+        category: categoryPayload.category,
+        description
+      })
+      .select('id, account_id, entry_date, type, amount, category, description')
+      .single()
+
+    if (error) throw error
+
+    return data
+  }
+
+  const findExistingCashSyncEntry = async({
+    userId,
+    accountId,
+    entryDate,
+    amount,
+    type,
+    description
+  }) => {
+    const { data, error } = await supabase
+      .from('cashflow_entries')
+      .select('id, account_id, entry_date, type, amount, category, description')
+      .eq('user_id', userId)
+      .eq('account_id', accountId)
+      .eq('entry_date', entryDate)
+      .eq('type', type)
+      .eq('category', CASHFLOW_TRANSFER_CATEGORY)
+      .limit(25)
+
+    if (error) throw error
+
+    return (data || []).find((entry) => {
+      const sameAmount = Math.abs(Number(entry.amount || 0) - amount) < 0.01
+      const sameDescription = String(entry.description || '').trim() === description
+      return sameAmount && sameDescription
+    })
+  }
+
   const handleAddOrUpdateTransaction = async (e) => {
     e.preventDefault()
     setSaving(true)
@@ -199,7 +401,7 @@ export default function InvestmentsPage() {
       } = await supabase.auth.getUser()
 
       if (userError || !user) throw new Error('Unable to get current user')
-      if (!formData.account_id) throw new Error('Please select an account')
+      if (!formData.account_id) throw new Error('Please select an investment account')
       if (!formData.transaction_date) throw new Error('Transaction date is required')
       if (!formData.type) throw new Error('Transaction type is required')
 
@@ -216,39 +418,149 @@ export default function InvestmentsPage() {
         throw new Error('Buy/Sell transactions require quantity and unit price')
       }
 
+      const cashSyncEnabled = (formData.type === 'buy' || formData.type === 'sell') && Boolean(formData.cash_sync_enabled)
+      const cashSyncDirection = formData.type === 'sell' ? 'in' : 'out'
+      const cashSyncAmount = cashSyncEnabled
+        ? getCashMovementAmount(formData.type, quantityValue, unitPriceValue, feeValue)
+        : null
+      const fundingAccount = cashSyncEnabled ? selectedFundingAccount : null
+
+      if (cashSyncEnabled) {
+        if (!fundingAccount) throw new Error(formData.type === 'sell' ? 'Please select Deposit To / Receive Cash To' : 'Please select Pay From / Funding Source')
+        if (!FUNDING_ACCOUNT_TYPES.includes(fundingAccount.account_type)) {
+          throw new Error('Cash sync account must be Cash Wallet, Checking, Savings, or Business')
+        }
+        if (fundingAccount.id === formData.account_id) {
+          throw new Error('Cash sync account should be different from the investment account')
+        }
+        if (!cashSyncAmount || cashSyncAmount <= 0) {
+          throw new Error(formData.type === 'sell' ? 'Sell deposit amount must be greater than zero. Check quantity, unit price, and fee.' : 'Cash sync amount must be greater than zero')
+        }
+      }
+
+      const investmentPayload = {
+        account_id: formData.account_id,
+        asset_id: assetId,
+        transaction_date: formData.transaction_date,
+        type: formData.type,
+        quantity: quantityValue,
+        unit_price: unitPriceValue,
+        fee: feeValue,
+        funding_account_id: cashSyncEnabled ? fundingAccount.id : null,
+        cash_sync_enabled: cashSyncEnabled,
+        cash_sync_direction: cashSyncEnabled ? cashSyncDirection : null,
+        cash_sync_amount: cashSyncEnabled ? cashSyncAmount : null
+      }
+
       if (editingId) {
-        const { error } = await supabase
+        const currentTx = transactions.find((tx) => tx.id === editingId)
+        const existingCashflowId = currentTx?.cashflow_entry_id || null
+
+        const { error: updateError } = await supabase
           .from('investment_transactions')
-          .update({
-            account_id: formData.account_id,
-            asset_id: assetId,
-            transaction_date: formData.transaction_date,
-            type: formData.type,
-            quantity: quantityValue,
-            unit_price: unitPriceValue,
-            fee: feeValue
-          })
+          .update(investmentPayload)
           .eq('id', editingId)
           .eq('user_id', user.id)
 
-        if (error) throw error
+        if (updateError) throw updateError
 
-        setMessage('Transaction updated successfully')
+        let nextCashflowId = null
+
+        if (cashSyncEnabled) {
+          const cashflowPayload = {
+            user_id: user.id,
+            account_id: fundingAccount.id,
+            entry_date: formData.transaction_date,
+            type: cashSyncDirection === 'in' ? 'income' : 'expense',
+            amount: cashSyncAmount,
+            ...getCashflowCategoryPayload(),
+            description: buildCashSyncDescription({
+              assetSymbol: formData.symbol.trim().toUpperCase(),
+              investmentAccountName: selectedInvestmentAccount?.name,
+              transactionId: editingId,
+              direction: cashSyncDirection
+            })
+          }
+
+          if (existingCashflowId) {
+            const { error: cashflowUpdateError } = await supabase
+              .from('cashflow_entries')
+              .update(cashflowPayload)
+              .eq('id', existingCashflowId)
+              .eq('user_id', user.id)
+
+            if (cashflowUpdateError) throw cashflowUpdateError
+            nextCashflowId = existingCashflowId
+          } else {
+            const cashflowEntry = await createInvestmentCashSyncEntry({
+              userId: user.id,
+              transactionId: editingId,
+              assetSymbol: formData.symbol.trim().toUpperCase(),
+              investmentAccount: selectedInvestmentAccount,
+              fundingAccount,
+              amount: cashSyncAmount,
+              direction: cashSyncDirection
+            })
+            nextCashflowId = cashflowEntry?.id || null
+          }
+        } else if (existingCashflowId) {
+          const shouldDelete = window.confirm(
+            'This transaction had a linked cash movement. Cash sync is now off. Delete the linked Cashflow entry too?'
+          )
+
+          if (shouldDelete) {
+            const { error: deleteCashflowError } = await supabase
+              .from('cashflow_entries')
+              .delete()
+              .eq('id', existingCashflowId)
+              .eq('user_id', user.id)
+
+            if (deleteCashflowError) throw deleteCashflowError
+          }
+        }
+
+        const { error: linkError } = await supabase
+          .from('investment_transactions')
+          .update({ cashflow_entry_id: nextCashflowId })
+          .eq('id', editingId)
+          .eq('user_id', user.id)
+
+        if (linkError) throw linkError
+
+        setMessage(cashSyncEnabled ? 'Transaction updated and cash movement synced' : 'Transaction updated successfully')
       } else {
-        const { error } = await supabase.from('investment_transactions').insert({
-          user_id: user.id,
-          account_id: formData.account_id,
-          asset_id: assetId,
-          transaction_date: formData.transaction_date,
-          type: formData.type,
-          quantity: quantityValue,
-          unit_price: unitPriceValue,
-          fee: feeValue
-        })
+        const { data: newTransaction, error: insertError } = await supabase
+          .from('investment_transactions')
+          .insert({
+            user_id: user.id,
+            ...investmentPayload
+          })
+          .select('id')
+          .single()
 
-        if (error) throw error
+        if (insertError) throw insertError
 
-        setMessage('Transaction added successfully')
+        if (cashSyncEnabled) {
+          const cashflowEntry = await createInvestmentCashSyncEntry({
+            userId: user.id,
+            transactionId: newTransaction.id,
+            assetSymbol: formData.symbol.trim().toUpperCase(),
+            investmentAccount: selectedInvestmentAccount,
+            fundingAccount,
+            amount: cashSyncAmount,
+            direction: cashSyncDirection
+          })
+
+          const { error: linkError } = await supabase
+            .from('investment_transactions')
+            .update({ cashflow_entry_id: cashflowEntry?.id || null })
+            .eq('id', newTransaction.id)
+            .eq('user_id', user.id)
+
+          if (linkError) throw linkError
+        }
+
+        setMessage(cashSyncEnabled ? 'Transaction added and cash movement synced' : 'Transaction added successfully')
       }
 
       resetForm()
@@ -272,14 +584,21 @@ export default function InvestmentsPage() {
       type: tx.type,
       quantity: tx.quantity ?? '',
       unit_price: tx.unit_price ?? '',
-      fee: tx.fee ?? '0'
+      fee: tx.fee ?? '0',
+      cash_sync_enabled: Boolean(tx.cash_sync_enabled),
+      funding_account_id: tx.funding_account_id || ''
     })
     setMessage('')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const handleDelete = async (txId) => {
-    const confirmed = window.confirm('Are you sure you want to delete this investment transaction?')
+  const handleDelete = async (tx) => {
+    const hasLinkedCashflow = Boolean(tx.cashflow_entry_id)
+    const confirmed = window.confirm(
+      hasLinkedCashflow
+        ? 'Delete this investment transaction and its linked funding cashflow entry?'
+        : 'Are you sure you want to delete this investment transaction?'
+    )
     if (!confirmed) return
 
     setMessage('')
@@ -292,17 +611,27 @@ export default function InvestmentsPage() {
 
       if (userError || !user) throw new Error('Unable to get current user')
 
+      if (hasLinkedCashflow) {
+        const { error: cashflowError } = await supabase
+          .from('cashflow_entries')
+          .delete()
+          .eq('id', tx.cashflow_entry_id)
+          .eq('user_id', user.id)
+
+        if (cashflowError) throw cashflowError
+      }
+
       const { error } = await supabase
         .from('investment_transactions')
         .delete()
-        .eq('id', txId)
+        .eq('id', tx.id)
         .eq('user_id', user.id)
 
       if (error) throw error
 
-      if (editingId === txId) resetForm()
+      if (editingId === tx.id) resetForm()
 
-      setMessage('Transaction deleted successfully')
+      setMessage(hasLinkedCashflow ? 'Transaction and linked funding cashflow deleted' : 'Transaction deleted successfully')
       await loadTransactions()
     } catch (error) {
       console.error(error)
@@ -322,8 +651,9 @@ export default function InvestmentsPage() {
       rows = rows.filter((tx) => {
         const symbol = tx.assets?.symbol?.toLowerCase() || ''
         const name = tx.assets?.display_name?.toLowerCase() || ''
-        const account = tx.accounts?.name?.toLowerCase() || ''
-        return symbol.includes(q) || name.includes(q) || account.includes(q)
+        const account = String(accountNameById.get(tx.account_id) || '').toLowerCase()
+        const funding = String(accountNameById.get(tx.funding_account_id) || '').toLowerCase()
+        return symbol.includes(q) || name.includes(q) || account.includes(q) || funding.includes(q)
       })
     }
 
@@ -344,7 +674,7 @@ export default function InvestmentsPage() {
     }
 
     return rows
-  }, [transactions, searchText, typeFilter, sortMode])
+  }, [transactions, searchText, typeFilter, sortMode, accountNameById])
 
   const totalValue = filteredTransactions.reduce((sum, tx) => sum + getTxValue(tx), 0)
 
@@ -353,7 +683,9 @@ export default function InvestmentsPage() {
       <div style={pageHeaderStyle}>
         <div>
           <h1 style={titleStyle}>Investments</h1>
-          <p style={subtitleStyle}>Add, edit, search, and review your investment transactions.</p>
+          <p style={subtitleStyle}>
+            Add, edit, search, and review investment transactions. Buy orders can sync cash outflow, and Sell orders can sync cash deposits to Cash Wallet, Checking, Savings, or Business.
+          </p>
         </div>
 
         <button type="button" onClick={loadInitialData} style={refreshButtonStyle}>
@@ -362,6 +694,16 @@ export default function InvestmentsPage() {
       </div>
 
       {message && <div style={messageStyle}>{message}</div>}
+
+      <div style={fundingGuardStyle}>
+        <div>
+          <div style={guardTitleStyle}>Bài 58B · Investment Buy/Sell Cash Sync</div>
+          <p style={guardTextStyle}>
+            A Buy moves cash into an investment position. A Sell moves cash back out to a deposit account. Turn on cash sync to create the matching Cashflow Transfer row and avoid overstating Net Worth or cash.
+          </p>
+        </div>
+        <div style={guardPillStyle}>Manual-first · anti-duplicate</div>
+      </div>
 
       <div style={layoutStyle}>
         <div style={formCardStyle}>
@@ -384,15 +726,24 @@ export default function InvestmentsPage() {
 
           <form onSubmit={handleAddOrUpdateTransaction}>
             <div style={fieldStyle}>
-              <label style={labelStyle}>Account</label>
+              <label style={labelStyle}>Investment Account</label>
               <select name="account_id" value={formData.account_id} onChange={handleChange} style={inputStyle}>
-                <option value="">Select account</option>
-                {accounts.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.name} ({account.account_type})
-                  </option>
-                ))}
+                <option value="">Select investment account</option>
+                {investmentAccounts.length > 0 ? (
+                  investmentAccounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name} ({account.account_type})
+                    </option>
+                  ))
+                ) : (
+                  accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name} ({account.account_type})
+                    </option>
+                  ))
+                )}
               </select>
+              <div style={helpTextStyle}>This is where the asset/holding is kept, such as Robinhood, Fidelity, IRA, or Kraken.</div>
             </div>
 
             <div style={fieldStyle}>
@@ -494,6 +845,62 @@ export default function InvestmentsPage() {
               />
             </div>
 
+            <div style={syncBoxStyle}>
+              <label style={checkboxRowStyle}>
+                <input
+                  type="checkbox"
+                  name="cash_sync_enabled"
+                  checked={Boolean(formData.cash_sync_enabled)}
+                  disabled={!canSyncCash}
+                  onChange={handleChange}
+                />
+                <span>{isSellTransaction ? 'Sync cash deposit for this Sell' : 'Sync cash movement for this Buy'}</span>
+              </label>
+
+              <div style={helpTextStyle}>
+                {isSellTransaction ? 'This creates a Cashflow income with category Transfer. It records cash received from selling investments.' : 'This creates a Cashflow expense with category Transfer. It reduces the funding account cash movement, but keeps the investment position in Holdings.'}
+              </div>
+
+              {canSyncCash && formData.cash_sync_enabled && (
+                <>
+                  <div style={fieldStyle}>
+                    <label style={labelStyle}>{isSellTransaction ? 'Deposit To / Receive Cash To' : 'Pay From / Funding Source'}</label>
+                    <select
+                      name="funding_account_id"
+                      value={formData.funding_account_id}
+                      onChange={handleChange}
+                      style={inputStyle}
+                    >
+                      <option value="">{isSellTransaction ? 'Select destination account' : 'Select funding account'}</option>
+                      {fundingAccounts.map((account) => (
+                        <option key={account.id} value={account.id}>
+                          {account.name} ({account.account_type})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={cashPreviewStyle}>
+                    <div>
+                      <strong>{isSellTransaction ? 'Estimated cash deposit' : 'Estimated cash outflow'}</strong>
+                      <div style={helpTextStyle}>
+                        {isSellTransaction ? 'Quantity × Unit Price - Fee' : 'Quantity × Unit Price + Fee'}
+                      </div>
+                    </div>
+                    <div style={isSellTransaction ? cashPreviewIncomeAmountStyle : cashPreviewAmountStyle}>
+                      ${formatMoney(estimatedCashMovement)}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {!canSyncCash && (
+                <div style={warningTextStyle}>
+                  Cash sync is available for Buy and Sell transactions. Dividend and interest income should be handled in Dividend Income Center.
+                </div>
+              )}
+            </div>
+
             <button type="submit" disabled={saving} style={buttonStyle}>
               {saving ? 'Saving...' : editingId ? 'Update Transaction' : 'Add Transaction'}
             </button>
@@ -549,6 +956,7 @@ export default function InvestmentsPage() {
             <div style={transactionListStyle}>
               {filteredTransactions.map((tx) => {
                 const value = getTxValue(tx)
+                const hasCashSync = Boolean(tx.cash_sync_enabled && tx.cashflow_entry_id)
 
                 return (
                   <div key={tx.id} style={transactionItemStyle}>
@@ -557,6 +965,7 @@ export default function InvestmentsPage() {
                         <div style={transactionTitleRowStyle}>
                           <strong style={symbolStyle}>{tx.assets?.symbol || 'N/A'}</strong>
                           <span style={getTypeBadgeStyle(tx.type)}>{tx.type.toUpperCase()}</span>
+                          {hasCashSync && <span style={cashSyncedBadgeStyle}>CASH SYNCED</span>}
                         </div>
 
                         <div style={mutedText}>
@@ -564,8 +973,14 @@ export default function InvestmentsPage() {
                         </div>
 
                         <div style={mutedText}>
-                          {tx.accounts?.name || 'Unknown Account'} · {tx.transaction_date}
+                          Investment: {accountNameById.get(tx.account_id) || 'Unknown Account'} · {tx.transaction_date}
                         </div>
+
+                        {tx.cash_sync_enabled && (
+                          <div style={fundingLineStyle}>
+                            {tx.cash_sync_direction === 'in' ? 'Deposit to' : 'Pay from'}: {accountNameById.get(tx.funding_account_id) || 'Cash sync account missing'} · {tx.cash_sync_direction === 'in' ? 'Inflow' : 'Outflow'}: ${formatMoney(tx.cash_sync_amount || getTxValue(tx))}
+                          </div>
+                        )}
                       </div>
 
                       <div style={transactionRightStyle}>
@@ -583,7 +998,7 @@ export default function InvestmentsPage() {
                           Edit
                         </button>
 
-                        <button type="button" onClick={() => handleDelete(tx.id)} style={deleteButtonStyle}>
+                        <button type="button" onClick={() => handleDelete(tx)} style={deleteButtonStyle}>
                           Delete
                         </button>
                       </div>
@@ -599,11 +1014,41 @@ export default function InvestmentsPage() {
   )
 }
 
+function isArchivedAccount(account) {
+  return String(account?.name || '').startsWith('[ARCHIVED]') || account?.is_archived === true
+}
+
 function getTxValue(tx) {
   const quantity = Number(tx.quantity || 0)
   const unitPrice = Number(tx.unit_price || 0)
   const fee = Number(tx.fee || 0)
   return quantity * unitPrice + fee
+}
+
+function getCashMovementAmount(type, quantity, unitPrice, fee) {
+  const gross = Number(quantity || 0) * Number(unitPrice || 0)
+  const feeAmount = Number(fee || 0)
+
+  if (type === 'sell') {
+    return Math.max(0, gross - feeAmount)
+  }
+
+  return gross + feeAmount
+}
+
+function getFormCashMovement(formData) {
+  return getCashMovementAmount(formData.type, formData.quantity, formData.unit_price, formData.fee)
+}
+
+function buildCashSyncDescription({ assetSymbol, investmentAccountName, transactionId, direction }) {
+  const symbol = String(assetSymbol || 'Investment').trim().toUpperCase()
+  const accountText = investmentAccountName ? ` ${direction === 'in' ? '←' : '→'} ${investmentAccountName}` : ''
+
+  if (direction === 'in') {
+    return `Investment Sell Deposit: ${symbol}${accountText} · tx:${transactionId}`
+  }
+
+  return `Investment Buy Funding: ${symbol}${accountText} · tx:${transactionId}`
 }
 
 function formatMoney(value) {
@@ -661,7 +1106,8 @@ const pageHeaderStyle = {
   justifyContent: 'space-between',
   alignItems: 'center',
   gap: '16px',
-  marginBottom: '20px'
+  marginBottom: '20px',
+  flexWrap: 'wrap'
 }
 
 const titleStyle = {
@@ -673,7 +1119,47 @@ const titleStyle = {
 const subtitleStyle = {
   marginTop: '8px',
   color: '#cbd5e1',
-  fontSize: '16px'
+  fontSize: '16px',
+  maxWidth: '920px',
+  lineHeight: 1.55
+}
+
+const fundingGuardStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: '16px',
+  alignItems: 'flex-start',
+  flexWrap: 'wrap',
+  marginBottom: '20px',
+  padding: '16px',
+  borderRadius: '18px',
+  background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.18), rgba(15, 23, 42, 0.96))',
+  border: '1px solid rgba(96, 165, 250, 0.26)'
+}
+
+const guardTitleStyle = {
+  color: '#bfdbfe',
+  fontWeight: 900,
+  marginBottom: '6px'
+}
+
+const guardTextStyle = {
+  margin: 0,
+  color: '#cbd5e1',
+  fontSize: '14px',
+  lineHeight: 1.55,
+  maxWidth: '900px'
+}
+
+const guardPillStyle = {
+  padding: '7px 10px',
+  borderRadius: '999px',
+  background: 'rgba(34, 197, 94, 0.12)',
+  border: '1px solid rgba(34, 197, 94, 0.26)',
+  color: '#bbf7d0',
+  fontSize: '12px',
+  fontWeight: 900,
+  whiteSpace: 'nowrap'
 }
 
 const layoutStyle = {
@@ -713,7 +1199,8 @@ const listTopStyle = {
   justifyContent: 'space-between',
   alignItems: 'flex-start',
   gap: '16px',
-  marginBottom: '16px'
+  marginBottom: '16px',
+  flexWrap: 'wrap'
 }
 
 const cardTitleStyle = {
@@ -726,7 +1213,8 @@ const cardSubtitleStyle = {
   marginTop: '6px',
   marginBottom: 0,
   color: '#94a3b8',
-  fontSize: '14px'
+  fontSize: '14px',
+  lineHeight: 1.45
 }
 
 const formHeaderStyle = {
@@ -752,6 +1240,24 @@ const labelStyle = {
   marginBottom: '8px',
   color: '#e5e7eb',
   fontWeight: 700
+}
+
+const helpTextStyle = {
+  marginTop: '7px',
+  color: '#94a3b8',
+  fontSize: '12px',
+  lineHeight: 1.45
+}
+
+const warningTextStyle = {
+  marginTop: '10px',
+  padding: '10px 12px',
+  borderRadius: '12px',
+  color: '#fde68a',
+  background: 'rgba(245, 158, 11, 0.1)',
+  border: '1px solid rgba(245, 158, 11, 0.22)',
+  fontSize: '12px',
+  lineHeight: 1.45
 }
 
 const inputStyle = {
@@ -804,6 +1310,46 @@ const messageStyle = {
   color: '#f3f4f6'
 }
 
+const syncBoxStyle = {
+  marginBottom: '16px',
+  padding: '14px',
+  borderRadius: '16px',
+  background: 'rgba(15, 23, 42, 0.66)',
+  border: '1px solid rgba(148, 163, 184, 0.2)'
+}
+
+const checkboxRowStyle = {
+  display: 'flex',
+  gap: '10px',
+  alignItems: 'flex-start',
+  color: '#e5e7eb',
+  fontWeight: 800,
+  lineHeight: 1.35
+}
+
+const cashPreviewStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'flex-start',
+  gap: '12px',
+  padding: '12px',
+  borderRadius: '14px',
+  background: '#111827',
+  border: '1px solid rgba(96, 165, 250, 0.22)'
+}
+
+const cashPreviewAmountStyle = {
+  color: '#fca5a5',
+  fontWeight: 950,
+  fontSize: '18px',
+  whiteSpace: 'nowrap'
+}
+
+const cashPreviewIncomeAmountStyle = {
+  ...cashPreviewAmountStyle,
+  color: '#86efac'
+}
+
 const filterGridStyle = {
   display: 'grid',
   gridTemplateColumns: '1.4fr 0.8fr 0.9fr',
@@ -845,12 +1391,30 @@ const transactionTitleRowStyle = {
   display: 'flex',
   alignItems: 'center',
   gap: '10px',
-  marginBottom: '8px'
+  marginBottom: '8px',
+  flexWrap: 'wrap'
 }
 
 const symbolStyle = {
   fontSize: '20px',
   fontWeight: 900
+}
+
+const cashSyncedBadgeStyle = {
+  padding: '4px 9px',
+  borderRadius: '999px',
+  fontSize: '12px',
+  fontWeight: 900,
+  background: 'rgba(14, 165, 233, 0.14)',
+  color: '#bae6fd',
+  border: '1px solid rgba(14, 165, 233, 0.28)'
+}
+
+const fundingLineStyle = {
+  marginTop: '7px',
+  color: '#bfdbfe',
+  fontSize: '13px',
+  lineHeight: 1.35
 }
 
 const transactionRightStyle = {
