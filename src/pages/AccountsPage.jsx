@@ -399,6 +399,7 @@ export default function AccountsPage() {
   const [showArchived, setShowArchived] = useState(false)
   const [monthKey, setMonthKey] = useState(getCurrentMonthKey())
   const [editingAccountId, setEditingAccountId] = useState(null)
+  const [accountPagerIndex, setAccountPagerIndex] = useState(0)
 
   const [editFormData, setEditFormData] = useState({
     name: '',
@@ -1213,6 +1214,35 @@ export default function AccountsPage() {
     [accountRows]
   )
 
+  useEffect(() => {
+    setAccountPagerIndex(0)
+  }, [searchTerm, typeFilter, groupFilter, controlFilter, showArchived, monthKey])
+
+  useEffect(() => {
+    if (filteredRows.length === 0) {
+      if (accountPagerIndex !== 0) setAccountPagerIndex(0)
+      return
+    }
+
+    if (accountPagerIndex > filteredRows.length - 1) {
+      setAccountPagerIndex(filteredRows.length - 1)
+    }
+  }, [filteredRows.length, accountPagerIndex])
+
+  const selectedAccountRow = filteredRows[accountPagerIndex] || null
+  const accountPagerTotal = filteredRows.length
+  const accountPagerCurrent = accountPagerTotal === 0 ? 0 : accountPagerIndex + 1
+
+  function goToPreviousAccount() {
+    if (accountPagerTotal <= 1) return
+    setAccountPagerIndex((current) => (current <= 0 ? accountPagerTotal - 1 : current - 1))
+  }
+
+  function goToNextAccount() {
+    if (accountPagerTotal <= 1) return
+    setAccountPagerIndex((current) => (current >= accountPagerTotal - 1 ? 0 : current + 1))
+  }
+
   return (
     <div>
       <div style={pageHeaderStyle}>
@@ -1413,26 +1443,135 @@ export default function AccountsPage() {
             )}
           </div>
 
-          <div style={cardStyle}>
-            <h2 style={{ marginTop: 0 }}>Duplicate Watch</h2>
-            {duplicateGroups.length === 0 ? (
-              <p style={mutedStyle}>No duplicate-looking cashflow groups found for {monthLabel}.</p>
-            ) : (
-              <div style={duplicateListStyle}>
-                {duplicateGroups.map((group) => (
-                  <div key={group.key} style={duplicateItemStyle}>
-                    <strong>{group.count} similar entries</strong>
-                    <div style={mutedStyle}>
-                      {group.sample.entry_date} · {group.sample.description || group.sample.category || 'No description'}
-                    </div>
-                    <div style={mutedStyle}>Combined amount: {money(group.totalAmount)}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       </div>
+
+        <div style={cardStyle}>
+          <div style={accountTopStyle}>
+            <div>
+              <h2 style={{ margin: 0 }}>Your Accounts</h2>
+              <p style={smallTextStyle}>
+                Account value, selected-month cashflow, all-time cashflow, and account health.
+              </p>
+            </div>
+
+            <div style={filterStyle}>
+              <input
+                type="search"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search accounts..."
+                style={searchInputStyle}
+              />
+
+              <select
+                value={controlFilter}
+                onChange={(e) => setControlFilter(e.target.value)}
+                style={selectSmallStyle}
+              >
+                <option value="all">All control</option>
+                <option value="needsReview">Needs review</option>
+                <option value="monthlyActivity">Monthly activity</option>
+                <option value="billsPosted">Bills posted</option>
+                <option value="cashWallet">Cash Wallet</option>
+                <option value="unassigned">Unassigned</option>
+              </select>
+
+              <select
+                value={groupFilter}
+                onChange={(e) => setGroupFilter(e.target.value)}
+                style={selectSmallStyle}
+              >
+                <option value="all">All groups</option>
+                <option value="Cash">Cash</option>
+                <option value="Investment">Investment</option>
+                <option value="Debt">Debt</option>
+                <option value="Other">Other</option>
+                <option value="Review">Review</option>
+              </select>
+
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                style={selectSmallStyle}
+              >
+                <option value="all">All types</option>
+                {availableTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {typeLabel(type)}
+                  </option>
+                ))}
+              </select>
+
+              <label style={checkboxLabelStyle}>
+                <input
+                  type="checkbox"
+                  checked={showArchived}
+                  onChange={(e) => setShowArchived(e.target.checked)}
+                />
+                Show archived
+              </label>
+            </div>
+          </div>
+
+          {loading ? (
+            <p style={mutedStyle}>Loading accounts...</p>
+          ) : filteredRows.length === 0 ? (
+            <div style={emptyStyle}>No accounts found. Add an account or clear the filter.</div>
+          ) : (
+            <div style={accountPagerShellStyle}>
+              <div style={accountPagerBarStyle}>
+                <div>
+                  <div style={accountPagerLabelStyle}>
+                    Showing {accountPagerCurrent} of {accountPagerTotal}
+                  </div>
+                  <div style={accountPagerNameStyle}>
+                    {selectedAccountRow?.name || 'No account selected'}
+                  </div>
+                </div>
+
+                <div style={accountPagerActionsStyle}>
+                  <button
+                    type="button"
+                    onClick={goToPreviousAccount}
+                    disabled={accountPagerTotal <= 1}
+                    style={accountPagerTotal <= 1 ? pagerButtonDisabledStyle : pagerButtonStyle}
+                  >
+                    ← Previous
+                  </button>
+                  <button
+                    type="button"
+                    onClick={goToNextAccount}
+                    disabled={accountPagerTotal <= 1}
+                    style={accountPagerTotal <= 1 ? pagerButtonDisabledStyle : pagerButtonStyle}
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
+
+              <div style={accountPagerHintStyle}>
+                Filters still load all matching accounts. This only shows one card at a time to keep the page short.
+              </div>
+
+              {selectedAccountRow && (
+                <AccountCard
+                  key={selectedAccountRow.id}
+                  account={selectedAccountRow}
+                  saving={saving}
+                  editingAccountId={editingAccountId}
+                  editFormData={editFormData}
+                  onEditChange={handleEditChange}
+                  onStartEdit={startEditAccount}
+                  onCancelEdit={cancelEditAccount}
+                  onUpdate={handleUpdateAccount}
+                  onArchive={handleArchiveAccount}
+                  onSafeDelete={handleSafeDeleteAccount}
+                />
+              )}
+            </div>
+          )}
+        </div>
 
       <div style={mainGridStyle}>
         <div style={leftColumnStyle}>
@@ -1532,6 +1671,28 @@ export default function AccountsPage() {
             </form>
           </div>
 
+        </div>
+
+        <div style={leftColumnStyle}>
+          <div style={cardStyle}>
+            <h2 style={{ marginTop: 0 }}>Duplicate Watch</h2>
+            {duplicateGroups.length === 0 ? (
+              <p style={mutedStyle}>No duplicate-looking cashflow groups found for {monthLabel}.</p>
+            ) : (
+              <div style={duplicateListStyle}>
+                {duplicateGroups.map((group) => (
+                  <div key={group.key} style={duplicateItemStyle}>
+                    <strong>{group.count} similar entries</strong>
+                    <div style={mutedStyle}>
+                      {group.sample.entry_date} · {group.sample.description || group.sample.category || 'No description'}
+                    </div>
+                    <div style={mutedStyle}>Combined amount: {money(group.totalAmount)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div style={cardStyle}>
             <h2 style={{ marginTop: 0 }}>Account Type Breakdown</h2>
             <p style={smallTextStyle}>Grouped by standardized account type.</p>
@@ -1582,99 +1743,6 @@ export default function AccountsPage() {
               <div>No new database tables are created in this lesson.</div>
             </div>
           </div>
-        </div>
-
-        <div style={cardStyle}>
-          <div style={accountTopStyle}>
-            <div>
-              <h2 style={{ margin: 0 }}>Your Accounts</h2>
-              <p style={smallTextStyle}>
-                Account value, selected-month cashflow, all-time cashflow, and account health.
-              </p>
-            </div>
-
-            <div style={filterStyle}>
-              <input
-                type="search"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search accounts..."
-                style={searchInputStyle}
-              />
-
-              <select
-                value={controlFilter}
-                onChange={(e) => setControlFilter(e.target.value)}
-                style={selectSmallStyle}
-              >
-                <option value="all">All control</option>
-                <option value="needsReview">Needs review</option>
-                <option value="monthlyActivity">Monthly activity</option>
-                <option value="billsPosted">Bills posted</option>
-                <option value="cashWallet">Cash Wallet</option>
-                <option value="unassigned">Unassigned</option>
-              </select>
-
-              <select
-                value={groupFilter}
-                onChange={(e) => setGroupFilter(e.target.value)}
-                style={selectSmallStyle}
-              >
-                <option value="all">All groups</option>
-                <option value="Cash">Cash</option>
-                <option value="Investment">Investment</option>
-                <option value="Debt">Debt</option>
-                <option value="Other">Other</option>
-                <option value="Review">Review</option>
-              </select>
-
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                style={selectSmallStyle}
-              >
-                <option value="all">All types</option>
-                {availableTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {typeLabel(type)}
-                  </option>
-                ))}
-              </select>
-
-              <label style={checkboxLabelStyle}>
-                <input
-                  type="checkbox"
-                  checked={showArchived}
-                  onChange={(e) => setShowArchived(e.target.checked)}
-                />
-                Show archived
-              </label>
-            </div>
-          </div>
-
-          {loading ? (
-            <p style={mutedStyle}>Loading accounts...</p>
-          ) : filteredRows.length === 0 ? (
-            <div style={emptyStyle}>No accounts found. Add an account or clear the filter.</div>
-          ) : (
-            <div style={accountListStyle}>
-              {filteredRows.map((account) => (
-                <AccountCard
-                  key={account.id}
-                  account={account}
-                  saving={saving}
-                  editingAccountId={editingAccountId}
-                  editFormData={editFormData}
-                  onEditChange={handleEditChange}
-                  onStartEdit={startEditAccount}
-                  onCancelEdit={cancelEditAccount}
-                  onUpdate={handleUpdateAccount}
-                  onArchive={handleArchiveAccount}
-                  onSafeDelete={handleSafeDeleteAccount}
-                />
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -2200,7 +2268,7 @@ const miniReasonStyle = {
 
 const mainGridStyle = {
   display: 'grid',
-  gridTemplateColumns: '360px minmax(0, 1fr)',
+  gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
   gap: '24px',
   marginTop: '24px',
   alignItems: 'start'
@@ -2304,9 +2372,67 @@ const selectSmallStyle = {
   width: '150px'
 }
 
-const accountListStyle = {
+const accountPagerShellStyle = {
   display: 'grid',
   gap: '12px'
+}
+
+const accountPagerBarStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '12px',
+  flexWrap: 'wrap',
+  padding: '12px 14px',
+  borderRadius: '12px',
+  background: '#0b1220',
+  border: '1px solid #334155'
+}
+
+const accountPagerLabelStyle = {
+  color: '#93c5fd',
+  fontSize: '12px',
+  fontWeight: 900,
+  textTransform: 'uppercase',
+  letterSpacing: '0.12em'
+}
+
+const accountPagerNameStyle = {
+  marginTop: '3px',
+  color: '#ffffff',
+  fontSize: '16px',
+  fontWeight: 900
+}
+
+const accountPagerActionsStyle = {
+  display: 'flex',
+  gap: '8px',
+  flexWrap: 'wrap'
+}
+
+const pagerButtonStyle = {
+  padding: '9px 12px',
+  borderRadius: '10px',
+  border: '1px solid #2563eb',
+  background: '#1d4ed8',
+  color: '#ffffff',
+  fontSize: '13px',
+  fontWeight: 900,
+  cursor: 'pointer'
+}
+
+const pagerButtonDisabledStyle = {
+  ...pagerButtonStyle,
+  border: '1px solid #334155',
+  background: '#111827',
+  color: '#64748b',
+  cursor: 'not-allowed'
+}
+
+const accountPagerHintStyle = {
+  color: '#9fb1cc',
+  fontSize: '12px',
+  lineHeight: 1.4
 }
 
 const accountItemStyle = {

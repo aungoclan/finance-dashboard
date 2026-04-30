@@ -417,6 +417,91 @@ export default function CashflowPage() {
 
       {message && <div style={messageStyle}>{message}</div>}
 
+      <div style={entriesFullWidthSectionStyle}>
+          <div style={entriesCardStyle}>
+            <div style={entriesHeaderStyle}>
+              <div>
+                <h2 style={{ marginTop: 0, marginBottom: '6px' }}>{viewTitle}</h2>
+                <div style={{ color: '#9ca3af', fontSize: '14px' }}>
+                  {entries.length} visible entr{entries.length === 1 ? 'y' : 'ies'}
+                </div>
+              </div>
+            </div>
+
+            {loading ? (
+              <p>Loading entries...</p>
+            ) : entries.length === 0 ? (
+              <p>No cashflow entries found for this view.</p>
+            ) : (
+              <div style={entriesScrollStyle}>
+                <table style={tableStyle}>
+                  <thead>
+                    <tr>
+                      <th style={thStyle}>Date</th>
+                      <th style={thStyle}>Type</th>
+                      <th style={thStyle}>Amount</th>
+                      <th style={thStyle}>Category / Detail</th>
+                      <th style={thStyle}>Account</th>
+                      <th style={thStyle}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {entries.map((entry) => (
+                      <tr key={entry.id}>
+                        <td style={tdStyle}>{entry.entry_date}</td>
+                        <td
+                          style={{
+                            ...tdStyle,
+                            color: entry.type === 'income' ? '#22c55e' : '#ef4444'
+                          }}
+                        >
+                          {entry.type}
+                        </td>
+                        <td style={tdStyle}>${formatMoney(entry.amount)}</td>
+                        <td style={tdStyle}>
+                          <div style={categoryCellStyle}>
+                            <span>{getCategoryDisplayName(entry)}</span>
+                            {!entry.category_id && (
+                              <span style={legacyBadgeStyle}>legacy text</span>
+                            )}
+                          </div>
+                          {entry.description && (
+                            <div style={descriptionTextStyle}>{entry.description}</div>
+                          )}
+                        </td>
+                        <td style={tdStyle}>
+                          {entry.accounts?.name || (
+                            <span style={unassignedTextStyle}>Unassigned</span>
+                          )}
+                        </td>
+                        <td style={tdStyle}>
+                          <div style={actionRowStyle}>
+                            <button
+                              type="button"
+                              onClick={() => handleEdit(entry)}
+                              style={editButtonStyle}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(entry.id)}
+                              style={deleteButtonStyle}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+      </div>
+
       <div style={mainGridStyle}>
         <div style={cardStyle}>
           <div style={formHeaderStyle}>
@@ -540,88 +625,6 @@ export default function CashflowPage() {
         </div>
 
         <div style={rightStackStyle}>
-          <div style={entriesCardStyle}>
-            <div style={entriesHeaderStyle}>
-              <div>
-                <h2 style={{ marginTop: 0, marginBottom: '6px' }}>{viewTitle}</h2>
-                <div style={{ color: '#9ca3af', fontSize: '14px' }}>
-                  {entries.length} visible entr{entries.length === 1 ? 'y' : 'ies'}
-                </div>
-              </div>
-            </div>
-
-            {loading ? (
-              <p>Loading entries...</p>
-            ) : entries.length === 0 ? (
-              <p>No cashflow entries found for this view.</p>
-            ) : (
-              <div style={entriesScrollStyle}>
-                <table style={tableStyle}>
-                  <thead>
-                    <tr>
-                      <th style={thStyle}>Date</th>
-                      <th style={thStyle}>Type</th>
-                      <th style={thStyle}>Amount</th>
-                      <th style={thStyle}>Category / Detail</th>
-                      <th style={thStyle}>Account</th>
-                      <th style={thStyle}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {entries.map((entry) => (
-                      <tr key={entry.id}>
-                        <td style={tdStyle}>{entry.entry_date}</td>
-                        <td
-                          style={{
-                            ...tdStyle,
-                            color: entry.type === 'income' ? '#22c55e' : '#ef4444'
-                          }}
-                        >
-                          {entry.type}
-                        </td>
-                        <td style={tdStyle}>${formatMoney(entry.amount)}</td>
-                        <td style={tdStyle}>
-                          <div style={categoryCellStyle}>
-                            <span>{getCategoryDisplayName(entry)}</span>
-                            {!entry.category_id && (
-                              <span style={legacyBadgeStyle}>legacy text</span>
-                            )}
-                          </div>
-                          {entry.description && (
-                            <div style={descriptionTextStyle}>{entry.description}</div>
-                          )}
-                        </td>
-                        <td style={tdStyle}>
-                          {entry.accounts?.name || (
-                            <span style={unassignedTextStyle}>Unassigned</span>
-                          )}
-                        </td>
-                        <td style={tdStyle}>
-                          <div style={actionRowStyle}>
-                            <button
-                              type="button"
-                              onClick={() => handleEdit(entry)}
-                              style={editButtonStyle}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(entry.id)}
-                              style={deleteButtonStyle}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
           <div style={twoColumnGridStyle}>
             <div style={cardStyle}>
               <h2 style={{ marginTop: 0 }}>Expense by Category</h2>
@@ -742,11 +745,16 @@ const messageStyle = {
   color: '#f3f4f6'
 }
 
+const entriesFullWidthSectionStyle = {
+  marginTop: '24px'
+}
+
 const mainGridStyle = {
   display: 'grid',
-  gridTemplateColumns: '360px minmax(0, 1fr)',
+  gridTemplateColumns: 'minmax(320px, 420px) minmax(0, 1fr)',
   gap: '24px',
-  marginTop: '24px'
+  marginTop: '24px',
+  alignItems: 'start'
 }
 
 const cardStyle = {
@@ -767,7 +775,7 @@ const entriesCardStyle = {
   ...cardStyle,
   display: 'flex',
   flexDirection: 'column',
-  maxHeight: 'min(680px, calc(100vh - 220px))',
+  maxHeight: 'min(620px, calc(100vh - 220px))',
   overflow: 'hidden'
 }
 
@@ -778,7 +786,8 @@ const entriesScrollStyle = {
   overflowY: 'auto',
   WebkitOverflowScrolling: 'touch',
   paddingRight: '4px',
-  minHeight: 0
+  minHeight: 0,
+  flex: 1
 }
 
 const formHeaderStyle = {

@@ -1141,46 +1141,12 @@ export default function NetWorthPage() {
       )}
 
       <div style={{ display: 'grid', gap: '24px', marginTop: '24px' }}>
-        <div style={twoColumnGridStyle}>
-          <ExternalAssetForm
-            form={assetForm}
-            editing={Boolean(editingAssetId)}
-            saving={savingAsset}
-            onChange={handleAssetChange}
-            onCancel={resetAssetForm}
-            onSubmit={handleSaveAsset}
-          />
-
-          <LiabilityForm
-            form={liabilityForm}
-            accounts={accounts}
-            editing={Boolean(editingLiabilityId)}
-            saving={savingLiability}
-            onChange={handleLiabilityChange}
-            onCancel={resetLiabilityForm}
-            onSubmit={handleSaveLiability}
-          />
-        </div>
-
-        <div style={twoColumnGridStyle}>
-          <ListCard title="External Assets" loading={loading} empty="No external assets yet.">
-            {assetAccounts.map((item) => (
-              <div key={item.id} style={listItemStyle}>
-                <div>
-                  <strong>{item.name}</strong>
-                  <div style={mutedText}>Class: {item.asset_class}</div>
-                  <div style={mutedText}>Value: {money(item.current_value)}</div>
-                  {item.notes && <div style={mutedText}>Notes: {item.notes}</div>}
-                </div>
-                <div style={actionRowStyle}>
-                  <button type="button" onClick={() => handleEditAsset(item)} style={editButtonStyle}>Edit</button>
-                  <button type="button" onClick={() => handleDeleteAsset(item.id)} style={deleteButtonStyle}>Delete</button>
-                </div>
-              </div>
-            ))}
-          </ListCard>
-
-          <ListCard title="Liabilities" loading={loading} empty="No liabilities yet.">
+        <ListCard
+          title={`Liabilities${liabilities.length ? ` · ${liabilities.length} active` : ''}`}
+          loading={loading}
+          empty="No liabilities yet."
+          bodyStyle={liabilityScrollAreaStyle}
+        >
             {liabilities.map((item) => {
               const activeStatement = statements.find(
                 (row) => row.liability_id === item.id && row.month_key === currentMonthKey()
@@ -1222,9 +1188,47 @@ export default function NetWorthPage() {
                 </div>
               )
             })}
-          </ListCard>
+        </ListCard>
+
+        <div style={twoColumnGridStyle}>
+          <ExternalAssetForm
+            form={assetForm}
+            editing={Boolean(editingAssetId)}
+            saving={savingAsset}
+            onChange={handleAssetChange}
+            onCancel={resetAssetForm}
+            onSubmit={handleSaveAsset}
+          />
+
+          <LiabilityForm
+            form={liabilityForm}
+            accounts={accounts}
+            editing={Boolean(editingLiabilityId)}
+            saving={savingLiability}
+            onChange={handleLiabilityChange}
+            onCancel={resetLiabilityForm}
+            onSubmit={handleSaveLiability}
+          />
         </div>
+
+        <ListCard title="External Assets" loading={loading} empty="No external assets yet.">
+          {assetAccounts.map((item) => (
+            <div key={item.id} style={listItemStyle}>
+              <div>
+                <strong>{item.name}</strong>
+                <div style={mutedText}>Class: {item.asset_class}</div>
+                <div style={mutedText}>Value: {money(item.current_value)}</div>
+                {item.notes && <div style={mutedText}>Notes: {item.notes}</div>}
+              </div>
+              <div style={actionRowStyle}>
+                <button type="button" onClick={() => handleEditAsset(item)} style={editButtonStyle}>Edit</button>
+                <button type="button" onClick={() => handleDeleteAsset(item.id)} style={deleteButtonStyle}>Delete</button>
+              </div>
+            </div>
+          ))}
+        </ListCard>
       </div>
+
     </div>
   )
 }
@@ -1238,11 +1242,11 @@ function SummaryCard({ label, value, color = 'white' }) {
   )
 }
 
-function ListCard({ title, loading, empty, children }) {
+function ListCard({ title, loading, empty, children, bodyStyle }) {
   return (
     <div style={cardStyle}>
       <h2 style={{ marginTop: 0 }}>{title}</h2>
-      {loading ? <p>Loading...</p> : !children || children.length === 0 ? <p>{empty}</p> : <div style={{ display: 'grid', gap: '12px' }}>{children}</div>}
+      {loading ? <p>Loading...</p> : !children || children.length === 0 ? <p>{empty}</p> : <div style={{ display: 'grid', gap: '12px', ...bodyStyle }}>{children}</div>}
     </div>
   )
 }
@@ -1430,6 +1434,7 @@ const messageStyle = { marginTop: '16px', padding: '12px', borderRadius: '10px',
 const infoPanelStyle = { marginTop: '16px', padding: '14px 16px', borderRadius: '12px', background: 'rgba(37, 99, 235, 0.12)', border: '1px solid rgba(96, 165, 250, 0.35)', color: '#dbeafe', lineHeight: 1.5 }
 const twoColumnGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }
 const cardStyle = { background: '#1f2937', padding: '20px', borderRadius: '12px', border: '1px solid #334155', minWidth: 0 }
+const liabilityScrollAreaStyle = { maxHeight: '520px', overflowY: 'auto', paddingRight: '6px' }
 const paymentCardStyle = { ...cardStyle, marginTop: '24px', background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98))' }
 const statementCardStyle = { ...cardStyle, marginTop: '24px', background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.98), rgba(30, 41, 59, 0.98))', borderColor: 'rgba(20, 184, 166, 0.35)' }
 const formHeaderStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }
