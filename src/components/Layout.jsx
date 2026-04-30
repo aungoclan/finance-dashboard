@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import Sidebar from './Sidebar'
+import ErrorBoundary from './ErrorBoundary'
 import { supabase } from '../lib/supabase'
 import { APP_ROUTES } from '../lib/routes'
 
@@ -78,7 +79,13 @@ export default function Layout() {
         </div>
 
         <div className="app-content">
-          <Outlet />
+          <ErrorBoundary
+            title="This page could not load"
+            description="A page component crashed. The sidebar and app shell are still available so you can move to another page."
+            resetKey={location.pathname}
+          >
+            <Outlet />
+          </ErrorBoundary>
         </div>
       </main>
     </div>
