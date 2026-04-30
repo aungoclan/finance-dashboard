@@ -436,43 +436,63 @@ function getCashBalanceInfo({ accounts = [], allCashflowEntries = [], cashWallet
     ledgerByCashAccount.set(ledger.cash_account_id, ledger)
   }
 
-  let finalBalance = 0
+  let spendableBalance = 0
+  let reserveBalance = 0
+  let businessBalance = 0
+  let totalLiquidCash = 0
   let ledgerFinalTotal = 0
   let fallbackCashflowTotal = 0
   let ledgerCount = 0
 
   for (const account of activeCashAccounts) {
+    const accountType = account.account_type
     const fallbackNet = getAccountCashNetForAccount(account.id, allCashflowEntries)
+    let accountBalance = fallbackNet
 
-    if (account.account_type === 'cash') {
+    if (accountType === 'cash') {
       const ledger = ledgerByCashAccount.get(account.id)
 
       if (ledger) {
-        const finalValue = getLedgerFinalBalance(ledger)
-        finalBalance += finalValue
-        ledgerFinalTotal += finalValue
+        accountBalance = getLedgerFinalBalance(ledger)
+        ledgerFinalTotal += accountBalance
         ledgerCount += 1
       } else {
-        finalBalance += fallbackNet
-        fallbackCashflowTotal += fallbackNet
+        fallbackCashflowTotal += accountBalance
       }
+    } else {
+      fallbackCashflowTotal += accountBalance
+    }
 
+    totalLiquidCash += accountBalance
+
+    if (accountType === 'cash' || accountType === 'checking') {
+      spendableBalance += accountBalance
       continue
     }
 
-    finalBalance += fallbackNet
-    fallbackCashflowTotal += fallbackNet
+    if (accountType === 'savings') {
+      reserveBalance += accountBalance
+      continue
+    }
+
+    if (accountType === 'business') {
+      businessBalance += accountBalance
+    }
   }
 
   return {
-    finalBalance,
+    finalBalance: spendableBalance,
+    spendableBalance,
+    reserveBalance,
+    businessBalance,
+    totalLiquidCash,
     ledgerFinalTotal,
     fallbackCashflowTotal,
     ledgerCount,
     hasLedger: ledgerCount > 0,
     sourceLabel: ledgerCount > 0
-      ? 'Cash Wallet Ledger final balance + non-ledger cashflow fallback'
-      : 'Cashflow net fallback'
+      ? 'Spendable cash uses Cash Wallet Ledger + checking cashflow. Savings is reserve, not default Safe-to-Spend.'
+      : 'Spendable cash uses Cash Wallet/checking cashflow fallback. Savings is reserve, not default Safe-to-Spend.'
   }
 }
 
@@ -684,6 +704,9 @@ function calculateMoneyPlanSnapshot({
     cashBufferSourceLabel: cashBalanceInfo.sourceLabel,
     cashBufferHasLedger: cashBalanceInfo.hasLedger,
     cashBufferLedgerCount: cashBalanceInfo.ledgerCount,
+    reserveCash: cashBalanceInfo.reserveBalance,
+    businessCash: cashBalanceInfo.businessBalance,
+    totalLiquidCash: cashBalanceInfo.totalLiquidCash,
     cashBufferTarget,
     cashBufferPercent
   }
@@ -709,6 +732,8 @@ export default function DashboardPage() {
     liabilitiesTotal: 0,
     netWorth: 0,
     cashBalance: 0,
+    reserveCash: 0,
+    totalLiquidCash: 0,
     cashBalanceHasLedger: false,
     cashBalanceSourceLabel: 'Cashflow net fallback'
   })
@@ -961,7 +986,9 @@ export default function DashboardPage() {
         ...cashflowSummary,
         ...budgetSummary,
         ...netWorthSummary,
-        cashBalance: cashBalanceInfo.finalBalance,
+        cashBalance: cashBalanceInfo.spendableBalance,
+        reserveCash: cashBalanceInfo.reserveBalance,
+        totalLiquidCash: cashBalanceInfo.totalLiquidCash,
         cashBalanceHasLedger: cashBalanceInfo.hasLedger,
         cashBalanceSourceLabel: cashBalanceInfo.sourceLabel
       }
@@ -1111,7 +1138,7 @@ export default function DashboardPage() {
         </div>
 
         <div style={styles.scoreCard}>
-          <div style={styles.cardLabel}>Cash Buffer</div>
+          <div style={styles.cardLabel}>Spendable Cash</div>
           <div
             style={{
               ...styles.scoreValue,
@@ -1122,7 +1149,7 @@ export default function DashboardPage() {
           </div>
           <div style={styles.note}>
             {money(moneyPlan.cashBufferCurrent)} / {money(moneyPlan.cashBufferTarget)}
-            {moneyPlan.cashBufferHasLedger ? ' · ledger synced' : ' · cashflow fallback'}
+            {moneyPlan.cashBufferHasLedger ? ' · ledger synced · savings reserve' : ' · cashflow fallback · savings reserve'}
           </div>
         </div>
       </div>
@@ -1143,10 +1170,17 @@ export default function DashboardPage() {
         />
 
         <StatCard
-          label="Cash Balance"
+          label="Spendable Cash"
           value={loading ? '...' : money(summary.cashBalance)}
           tone={summary.cashBalance >= 0 ? 'green' : 'red'}
-          note={summary.cashBalanceHasLedger ? 'Cash Wallet Ledger synced' : 'Cashflow fallback'}
+          note={summary.cashBalanceHasLedger ? 'Ledger synced · savings excluded' : 'Cashflow fallback · savings excluded'}
+        />
+
+        <StatCard
+          label="Reserve Cash"
+          value={loading ? '...' : money(summary.reserveCash)}
+          tone={summary.reserveCash >= 0 ? 'green' : 'red'}
+          note={`Total liquid cash: ${money(summary.totalLiquidCash)}`}
         />
 
         <StatCard
@@ -1341,7 +1375,7 @@ export default function DashboardPage() {
             <SnapshotRow label="Investment Assets" value={`$${formatNetWorthMoney(summary.investmentAssetsTotal)}`} />
             <SnapshotRow label="External Assets" value={`$${formatNetWorthMoney(summary.externalAssetsTotal)}`} />
             <SnapshotRow label="Total Debt" value={`$${formatNetWorthMoney(summary.liabilitiesTotal)}`} />
-            <SnapshotRow label="Cash Balance" value={money(summary.cashBalance)} />
+            <SnapshotRow label="Spendable Cash" value={money(summary.cashBalance)} />
             <SnapshotRow label="Monthly Income" value={`$${formatCashflowMoney(summary.totalIncome)}`} />
             <SnapshotRow label="Monthly Expenses" value={`$${formatCashflowMoney(summary.totalExpenses)}`} />
             <SnapshotRow label="Goal Monthly Need" value={money(moneyPlan.goalMonthlyNeed)} />

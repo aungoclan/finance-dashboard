@@ -321,7 +321,10 @@ function getCashBalanceInfo({ accounts = [], allCashflowEntries = [], cashWallet
     ledgerByCashAccount.set(ledger.cash_account_id, ledger)
   }
 
-  let finalBalance = 0
+  let spendableBalance = 0
+  let reserveBalance = 0
+  let businessBalance = 0
+  let totalLiquidCash = 0
   let ledgerFinalTotal = 0
   let fallbackCashflowTotal = 0
   let ledgerCount = 0
@@ -329,36 +332,52 @@ function getCashBalanceInfo({ accounts = [], allCashflowEntries = [], cashWallet
   for (const account of activeCashAccounts) {
     const accountType = account.account_type
     const fallbackNet = getAccountCashNetForAccount(account.id, allCashflowEntries)
+    let accountBalance = fallbackNet
 
     if (accountType === 'cash') {
       const ledger = ledgerByCashAccount.get(account.id)
 
       if (ledger) {
-        const finalValue = getLedgerFinalBalance(ledger)
-        finalBalance += finalValue
-        ledgerFinalTotal += finalValue
+        accountBalance = getLedgerFinalBalance(ledger)
+        ledgerFinalTotal += accountBalance
         ledgerCount += 1
       } else {
-        finalBalance += fallbackNet
-        fallbackCashflowTotal += fallbackNet
+        fallbackCashflowTotal += accountBalance
       }
+    } else {
+      fallbackCashflowTotal += accountBalance
+    }
 
+    totalLiquidCash += accountBalance
+
+    if (accountType === 'cash' || accountType === 'checking') {
+      spendableBalance += accountBalance
       continue
     }
 
-    finalBalance += fallbackNet
-    fallbackCashflowTotal += fallbackNet
+    if (accountType === 'savings') {
+      reserveBalance += accountBalance
+      continue
+    }
+
+    if (accountType === 'business') {
+      businessBalance += accountBalance
+    }
   }
 
   return {
-    finalBalance,
+    finalBalance: spendableBalance,
+    spendableBalance,
+    reserveBalance,
+    businessBalance,
+    totalLiquidCash,
     ledgerFinalTotal,
     fallbackCashflowTotal,
     ledgerCount,
     hasLedger: ledgerCount > 0,
     sourceLabel: ledgerCount > 0
-      ? 'Cash Wallet Ledger final balance + non-ledger cashflow fallback'
-      : 'Cashflow net fallback'
+      ? 'Spendable cash uses Cash Wallet Ledger + checking cashflow. Savings is reserve, not default Safe-to-Spend.'
+      : 'Spendable cash uses Cash Wallet/checking cashflow fallback. Savings is reserve, not default Safe-to-Spend.'
   }
 }
 
@@ -862,6 +881,9 @@ if (
       cashBufferSourceLabel: cashBalanceInfo.sourceLabel,
       cashBufferHasLedger: cashBalanceInfo.hasLedger,
       cashBufferLedgerCount: cashBalanceInfo.ledgerCount,
+      reserveCash: cashBalanceInfo.reserveBalance,
+      businessCash: cashBalanceInfo.businessBalance,
+      totalLiquidCash: cashBalanceInfo.totalLiquidCash,
       cashBufferTarget,
       cashBufferGap,
       cashBufferPercent,
@@ -1048,7 +1070,7 @@ if (
 
           <section style={styles.gridFour}>
             <MiniPanel
-              label="Cash Buffer"
+              label="Spendable Cash"
               value={formatMoney(plan.cashBufferCurrent)}
               sub={`${formatPercent(plan.cashBufferPercent)} of ${formatMoney(plan.cashBufferTarget)} target · ${plan.cashBufferHasLedger ? 'ledger synced' : 'cashflow fallback'}`}
               tone={plan.cashBufferGap <= 0 ? 'success' : 'warning'}
@@ -1058,6 +1080,12 @@ if (
               value={formatMoney(plan.unpostedBillReserve)}
               sub={`${plan.unpostedBills.length} active monthly bill${plan.unpostedBills.length === 1 ? '' : 's'} not posted`}
               tone={plan.unpostedBillReserve > 0 ? 'warning' : 'success'}
+            />
+            <MiniPanel
+              label="Reserve Cash"
+              value={formatMoney(plan.reserveCash)}
+              sub={`Savings available if needed · liquid total ${formatMoney(plan.totalLiquidCash)}`}
+              tone={plan.reserveCash > 0 ? 'info' : 'neutral'}
             />
             <MiniPanel
               label="Budget Remaining"
@@ -1195,13 +1223,13 @@ if (
                 <div>
                   <h2 style={styles.sectionTitle}>Safe-to-Spend Formula</h2>
                   <p style={styles.sectionSubtitle}>
-                    Uses current cash balance first, then subtracts unposted bills and remaining debt minimums.
+                    Uses spendable cash first. Savings is shown as reserve cash, but it is not automatically counted as Safe-to-Spend.
                   </p>
                 </div>
               </div>
 
               <div style={styles.formulaBox}>
-                <FormulaRow label="Current cash balance" value={plan.cashBufferCurrent} />
+                <FormulaRow label="Spendable cash" value={plan.cashBufferCurrent} />
                 <FormulaRow label="Unposted active bills" value={-plan.unpostedBillReserve} />
                 <FormulaRow label="Debt minimum remaining" value={-plan.debtMinimumRemaining} />
                 <div style={styles.formulaDivider} />
@@ -1209,8 +1237,8 @@ if (
               </div>
 
               <div style={styles.noteBox}>
-                Source: {plan.cashBufferSourceLabel}. Monthly income and posted expenses are already reflected
-                in the current cash balance when the Cash Wallet Ledger is saved for this month.
+                Source: {plan.cashBufferSourceLabel} Reserve cash is {formatMoney(plan.reserveCash)} and total liquid cash is {formatMoney(plan.totalLiquidCash)}.
+                Reserve can still be used for investing or emergencies, but it is not treated as automatic spending money.
               </div>
             </div>
           </section>
