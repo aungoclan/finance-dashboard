@@ -1,5 +1,14 @@
 import { supabase } from './supabase'
 
+function toNumber(value) {
+  const number = Number(value)
+  return Number.isFinite(number) ? number : 0
+}
+
+function getTodayKey() {
+  return new Date().toISOString().split('T')[0]
+}
+
 export async function saveNetWorthSnapshot({
   userId,
   netWorth,
@@ -7,31 +16,34 @@ export async function saveNetWorthSnapshot({
   liabilities,
   investmentValue
 }) {
-  const today = new Date().toISOString().split('T')[0]
+  if (!userId) {
+    console.warn('saveNetWorthSnapshot skipped: missing userId')
+    return null
+  }
 
-  // FIX: check kỹ hơn
+  const snapshotDate = getTodayKey()
+
+  const payload = {
+    user_id: userId,
+    snapshot_date: snapshotDate,
+    net_worth: toNumber(netWorth),
+    total_assets: toNumber(totalAssets),
+    liabilities: toNumber(liabilities),
+    investment_value: toNumber(investmentValue)
+  }
+
   const { data, error } = await supabase
     .from('net_worth_snapshots')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('snapshot_date', today)
+    .upsert(payload, {
+      onConflict: 'user_id,snapshot_date'
+    })
+    .select('id, snapshot_date')
+    .single()
 
   if (error) {
-    console.error(error)
-    return
+    console.error('saveNetWorthSnapshot upsert error:', error)
+    return null
   }
 
-  // nếu đã có record hôm nay → KHÔNG insert nữa
-  if (data && data.length > 0) {
-    return
-  }
-
-  await supabase.from('net_worth_snapshots').insert({
-    user_id: userId,
-    snapshot_date: today,
-    net_worth: netWorth,
-    total_assets: totalAssets,
-    liabilities: liabilities,
-    investment_value: investmentValue
-  })
+  return data
 }
