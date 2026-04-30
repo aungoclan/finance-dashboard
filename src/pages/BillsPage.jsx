@@ -126,10 +126,27 @@ function getLiabilityStatementDate(liability, statementMonthKey) {
   return getSafeDueDate(statementMonthKey, liability.statement_day)
 }
 
-function getLiabilityDueDateForStatementMonth(liability, statementMonthKey) {
-  const statementDate = getLiabilityStatementDate(liability, statementMonthKey)
-  if (!statementDate) return getSafeDueDate(statementMonthKey, liability?.due_day)
-  return getDateFromMonthDayAfterDate(statementDate, liability?.due_day)
+function getLiabilityDatesForDueMonth(liability, dueMonthKey) {
+  const entryDate = getSafeDueDate(dueMonthKey, liability?.due_day)
+
+  if (!liability?.statement_day) {
+    return {
+      statementDate: '',
+      entryDate
+    }
+  }
+
+  const dueDay = Number(liability?.due_day || 1)
+  const statementDay = Number(liability?.statement_day || 1)
+  const statementMonthKey =
+    Number.isFinite(dueDay) && Number.isFinite(statementDay) && dueDay <= statementDay
+      ? addMonthsToMonthKey(dueMonthKey, -1)
+      : dueMonthKey
+
+  return {
+    statementDate: getLiabilityStatementDate(liability, statementMonthKey),
+    entryDate
+  }
 }
 
 function getPreviousMonthStart(monthKey) {
@@ -305,11 +322,12 @@ function buildBillControlRows({
   return bills.map((bill) => {
     const linkedLiability = getLinkedLiabilityForBill(bill, liabilities)
     const isDebtLinkedBill = Boolean(linkedLiability)
-    const statementDate = isDebtLinkedBill
-      ? getLiabilityStatementDate(linkedLiability, targetMonthKey)
-      : ''
+    const liabilityDueMonthDates = isDebtLinkedBill
+      ? getLiabilityDatesForDueMonth(linkedLiability, targetMonthKey)
+      : null
+    const statementDate = liabilityDueMonthDates?.statementDate || ''
     const entryDate = isDebtLinkedBill
-      ? getLiabilityDueDateForStatementMonth(linkedLiability, targetMonthKey)
+      ? liabilityDueMonthDates?.entryDate || getSafeDueDate(targetMonthKey, linkedLiability?.due_day || bill.due_day)
       : getSafeDueDate(targetMonthKey, bill.due_day)
     const amount = toMoneyNumber(bill.amount)
     const category = getBillCategoryName(bill)
@@ -1248,7 +1266,7 @@ export default function BillsPage() {
                         </div>
 
                         <div style={mutedTextStyle}>
-                          {row.category || 'Missing category'} · {row.isDebtLinkedBill ? `Statement due ${row.entryDate}` : `Due day ${row.dueDay}`} · {row.frequency} · {row.billStatus}
+                          {row.category || 'Missing category'} · {row.isDebtLinkedBill ? `Payment due ${row.entryDate}${row.statementDate ? ` · statement ${row.statementDate}` : ''}` : `Due day ${row.dueDay}`} · {row.frequency} · {row.billStatus}
                         </div>
 
                         <div style={detailTextStyle}>Cashflow detail: {row.description}</div>
