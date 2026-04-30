@@ -287,7 +287,7 @@ function getOpeningBalanceGuide(rowOrType) {
     typeof rowOrType === 'string' ? rowOrType : rowOrType?.account_type || 'other'
   const row = typeof rowOrType === 'string' ? null : rowOrType
 
-  if (isCashAccount(accountType)) {
+  if (accountType === 'cash') {
     const hasCashLedger = toNumber(row?.cashLedgerCount) > 0
     const hasCashflow = toNumber(row?.cashflowCount) > 0
 
@@ -1042,7 +1042,7 @@ export default function AccountsPage() {
 
       item.count += 1
 
-      if (row.account_type === 'cash') {
+      if (isCashAccount(row.account_type)) {
         item.finalCashBalance += toNumber(row.currentMonthFinalCashBalance)
         item.displayValue += toNumber(row.currentMonthFinalCashBalance)
       } else {
@@ -1549,10 +1549,19 @@ export default function AccountsPage() {
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-<strong style={row.displayValue >= 0 ? positiveTextStyle : negativeTextStyle}>                        {money(row.displayValue)}
+                      <strong style={row.displayValue >= 0 ? positiveTextStyle : negativeTextStyle}>
+                        {money(row.displayValue)}
                       </strong>
                       <div style={mutedStyle}>
-                        {row.type === 'cash' ? 'Final cash balance' : 'Account value'}
+                        {row.type === 'cash'
+                          ? 'Final cash balance'
+                          : row.type === 'checking'
+                            ? 'Spendable cash value'
+                            : row.type === 'savings'
+                              ? 'Reserve cash value'
+                              : row.type === 'business'
+                                ? 'Business cash value'
+                                : 'Account value'}
                       </div>
                       <div style={mutedStyle}>Month net {money(row.monthlyNet)}</div>
                     </div>
@@ -1824,9 +1833,17 @@ function AccountCard({
                 label="Final Cash Balance"
                 value={money(account.currentMonthFinalCashBalance)}
                 sub={
-                  account.currentMonthHasLedger
-                    ? getCashLedgerStatusLabel(account)
-                    : 'No ledger yet · fallback from cashflow'
+                  account.account_type === 'cash'
+                    ? account.currentMonthHasLedger
+                      ? getCashLedgerStatusLabel(account)
+                      : 'No ledger yet · fallback from cashflow'
+                    : account.account_type === 'savings'
+                      ? 'Reserve cash · cashflow balance'
+                      : account.account_type === 'checking'
+                        ? 'Spendable cash · cashflow balance'
+                        : account.account_type === 'business'
+                          ? 'Business cash · cashflow balance'
+                          : 'Cashflow balance'
                 }
                 tone={getCashBalanceTone(account.currentMonthFinalCashBalance)}
               />
@@ -1851,7 +1868,7 @@ function AccountCard({
               tone={account.monthOverMonthChange >= 0 ? 'good' : 'bad'}
             />
             <Metric label="Monthly Entries" value={account.monthlyEntryCount} />
-            {isCashAccount(account.account_type) && (
+            {account.account_type === 'cash' && (
               <Metric
                 label="Opening Ledger"
                 value={account.cashLedgerCount > 0 ? `${account.cashLedgerCount} month${account.cashLedgerCount === 1 ? '' : 's'}` : 'Not set'}
