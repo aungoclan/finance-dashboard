@@ -205,6 +205,15 @@ function isBillCashflowEntry(entry) {
   return normalize(entry?.type) === 'expense' && normalize(entry?.description).startsWith('bill:')
 }
 
+function isDebtPaymentCashflowEntry(entry) {
+  if (normalize(entry?.type) !== 'expense') return false
+
+  const category = normalize(entry?.category)
+  const description = normalize(entry?.description)
+
+  return category === 'debt payment' || description.startsWith('debt payment:')
+}
+
 function getEntryAmount(entry) {
   return Math.abs(toNumber(entry?.amount))
 }
@@ -248,6 +257,8 @@ function getAccountSeed(account) {
     monthlyNet: 0,
     monthlyBillExpense: 0,
     monthlyBillCount: 0,
+    monthlyDebtPaymentExpense: 0,
+    monthlyDebtPaymentCount: 0,
     monthlyEntryCount: 0,
     monthlyLargeExpenseCount: 0,
     lastMonthIncome: 0,
@@ -899,6 +910,11 @@ export default function AccountsPage() {
           row.monthlyBillCount += 1
         }
 
+        if (isDebtPaymentCashflowEntry(entry)) {
+          row.monthlyDebtPaymentExpense += amount
+          row.monthlyDebtPaymentCount += 1
+        }
+
         if (entryType === 'expense' && amount >= LARGE_EXPENSE_REVIEW_AMOUNT) {
           row.monthlyLargeExpenseCount += 1
         }
@@ -1008,6 +1024,8 @@ export default function AccountsPage() {
         acc.monthlyNet += row.monthlyNet
         acc.monthlyBillExpense += row.monthlyBillExpense
         acc.monthlyBillCount += row.monthlyBillCount
+        acc.monthlyDebtPaymentExpense += row.monthlyDebtPaymentExpense
+        acc.monthlyDebtPaymentCount += row.monthlyDebtPaymentCount
         acc.monthlyEntryCount += row.monthlyEntryCount
         acc.lastMonthNet += row.lastMonthNet
         acc.allTimeIncome += row.allTimeIncome
@@ -1037,6 +1055,8 @@ export default function AccountsPage() {
         monthlyNet: 0,
         monthlyBillExpense: 0,
         monthlyBillCount: 0,
+        monthlyDebtPaymentExpense: 0,
+        monthlyDebtPaymentCount: 0,
         monthlyEntryCount: 0,
         lastMonthNet: 0,
         allTimeIncome: 0,
@@ -1413,7 +1433,10 @@ export default function AccountsPage() {
                       </td>
                       <td style={tdRightStyle}>
                         {money(row.monthlyBillExpense)}
-                        <div style={mutedStyle}>{row.monthlyBillCount} posted</div>
+                        <div style={mutedStyle}>{row.monthlyBillCount} bill posted</div>
+                        {row.monthlyDebtPaymentCount > 0 && (
+                          <div style={miniReasonStyle}>Debt: {money(row.monthlyDebtPaymentExpense)} · {row.monthlyDebtPaymentCount}</div>
+                        )}
                       </td>
                       <td style={tdStyle}>
                         <HealthBadge tone={getReconciliationTone(row)} />
@@ -1978,7 +2001,19 @@ function AccountCard({
                 tone={account.allTimeNet >= 0 ? 'good' : 'bad'}
               />
             )}
-            <Metric label="Bills Posted" value={money(account.monthlyBillExpense)} sub={`${account.monthlyBillCount} entries`} />
+            <Metric
+              label="Bills Posted"
+              value={money(account.monthlyBillExpense)}
+              sub={`${account.monthlyBillCount} bill entr${account.monthlyBillCount === 1 ? 'y' : 'ies'} from Bills page`}
+            />
+            {(account.monthlyDebtPaymentCount > 0 || account.account_type === 'cash') && (
+              <Metric
+                label="Debt Payments"
+                value={money(account.monthlyDebtPaymentExpense)}
+                sub={`${account.monthlyDebtPaymentCount} payment entr${account.monthlyDebtPaymentCount === 1 ? 'y' : 'ies'} from Net Worth`}
+                tone={account.monthlyDebtPaymentCount > 0 ? 'bad' : 'neutral'}
+              />
+            )}
             {account.account_type !== 'cash' && (
               <Metric
                 label="MoM Change"

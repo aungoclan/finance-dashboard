@@ -423,17 +423,43 @@ function getLedgerFinalBalance(ledger) {
   return actual === null || actual === undefined ? toNumber(expected) : toNumber(actual)
 }
 
+function getCashflowNetForAccountInMonth(accountId, allCashflowEntries, monthKey) {
+  const { startDate, endDate } = getMonthDateRangeFromKey(monthKey)
+  let income = 0
+  let expense = 0
+
+  for (const entry of allCashflowEntries || []) {
+    if (entry.account_id !== accountId) continue
+
+    const entryDate = String(entry.entry_date || '')
+    if (entryDate < startDate || entryDate >= endDate) continue
+
+    if (entry.type === 'income') income += toNumber(entry.amount)
+    if (entry.type === 'expense') expense += toNumber(entry.amount)
+  }
+
+  return income - expense
+}
+
 function getCashBalanceInfo({ accounts = [], allCashflowEntries = [], cashWalletLedgers = [], targetMonthKey }) {
   const activeCashAccounts = accounts
     .filter((account) => !isArchivedAccount(account))
     .filter((account) => CASH_ACCOUNT_TYPES.includes(account.account_type))
 
-  const ledgerByCashAccount = new Map()
+  const currentLedgerByCashAccount = new Map()
+  const previousLedgerByCashAccount = new Map()
+  const previousMonthKey = addMonthsToMonthKey(targetMonthKey, -1)
 
   for (const ledger of cashWalletLedgers || []) {
-    if (ledger.month_key !== targetMonthKey) continue
     if (!ledger.cash_account_id) continue
-    ledgerByCashAccount.set(ledger.cash_account_id, ledger)
+
+    if (ledger.month_key === targetMonthKey) {
+      currentLedgerByCashAccount.set(ledger.cash_account_id, ledger)
+    }
+
+    if (ledger.month_key === previousMonthKey) {
+      previousLedgerByCashAccount.set(ledger.cash_account_id, ledger)
+    }
   }
 
   let spendableBalance = 0
@@ -443,6 +469,7 @@ function getCashBalanceInfo({ accounts = [], allCashflowEntries = [], cashWallet
   let ledgerFinalTotal = 0
   let fallbackCashflowTotal = 0
   let ledgerCount = 0
+  let carryoverCount = 0
 
   for (const account of activeCashAccounts) {
     const accountType = account.account_type
@@ -450,12 +477,24 @@ function getCashBalanceInfo({ accounts = [], allCashflowEntries = [], cashWallet
     let accountBalance = fallbackNet
 
     if (accountType === 'cash') {
-      const ledger = ledgerByCashAccount.get(account.id)
+      const currentLedger = currentLedgerByCashAccount.get(account.id)
+      const previousLedger = previousLedgerByCashAccount.get(account.id)
 
-      if (ledger) {
-        accountBalance = getLedgerFinalBalance(ledger)
+      if (currentLedger) {
+        accountBalance = getLedgerFinalBalance(currentLedger)
         ledgerFinalTotal += accountBalance
         ledgerCount += 1
+      } else if (previousLedger) {
+        const previousFinal = getLedgerFinalBalance(previousLedger)
+        const currentMonthMovement = getCashflowNetForAccountInMonth(
+          account.id,
+          allCashflowEntries,
+          targetMonthKey
+        )
+
+        accountBalance = previousFinal + currentMonthMovement
+        ledgerFinalTotal += accountBalance
+        carryoverCount += 1
       } else {
         fallbackCashflowTotal += accountBalance
       }
@@ -480,6 +519,8 @@ function getCashBalanceInfo({ accounts = [], allCashflowEntries = [], cashWallet
     }
   }
 
+  const hasLedger = ledgerCount > 0 || carryoverCount > 0
+
   return {
     finalBalance: spendableBalance,
     spendableBalance,
@@ -489,10 +530,13 @@ function getCashBalanceInfo({ accounts = [], allCashflowEntries = [], cashWallet
     ledgerFinalTotal,
     fallbackCashflowTotal,
     ledgerCount,
-    hasLedger: ledgerCount > 0,
+    carryoverCount,
+    hasLedger,
     sourceLabel: ledgerCount > 0
-      ? 'Spendable cash uses Cash Wallet Ledger + checking cashflow. Savings is reserve, not default Safe-to-Spend.'
-      : 'Spendable cash uses Cash Wallet/checking cashflow fallback. Savings is reserve, not default Safe-to-Spend.'
+      ? 'Spendable cash uses current Cash Wallet Ledger + checking cashflow. Savings is reserve, not default Safe-to-Spend.'
+      : carryoverCount > 0
+        ? 'Spendable cash uses previous Cash Wallet Ledger carryover + current month movement. Savings is reserve, not default Safe-to-Spend.'
+        : 'Spendable cash uses Cash Wallet/checking cashflow fallback. Savings is reserve, not default Safe-to-Spend.'
   }
 }
 
@@ -767,6 +811,8 @@ export default function DashboardPage() {
 
       const { startDate, endDate } = getCurrentMonthDateRange()
       const { month, year } = getCurrentMonthInfo()
+      const targetMonthKey = `${year}-${pad2(month)}`
+      const previousMonthKey = addMonthsToMonthKey(targetMonthKey, -1)
 
       const [
         txResult,
@@ -933,7 +979,7 @@ export default function DashboardPage() {
             created_at
           `)
           .eq('user_id', user.id)
-          .eq('month_key', `${year}-${pad2(month)}`)
+          .in('month_key', [targetMonthKey, previousMonthKey])
           .order('created_at', { ascending: false })
       ])
 
@@ -962,7 +1008,6 @@ export default function DashboardPage() {
       const billData = billResult.data || []
       const goalData = goalResult.data || []
       const cashLedgerData = cashLedgerResult.error ? [] : cashLedgerResult.data || []
-      const targetMonthKey = `${year}-${pad2(month)}`
 
       const cashBalanceInfo = getCashBalanceInfo({
         accounts: accountData,
@@ -1149,7 +1194,7 @@ export default function DashboardPage() {
           </div>
           <div style={styles.note}>
             {money(moneyPlan.cashBufferCurrent)} / {money(moneyPlan.cashBufferTarget)}
-            {moneyPlan.cashBufferHasLedger ? ' · ledger synced · savings reserve' : ' · cashflow fallback · savings reserve'}
+            {moneyPlan.cashBufferHasLedger ? ' · ledger/carryover synced · savings reserve' : ' · cashflow fallback · savings reserve'}
           </div>
         </div>
       </div>
@@ -1173,7 +1218,7 @@ export default function DashboardPage() {
           label="Spendable Cash"
           value={loading ? '...' : money(summary.cashBalance)}
           tone={summary.cashBalance >= 0 ? 'green' : 'red'}
-          note={summary.cashBalanceHasLedger ? 'Ledger synced · savings excluded' : 'Cashflow fallback · savings excluded'}
+          note={summary.cashBalanceHasLedger ? 'Ledger/carryover synced · savings excluded' : 'Cashflow fallback · savings excluded'}
         />
 
         <StatCard
