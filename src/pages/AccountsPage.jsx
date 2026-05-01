@@ -352,7 +352,16 @@ function getCashLedgerFinalBalance(row, period = 'current') {
   const hasLedger = period === 'previous' ? row.previousMonthHasLedger : row.currentMonthHasLedger
 
   if (!hasLedger) {
-    return period === 'previous' ? row.lastMonthNet : row.allTimeNet
+    if (period === 'previous') return row.lastMonthNet
+
+    // Bài 62F Mini: if the current Cash Wallet month is not saved yet,
+    // carry forward the previous ledger final and apply current month movement.
+    // This keeps Accounts aligned with Cash Ledger month-to-month carryover.
+    if (row.previousMonthHasLedger) {
+      return toNumber(row.previousMonthFinalCashBalance) + toNumber(row.monthlyNet)
+    }
+
+    return row.allTimeNet
   }
 
   const actualValue =
@@ -361,6 +370,32 @@ function getCashLedgerFinalBalance(row, period = 'current') {
     period === 'previous' ? row.previousMonthExpectedClosing : row.currentMonthExpectedClosing
 
   return actualValue === null || actualValue === undefined ? toNumber(expectedValue) : toNumber(actualValue)
+}
+
+function getCashLedgerOpeningBalance(row) {
+  if (row.currentMonthHasLedger) return toNumber(row.currentMonthOpeningBalance)
+  if (row.previousMonthHasLedger) return toNumber(row.previousMonthFinalCashBalance)
+  return 0
+}
+
+function getCashLedgerFallbackLabel(row) {
+  if (row.currentMonthHasLedger) return getCashLedgerStatusLabel(row)
+  if (row.previousMonthHasLedger) return 'No ledger yet · carried from previous ledger'
+  return 'No ledger yet · fallback from cashflow'
+}
+
+function getCashLedgerFormulaText(row) {
+  if (row.currentMonthHasLedger) {
+    return `Formula: ${money(row.currentMonthOpeningBalance)} opening + ${money(row.monthlyIncome)} cash in - ${money(row.monthlyExpense)} cash out = ${money(row.currentMonthExpectedClosing)} expected`
+  }
+
+  if (row.previousMonthHasLedger) {
+    const opening = toNumber(row.previousMonthFinalCashBalance)
+    const expected = opening + toNumber(row.monthlyIncome) - toNumber(row.monthlyExpense)
+    return `Carryover estimate: ${money(opening)} previous final + ${money(row.monthlyIncome)} cash in - ${money(row.monthlyExpense)} cash out = ${money(expected)} expected. Create this month's Cash Wallet Ledger snapshot to lock it.`
+  }
+
+  return 'No monthly ledger found yet. Fallback is cashflow movement only until you create a Cash Wallet Ledger snapshot.'
 }
 
 function getCashLedgerStatusLabel(row) {
@@ -924,15 +959,18 @@ export default function AccountsPage() {
         allTimeNet
       }
 
-      const currentMonthFinalCashBalance =
-        row.account_type === 'cash' ? getCashLedgerFinalBalance(rowWithNets, 'current') : allTimeNet
       const previousMonthFinalCashBalance =
         row.account_type === 'cash' ? getCashLedgerFinalBalance(rowWithNets, 'previous') : lastMonthNet
+      const rowWithLedgerCarryover = {
+        ...rowWithNets,
+        previousMonthFinalCashBalance
+      }
+      const currentMonthFinalCashBalance =
+        row.account_type === 'cash' ? getCashLedgerFinalBalance(rowWithLedgerCarryover, 'current') : allTimeNet
 
       return {
-        ...rowWithNets,
+        ...rowWithLedgerCarryover,
         currentMonthFinalCashBalance,
-        previousMonthFinalCashBalance,
         monthOverMonthChange: monthlyNet - lastMonthNet,
         openingGuide,
         reviewReasons,
@@ -1423,8 +1461,8 @@ export default function AccountsPage() {
                       />
                       <Metric
                         label="Opening Balance"
-                        value={money(row.currentMonthHasLedger ? row.currentMonthOpeningBalance : 0)}
-                        tone={getCashBalanceTone(row.currentMonthHasLedger ? row.currentMonthOpeningBalance : 0)}
+                        value={money(getCashLedgerOpeningBalance(row))}
+                        tone={getCashBalanceTone(getCashLedgerOpeningBalance(row))}
                       />
                       <Metric
                         label="Previous Final"
@@ -1433,9 +1471,7 @@ export default function AccountsPage() {
                       />
                     </div>
                     <div style={cashLedgerFormulaStyle}>
-                      {row.currentMonthHasLedger
-                        ? `Formula: ${money(row.currentMonthOpeningBalance)} opening + ${money(row.monthlyIncome)} cash in - ${money(row.monthlyExpense)} cash out = ${money(row.currentMonthExpectedClosing)} expected`
-                        : 'No monthly ledger found yet. Fallback is cashflow movement only until you create a Cash Wallet Ledger snapshot.'}
+                      {getCashLedgerFormulaText(row)}
                     </div>
                   </div>
                 ))}
@@ -1902,9 +1938,7 @@ function AccountCard({
                 value={money(account.currentMonthFinalCashBalance)}
                 sub={
                   account.account_type === 'cash'
-                    ? account.currentMonthHasLedger
-                      ? getCashLedgerStatusLabel(account)
-                      : 'No ledger yet · fallback from cashflow'
+                    ? getCashLedgerFallbackLabel(account)
                     : account.account_type === 'savings'
                       ? 'Reserve cash · cashflow balance'
                       : account.account_type === 'checking'
@@ -1919,33 +1953,58 @@ function AccountCard({
             <Metric label="Month Income" value={money(account.monthlyIncome)} />
             <Metric label="Month Expense" value={money(account.monthlyExpense)} />
             <Metric
-              label="Month Net"
+              label={account.account_type === 'cash' ? 'This Month Movement' : 'Month Net'}
               value={money(account.monthlyNet)}
+              sub={account.account_type === 'cash' ? 'Cash in - cash out for selected month' : undefined}
               tone={account.monthlyNet >= 0 ? 'good' : 'bad'}
             />
-            <Metric
-              label={isCashAccount(account.account_type) ? 'Cashflow All-Time Net' : 'All-Time Net'}
-              value={money(account.allTimeNet)}
-              sub={isCashAccount(account.account_type) ? 'Movement only, not final cash balance' : undefined}
-              tone={account.allTimeNet >= 0 ? 'good' : 'bad'}
-            />
+            {account.account_type === 'cash' ? (
+              <Metric
+                label={account.currentMonthHasLedger ? 'Ledger Opening' : account.previousMonthHasLedger ? 'Carryover Opening' : 'Opening Source'}
+                value={money(getCashLedgerOpeningBalance(account))}
+                sub={
+                  account.currentMonthHasLedger
+                    ? 'Saved in this month ledger'
+                    : account.previousMonthHasLedger
+                      ? 'Carried from previous final'
+                      : 'No ledger yet'
+                }
+                tone={getCashBalanceTone(getCashLedgerOpeningBalance(account))}
+              />
+            ) : (
+              <Metric
+                label="All-Time Net"
+                value={money(account.allTimeNet)}
+                tone={account.allTimeNet >= 0 ? 'good' : 'bad'}
+              />
+            )}
             <Metric label="Bills Posted" value={money(account.monthlyBillExpense)} sub={`${account.monthlyBillCount} entries`} />
-            <Metric
-              label="MoM Change"
-              value={money(account.monthOverMonthChange)}
-              tone={account.monthOverMonthChange >= 0 ? 'good' : 'bad'}
-            />
+            {account.account_type !== 'cash' && (
+              <Metric
+                label="MoM Change"
+                value={money(account.monthOverMonthChange)}
+                tone={account.monthOverMonthChange >= 0 ? 'good' : 'bad'}
+              />
+            )}
             <Metric label="Monthly Entries" value={account.monthlyEntryCount} />
             {account.account_type === 'cash' && (
               <Metric
-                label="Opening Ledger"
-                value={account.cashLedgerCount > 0 ? `${account.cashLedgerCount} month${account.cashLedgerCount === 1 ? '' : 's'}` : 'Not set'}
-                sub={
-                  account.cashLedgerCount > 0
-                    ? `Current opening: ${money(account.currentMonthOpeningBalance)}`
-                    : 'Use Cash Wallet Ledger'
+                label="Ledger Status"
+                value={
+                  account.currentMonthHasLedger
+                    ? getCashLedgerStatusLabel(account)
+                    : account.previousMonthHasLedger
+                      ? 'Carryover estimate'
+                      : 'Not set'
                 }
-                tone={account.cashLedgerCount > 0 ? 'good' : 'bad'}
+                sub={
+                  account.currentMonthHasLedger
+                    ? `Current opening: ${money(account.currentMonthOpeningBalance)}`
+                    : account.previousMonthHasLedger
+                      ? `Previous final: ${money(account.previousMonthFinalCashBalance)}`
+                      : 'Use Cash Wallet Ledger'
+                }
+                tone={account.currentMonthHasLedger || account.previousMonthHasLedger ? 'good' : 'bad'}
               />
             )}
           </div>
