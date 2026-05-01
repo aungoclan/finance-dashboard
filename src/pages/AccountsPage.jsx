@@ -1948,7 +1948,23 @@ function AccountCard({
           </div>
 
           <div style={metricGridStyle}>
-            <Metric label="Investment" value={money(account.investmentValue)} />
+            {isInvestmentAccount(account.account_type) ? (
+              <>
+                <Metric
+                  label="Market Value"
+                  value={money(account.investmentValue)}
+                  sub="Cost basis + unrealized P&L"
+                  tone={account.investmentValue >= account.costBasis ? 'good' : 'bad'}
+                />
+                <Metric
+                  label="Cost Basis"
+                  value={money(account.costBasis)}
+                  sub="Open lots cost basis"
+                />
+              </>
+            ) : (
+              <Metric label="Investment" value={money(account.investmentValue)} />
+            )}
             <Metric
               label="Unrealized P&L"
               value={money(account.unrealizedPL)}
