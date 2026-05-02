@@ -19,6 +19,26 @@ import {
   summarizeCashflow
 } from '../lib/monthSetup'
 
+
+const LIABILITY_BILL_NOTE_PREFIX = 'linked_liability_id:'
+
+function isDebtLinkedBillTemplate(bill) {
+  const note = String(bill?.note || '')
+  return (
+    note.includes(LIABILITY_BILL_NOTE_PREFIX) ||
+    note.includes('Auto-created from Net Worth Liability Bill Sync') ||
+    note.includes('default_payment_account_id:')
+  )
+}
+
+function getFriendlyDebtBillNote(row) {
+  if (row?.alreadyAdded) {
+    return 'Debt payment was already recorded from Net Worth. Month Setup keeps this locked to prevent duplicate cashflow.'
+  }
+
+  return 'Debt payment reminder linked to Net Worth. Record payment from Net Worth → Liabilities so cashflow, debt balance, and statement status stay in sync.'
+}
+
 export default function MonthSetupPage() {
   const [targetMonthKey, setTargetMonthKey] = useState(getNextMonthKey())
   const [accounts, setAccounts] = useState([])
@@ -186,7 +206,7 @@ export default function MonthSetupPage() {
 
     const nextMap = { ...billAccountMap }
 
-    billRows.forEach((row) => {
+    autoEntryBillRows.forEach((row) => {
       if (row.canAdd) {
         nextMap[row.bill.id] = defaultBillAccountId
       }
@@ -245,7 +265,7 @@ export default function MonthSetupPage() {
     const previewRows = buildBillCashflowInsertRows({
       userId: 'preview',
       targetMonthKey,
-      billRows,
+      billRows: autoEntryBillRows,
       billAccountMap
     })
 
@@ -274,7 +294,7 @@ export default function MonthSetupPage() {
       const insertRows = buildBillCashflowInsertRows({
         userId: user.id,
         targetMonthKey,
-        billRows,
+        billRows: autoEntryBillRows,
         billAccountMap
       })
 
@@ -307,11 +327,32 @@ export default function MonthSetupPage() {
         targetMonthKey,
         dueSoonDays: appSettings.billDueSoonDays,
         billAccountMap
+      }).map((row) => {
+        const isDebtLinkedBill = isDebtLinkedBillTemplate(row.bill)
+        if (!isDebtLinkedBill) return row
+
+        return {
+          ...row,
+          isDebtLinkedBill: true,
+          canAdd: false,
+          status: row.alreadyAdded ? 'added' : 'net_worth',
+          reason: row.alreadyAdded ? 'Posted' : 'Record in Net Worth'
+        }
       }),
     [activeMonthlyBills, targetCashflowEntries, targetMonthKey, appSettings.billDueSoonDays, billAccountMap]
   )
 
-  const billSummary = useMemo(() => summarizeBillRows(billRows), [billRows])
+  const autoEntryBillRows = useMemo(
+    () => billRows.filter((row) => !row.isDebtLinkedBill),
+    [billRows]
+  )
+
+  const debtLinkedBillRows = useMemo(
+    () => billRows.filter((row) => row.isDebtLinkedBill),
+    [billRows]
+  )
+
+  const billSummary = useMemo(() => summarizeBillRows(autoEntryBillRows), [autoEntryBillRows])
 
   const missingBudgets = useMemo(
     () => getMissingBudgetRows(previousBudgets, targetBudgets),
@@ -357,11 +398,15 @@ export default function MonthSetupPage() {
     },
     {
       label: 'Active bills reviewed',
-      done: activeMonthlyBills.length > 0 && billSummary.ready === 0 && billSummary.blocked === 0 && billSummary.review === 0,
+      done:
+        activeMonthlyBills.length > 0 &&
+        billSummary.ready === 0 &&
+        billSummary.blocked === 0 &&
+        billSummary.review === 0,
       detail:
         activeMonthlyBills.length === 0
           ? 'No active monthly bill templates found.'
-          : `${billSummary.added}/${activeMonthlyBills.length} added · ${billSummary.ready} ready · ${billSummary.review} category review · ${billSummary.blocked} blocked.`
+          : `${billSummary.added}/${autoEntryBillRows.length} cashflow bills added · ${billSummary.ready} ready · ${billSummary.review} category review · ${billSummary.blocked} blocked · ${debtLinkedBillRows.length} Net Worth debt reminder${debtLinkedBillRows.length === 1 ? '' : 's'}.`
     },
     {
       label: 'Income entered for target month',
@@ -443,8 +488,8 @@ const checklistScore =
         />
         <SummaryCard
           label="Bills Auto-Entry"
-          value={`${billSummary.added}/${activeMonthlyBills.length}`}
-          note={`${billSummary.ready} ready · $${formatMoney(billSummary.amountReady)} ready value`}
+          value={`${billSummary.added}/${autoEntryBillRows.length}`}
+          note={`${billSummary.ready} ready · $${formatMoney(billSummary.amountReady)} ready value · ${debtLinkedBillRows.length} Net Worth only`}
           tone={billSummary.ready > 0 ? 'warning' : 'good'}
         />
         <SummaryCard
@@ -611,7 +656,7 @@ const checklistScore =
               <div>
                 <h2 style={sectionTitleStyle}>Step 2 · Bills Auto-Entry Preview</h2>
                 <p style={sectionSubtitleStyle}>
-                  Preview active monthly bills before inserting into Cashflow. Duplicate protection uses date + amount + description.
+                  Preview cashflow-safe monthly bills before inserting into Cashflow. Debt-linked reminders are separated and must be recorded from Net Worth.
                 </p>
               </div>
               <button
@@ -629,6 +674,7 @@ const checklistScore =
               <BillSummaryPill label="Already Added" value={billSummary.added} tone="info" />
               <BillSummaryPill label="Review" value={billSummary.review} tone="warning" />
               <BillSummaryPill label="Blocked" value={billSummary.blocked} tone="danger" />
+              <BillSummaryPill label="Net Worth" value={debtLinkedBillRows.length} tone="neutral" />
             </div>
 
             {loading ? (
@@ -636,57 +682,98 @@ const checklistScore =
             ) : activeMonthlyBills.length === 0 ? (
               <div style={emptyStyle}>No active monthly bills found.</div>
             ) : (
-              <div style={billListStyle}>
-                {billRows.map((row) => (
-                  <div key={row.bill.id} style={getBillRowStyle(row)}>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={billTitleRowStyle}>
-                        <strong style={billNameStyle}>{row.bill.name || 'Unnamed Bill'}</strong>
-                        <span style={getStatusBadgeStyle(row.status)}>
-                          {row.reason}
-                        </span>
-                        <span style={getTimingBadgeStyle(row.timing?.tone)}>
-                          {row.timing?.label}
-                        </span>
-                      </div>
+              <>
+                {autoEntryBillRows.length === 0 ? (
+                  <div style={emptyStyle}>
+                    No regular cashflow bills are ready for auto-entry. Debt-linked reminders are shown below and should be recorded from Net Worth.
+                  </div>
+                ) : (
+                  <div style={billListStyle}>
+                    {autoEntryBillRows.map((row) => (
+                      <div key={row.bill.id} style={getBillRowStyle(row)}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={billTitleRowStyle}>
+                            <strong style={billNameStyle}>{row.bill.name || 'Unnamed Bill'}</strong>
+                            <span style={getStatusBadgeStyle(row.status)}>
+                              {row.reason}
+                            </span>
+                            <span style={getTimingBadgeStyle(row.timing?.tone)}>
+                              {row.timing?.label}
+                            </span>
+                          </div>
 
-                      <div style={mutedTextStyle}>
-                        Category: {row.category || 'Missing'} · Amount: ${formatMoney(row.amount)} · Entry date: {row.entryDate}
-                      </div>
+                          <div style={mutedTextStyle}>
+                            Category: {row.category || 'Missing'} · Amount: ${formatMoney(row.amount)} · Entry date: {row.entryDate}
+                          </div>
 
-                      <div style={detailTextStyle}>
-                        Description: {row.description}
-                      </div>
+                          <div style={detailTextStyle}>
+                            Description: {row.description}
+                          </div>
 
-                      {row.needsCategoryId && (
-                        <div style={reviewTextStyle}>
-                          This bill still needs database category mapping. Fix in Category Cleanup or Bills before auto-entry.
+                          {row.needsCategoryId && (
+                            <div style={reviewTextStyle}>
+                              This bill still needs database category mapping. Fix in Category Cleanup or Bills before auto-entry.
+                            </div>
+                          )}
                         </div>
-                      )}
+
+                        <div style={billRightControlStyle}>
+                          <select
+                            value={billAccountMap[row.bill.id] || ''}
+                            onChange={(event) => handleBillAccountChange(row.bill.id, event.target.value)}
+                            style={accountSelectStyle}
+                            disabled={!row.canAdd}
+                          >
+                            <option value="">No account</option>
+                            {accounts.map((account) => (
+                              <option key={account.id} value={account.id}>
+                                {account.name} {account.account_type ? `(${account.account_type})` : ''}
+                              </option>
+                            ))}
+                          </select>
+
+                          <div style={accountPreviewStyle}>
+                            {getBillAccountLabel(billAccountMap[row.bill.id], accounts)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {debtLinkedBillRows.length > 0 && (
+                  <div style={debtBillSectionStyle}>
+                    <div style={debtBillHeaderStyle}>
+                      <div>
+                        <h3 style={debtBillTitleStyle}>Debt bills · Record in Net Worth</h3>
+                        <p style={debtBillSubtitleStyle}>
+                          These reminders are linked to liabilities. Month Setup will not auto-add them to Cashflow, which prevents duplicate payments.
+                        </p>
+                      </div>
+                      <span style={neutralBadgeStyle}>{debtLinkedBillRows.length} protected</span>
                     </div>
 
-                    <div style={billRightControlStyle}>
-                      <select
-                        value={billAccountMap[row.bill.id] || ''}
-                        onChange={(event) => handleBillAccountChange(row.bill.id, event.target.value)}
-                        style={accountSelectStyle}
-                        disabled={!row.canAdd}
-                      >
-                        <option value="">No account</option>
-                        {accounts.map((account) => (
-                          <option key={account.id} value={account.id}>
-                            {account.name} {account.account_type ? `(${account.account_type})` : ''}
-                          </option>
-                        ))}
-                      </select>
-
-                      <div style={accountPreviewStyle}>
-                        {getBillAccountLabel(billAccountMap[row.bill.id], accounts)}
-                      </div>
+                    <div style={debtBillListStyle}>
+                      {debtLinkedBillRows.map((row) => (
+                        <div key={row.bill.id} style={debtBillRowStyle}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={billTitleRowStyle}>
+                              <strong style={billNameStyle}>{row.bill.name || 'Unnamed Debt Bill'}</strong>
+                              <span style={warningBadgeStyle}>Record in Net Worth</span>
+                              <span style={getTimingBadgeStyle(row.timing?.tone)}>{row.timing?.label}</span>
+                            </div>
+                            <div style={mutedTextStyle}>
+                              Category: {row.category || 'Debt Payment'} · Amount: ${formatMoney(row.amount)} · Reminder date: {row.entryDate}
+                            </div>
+                            <div style={detailTextStyle}>Description: {row.description}</div>
+                            <div style={reviewTextStyle}>{getFriendlyDebtBillNote(row)}</div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </section>
         </div>
@@ -1141,7 +1228,7 @@ const emptyStyle = {
 
 const billSummaryGridStyle = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+  gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
   gap: '10px',
   marginBottom: '14px'
 }
@@ -1230,6 +1317,49 @@ const accountPreviewStyle = {
   color: '#9ca3af',
   fontSize: '11px',
   lineHeight: 1.35
+}
+
+const debtBillSectionStyle = {
+  marginTop: '16px',
+  padding: '14px',
+  borderRadius: '16px',
+  background: 'rgba(245, 158, 11, 0.08)',
+  border: '1px solid rgba(245, 158, 11, 0.26)'
+}
+
+const debtBillHeaderStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'flex-start',
+  gap: '12px',
+  marginBottom: '12px',
+  flexWrap: 'wrap'
+}
+
+const debtBillTitleStyle = {
+  margin: 0,
+  color: '#f9fafb',
+  fontSize: '17px',
+  letterSpacing: '-0.02em'
+}
+
+const debtBillSubtitleStyle = {
+  margin: '6px 0 0',
+  color: '#fde68a',
+  fontSize: '12px',
+  lineHeight: 1.45
+}
+
+const debtBillListStyle = {
+  display: 'grid',
+  gap: '10px'
+}
+
+const debtBillRowStyle = {
+  padding: '13px',
+  borderRadius: '14px',
+  background: 'rgba(17, 24, 39, 0.72)',
+  border: '1px solid rgba(245, 158, 11, 0.22)'
 }
 
 const baseBadgeStyle = {
