@@ -24,6 +24,7 @@ export default function HoldingsPage() {
   const [transactions, setTransactions] = useState([])
   const [priceQuotes, setPriceQuotes] = useState([])
   const [assets, setAssets] = useState([])
+  const [accounts, setAccounts] = useState([])
 
   const [selectedAssetId, setSelectedAssetId] = useState('')
   const [marketPrice, setMarketPrice] = useState('')
@@ -99,9 +100,21 @@ export default function HoldingsPage() {
 
       if (assetError) throw assetError
 
+      // Bài 62K Fix:
+      // Do not embed accounts inside investment_transactions here.
+      // investment_transactions has two relationships to accounts (account_id and funding_account_id),
+      // so accounts(...) is ambiguous in Supabase/PostgREST. Load accounts separately and join in JS.
+      const { data: accountData, error: accountError } = await supabase
+        .from('accounts')
+        .select('*')
+        .eq('user_id', user.id)
+
+      if (accountError) throw accountError
+
       setTransactions(txData || [])
       setPriceQuotes(quoteData || [])
       setAssets(assetData || [])
+      setAccounts(accountData || [])
     } catch (error) {
       console.error('loadHoldingsData error:', error)
       setMessage(error.message || 'Failed to load holdings')
@@ -117,6 +130,92 @@ export default function HoldingsPage() {
   const summary = useMemo(() => {
     return calculatePortfolioSummary(holdings)
   }, [holdings])
+
+  const accountById = useMemo(() => {
+    const map = new Map()
+    for (const account of accounts || []) {
+      map.set(account.id, account)
+    }
+    return map
+  }, [accounts])
+
+  const holdingByAssetId = useMemo(() => {
+    const map = new Map()
+    for (const holding of holdings || []) {
+      map.set(holding.asset_id, holding)
+    }
+    return map
+  }, [holdings])
+
+  const accountBreakdownByAssetId = useMemo(() => {
+    const latestHoldingPrice = (assetId) => toNumber(holdingByAssetId.get(assetId)?.market_price)
+    const map = new Map()
+
+    for (const tx of transactions || []) {
+      const asset = tx.assets || {}
+      const assetId = tx.asset_id || asset.id
+      const accountId = tx.account_id || 'unassigned'
+      if (!assetId) continue
+
+      const type = String(tx.type || '').trim().toLowerCase()
+      const quantity = toNumber(tx.quantity)
+      const unitPrice = toNumber(tx.unit_price)
+      const fee = toNumber(tx.fee)
+      if (quantity <= 0) continue
+
+      const assetMap = map.get(assetId) || new Map()
+      const account = accountById.get(accountId) || null
+      const key = accountId
+      const row = assetMap.get(key) || {
+        assetId,
+        accountId,
+        accountName: account?.name || (accountId === 'unassigned' ? 'Unassigned' : 'Unknown Account'),
+        accountType: account?.account_type || '',
+        quantity: 0,
+        costBasis: 0,
+        transactionCount: 0
+      }
+
+      const currentQuantity = toNumber(row.quantity)
+      const currentCostBasis = toNumber(row.costBasis)
+      const currentAverageCost = currentQuantity > 0 ? currentCostBasis / currentQuantity : 0
+
+      if (type === 'buy' || type === 'deposit') {
+        row.quantity = currentQuantity + quantity
+        row.costBasis = currentCostBasis + quantity * unitPrice + fee
+        row.transactionCount += 1
+      }
+
+      if (type === 'sell' || type === 'withdraw') {
+        const outgoingQuantity = Math.min(quantity, currentQuantity)
+        row.quantity = currentQuantity - outgoingQuantity
+        row.costBasis = currentCostBasis - outgoingQuantity * currentAverageCost
+        row.transactionCount += 1
+
+        if (row.quantity <= 0.000000001) {
+          row.quantity = 0
+          row.costBasis = 0
+        }
+      }
+
+      assetMap.set(key, row)
+      map.set(assetId, assetMap)
+    }
+
+    const result = {}
+    for (const [assetId, accountMap] of map.entries()) {
+      const marketPrice = latestHoldingPrice(assetId)
+      result[assetId] = Array.from(accountMap.values())
+        .filter((row) => toNumber(row.quantity) > 0)
+        .map((row) => ({
+          ...row,
+          marketValue: toNumber(row.quantity) * marketPrice
+        }))
+        .sort((a, b) => a.accountName.localeCompare(b.accountName))
+    }
+
+    return result
+  }, [transactions, accountById, holdingByAssetId])
 
   const handleSelectedAssetChange = (assetId) => {
     setSelectedAssetId(assetId)
@@ -358,7 +457,88 @@ export default function HoldingsPage() {
         </div>
       </div>
 
-      <div style={contentGridStyle}>
+      <div style={currentHoldingsCardStyle}>
+          <h2 style={{ marginTop: 0 }}>Current Holdings</h2>
+
+          {loading ? (
+            <p>Loading holdings...</p>
+          ) : holdings.length === 0 ? (
+            <p>No holdings yet.</p>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>Symbol</th>
+                    <th style={thStyle}>Name</th>
+                    <th style={thStyle}>Qty</th>
+                    <th style={thStyle}>Accounts</th>
+                    <th style={thStyle}>Avg Cost</th>
+                    <th style={thStyle}>Cost Basis</th>
+                    <th style={thStyle}>Market Price</th>
+                    <th style={thStyle}>Market Value</th>
+                    <th style={thStyle}>Unrealized P&amp;L</th>
+                    <th style={thStyle}>P&amp;L %</th>
+                    <th style={thStyle}>Lock</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {holdings.map((item, index) => {
+                    const accountRows = accountBreakdownByAssetId[item.asset_id] || []
+
+                    return (
+                      <tr key={`${item.asset_id || item.symbol}-${index}`}>
+                        <td style={tdStyle}>{item.symbol}</td>
+                        <td style={tdStyle}>{item.display_name || item.symbol}</td>
+                        <td style={tdStyle}>{formatQuantity(item.quantity)}</td>
+                        <td style={{ ...tdStyle, minWidth: '220px' }}>
+                          {accountRows.length === 0 ? (
+                            '-'
+                          ) : (
+                            <div style={accountListStyle}>
+                              {accountRows.map((row) => (
+                                <div key={`${item.asset_id}-${row.accountId}`} style={accountLineStyle}>
+                                  <span>{row.accountName}</span>
+                                  <strong>{formatQuantity(row.quantity)}</strong>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                        <td style={tdStyle}>${formatMoney(item.average_cost)}</td>
+                        <td style={tdStyle}>${formatMoney(item.cost_basis)}</td>
+                        <td style={tdStyle}>
+                          {item.market_price > 0 ? `$${formatPrice(item.market_price)}` : '-'}
+                        </td>
+                        <td style={tdStyle}>${formatMoney(item.market_value)}</td>
+                        <td
+                          style={{
+                            ...tdStyle,
+                            color: item.unrealized_pl >= 0 ? '#22c55e' : '#ef4444'
+                          }}
+                        >
+                          ${formatMoney(item.unrealized_pl)}
+                        </td>
+                        <td
+                          style={{
+                            ...tdStyle,
+                            color: item.unrealized_pl_percent >= 0 ? '#22c55e' : '#ef4444'
+                          }}
+                        >
+                          {formatPercent(item.unrealized_pl_percent)}
+                        </td>
+                        <td style={tdStyle}>{item.is_price_locked ? '🔒' : '-'}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+      <div style={updatePriceWrapperStyle}>
         <div style={cardStyle}>
           <h2 style={{ marginTop: 0 }}>Update Market Price</h2>
 
@@ -442,69 +622,49 @@ export default function HoldingsPage() {
             stocks and ETFs. Manual locked prices will not be overwritten.
           </div>
         </div>
-
-        <div style={cardStyle}>
-          <h2 style={{ marginTop: 0 }}>Current Holdings</h2>
-
-          {loading ? (
-            <p>Loading holdings...</p>
-          ) : holdings.length === 0 ? (
-            <p>No holdings yet.</p>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={tableStyle}>
-                <thead>
-                  <tr>
-                    <th style={thStyle}>Symbol</th>
-                    <th style={thStyle}>Name</th>
-                    <th style={thStyle}>Qty</th>
-                    <th style={thStyle}>Avg Cost</th>
-                    <th style={thStyle}>Cost Basis</th>
-                    <th style={thStyle}>Market Price</th>
-                    <th style={thStyle}>Market Value</th>
-                    <th style={thStyle}>Unrealized P&amp;L</th>
-                    <th style={thStyle}>P&amp;L %</th>
-                    <th style={thStyle}>Lock</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {holdings.map((item, index) => (
-                    <tr key={`${item.asset_id || item.symbol}-${index}`}>
-                      <td style={tdStyle}>{item.symbol}</td>
-                      <td style={tdStyle}>{item.display_name || item.symbol}</td>
-                      <td style={tdStyle}>{formatQuantity(item.quantity)}</td>
-                      <td style={tdStyle}>${formatMoney(item.average_cost)}</td>
-                      <td style={tdStyle}>${formatMoney(item.cost_basis)}</td>
-                      <td style={tdStyle}>
-                        {item.market_price > 0 ? `$${formatPrice(item.market_price)}` : '-'}
-                      </td>
-                      <td style={tdStyle}>${formatMoney(item.market_value)}</td>
-                      <td
-                        style={{
-                          ...tdStyle,
-                          color: item.unrealized_pl >= 0 ? '#22c55e' : '#ef4444'
-                        }}
-                      >
-                        ${formatMoney(item.unrealized_pl)}
-                      </td>
-                      <td
-                        style={{
-                          ...tdStyle,
-                          color: item.unrealized_pl_percent >= 0 ? '#22c55e' : '#ef4444'
-                        }}
-                      >
-                        {formatPercent(item.unrealized_pl_percent)}
-                      </td>
-                      <td style={tdStyle}>{item.is_price_locked ? '🔒' : '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
       </div>
+
+      {holdings.length > 0 && (
+        <div style={breakdownCardStyle}>
+          <h2 style={{ marginTop: 0 }}>Account Breakdown</h2>
+          <p style={breakdownHelperStyle}>
+            Holdings are still totaled by symbol above. This section shows where each symbol is held by account, so taxable brokerage and IRA/Roth positions stay clear.
+          </p>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Symbol</th>
+                  <th style={thStyle}>Account</th>
+                  <th style={thStyle}>Account Type</th>
+                  <th style={thStyle}>Qty</th>
+                  <th style={thStyle}>Cost Basis</th>
+                  <th style={thStyle}>Market Value</th>
+                  <th style={thStyle}>Tx Count</th>
+                </tr>
+              </thead>
+              <tbody>
+                {holdings.flatMap((item) => {
+                  const rows = accountBreakdownByAssetId[item.asset_id] || []
+
+                  return rows.map((row) => (
+                    <tr key={`${item.asset_id}-${row.accountId}`}>
+                      <td style={tdStyle}>{item.symbol}</td>
+                      <td style={tdStyle}>{row.accountName}</td>
+                      <td style={tdStyle}>{row.accountType || '-'}</td>
+                      <td style={tdStyle}>{formatQuantity(row.quantity)}</td>
+                      <td style={tdStyle}>${formatMoney(row.costBasis)}</td>
+                      <td style={tdStyle}>${formatMoney(row.marketValue)}</td>
+                      <td style={tdStyle}>{row.transactionCount}</td>
+                    </tr>
+                  ))
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -598,6 +758,16 @@ const cardStyle = {
   border: '1px solid #374151'
 }
 
+const currentHoldingsCardStyle = {
+  ...cardStyle,
+  marginTop: '24px'
+}
+
+const updatePriceWrapperStyle = {
+  marginTop: '24px',
+  maxWidth: '520px'
+}
+
 const fieldStyle = {
   marginBottom: '16px'
 }
@@ -667,6 +837,37 @@ const helperTextStyle = {
   color: '#d1d5db',
   fontSize: '14px',
   lineHeight: 1.6
+}
+
+
+const breakdownCardStyle = {
+  marginTop: '24px',
+  background: '#1f2937',
+  padding: '20px',
+  borderRadius: '12px',
+  border: '1px solid #374151'
+}
+
+const breakdownHelperStyle = {
+  marginTop: 0,
+  marginBottom: '16px',
+  color: '#d1d5db',
+  fontSize: '14px',
+  lineHeight: 1.6
+}
+
+const accountListStyle = {
+  display: 'grid',
+  gap: '6px'
+}
+
+const accountLineStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: '12px',
+  color: '#dbeafe',
+  fontSize: '13px'
 }
 
 const tableStyle = {
