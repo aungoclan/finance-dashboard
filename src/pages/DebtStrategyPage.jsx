@@ -317,7 +317,7 @@ const debtStrategyCss = `
 
   .ds-kicker {
     margin-bottom: 8px;
-    color: #38bdf8;
+    color: var(--accent, #38bdf8);
     font-size: 12px;
     font-weight: 800;
     letter-spacing: 0.12em;
@@ -326,7 +326,7 @@ const debtStrategyCss = `
 
   .ds-page-header h1 {
     margin: 0;
-    color: #f8fafc;
+    color: var(--text-main, #f8fafc);
     font-size: clamp(28px, 4vw, 42px);
     line-height: 1.05;
     letter-spacing: -0.04em;
@@ -335,7 +335,7 @@ const debtStrategyCss = `
   .ds-page-header p {
     max-width: 760px;
     margin: 10px 0 0;
-    color: #cbd5e1;
+    color: var(--text-muted, #cbd5e1);
     font-size: 16px;
     line-height: 1.55;
   }
@@ -344,27 +344,27 @@ const debtStrategyCss = `
     border: 1px solid rgba(59, 130, 246, 0.45);
     border-radius: 14px;
     padding: 11px 15px;
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
-    color: white;
+    background: var(--button-bg, linear-gradient(135deg, #2563eb, #1d4ed8));
+    color: var(--button-text, white);
     font-weight: 800;
     cursor: pointer;
     white-space: nowrap;
-    box-shadow: 0 14px 35px rgba(37, 99, 235, 0.22);
+    box-shadow: var(--shadow-button, 0 14px 35px rgba(37, 99, 235, 0.22));
   }
 
   .ds-message,
   .ds-panel,
   .ds-summary-card {
-    border: 1px solid rgba(148, 163, 184, 0.14);
-    background: rgba(15, 23, 42, 0.72);
-    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18);
+    border: 1px solid var(--border-main, rgba(148, 163, 184, 0.14));
+    background: var(--bg-card, rgba(15, 23, 42, 0.72));
+    box-shadow: var(--shadow-card, 0 18px 45px rgba(0, 0, 0, 0.18));
     backdrop-filter: blur(16px);
   }
 
   .ds-message {
     border-radius: 16px;
     padding: 14px 16px;
-    color: #f8fafc;
+    color: var(--text-main, #f8fafc);
   }
 
   .ds-panel {
@@ -387,7 +387,7 @@ const debtStrategyCss = `
   .ds-control-grid label {
     display: block;
     margin-bottom: 7px;
-    color: #cbd5e1;
+    color: var(--text-muted, #cbd5e1);
     font-size: 13px;
     font-weight: 800;
   }
@@ -397,27 +397,32 @@ const debtStrategyCss = `
     width: 100%;
     min-width: 0;
     box-sizing: border-box;
-    border: 1px solid rgba(148, 163, 184, 0.24);
+    border: 1px solid var(--border-main, rgba(148, 163, 184, 0.24));
     border-radius: 14px;
     padding: 12px 13px;
-    background: rgba(2, 6, 23, 0.55);
-    color: #f8fafc;
+    background: var(--bg-input, rgba(2, 6, 23, 0.55));
+    color: var(--text-main, #f8fafc);
     outline: none;
+  }
+
+  .ds-control-grid select option {
+    background: var(--bg-card, #0f172a);
+    color: var(--text-main, #f8fafc);
   }
 
   .ds-mini-stat {
     min-width: 0;
-    border: 1px solid rgba(148, 163, 184, 0.14);
+    border: 1px solid var(--border-main, rgba(148, 163, 184, 0.14));
     border-radius: 16px;
     padding: 11px 13px;
-    background: rgba(2, 6, 23, 0.38);
+    background: var(--bg-card-soft, rgba(2, 6, 23, 0.38));
   }
 
   .ds-mini-stat span,
   .ds-summary-card div,
   .ds-muted,
   .ds-section-header p {
-    color: #cbd5e1;
+    color: var(--text-muted, #cbd5e1);
   }
 
   .ds-mini-stat span {
@@ -428,7 +433,7 @@ const debtStrategyCss = `
   }
 
   .ds-mini-stat strong {
-    color: #f8fafc;
+    color: var(--text-main, #f8fafc);
     font-size: 18px;
   }
 
@@ -440,17 +445,17 @@ const debtStrategyCss = `
   }
 
   .ds-tip-row > div {
-    border: 1px solid rgba(148, 163, 184, 0.12);
+    border: 1px solid var(--border-soft, rgba(148, 163, 184, 0.12));
     border-radius: 14px;
     padding: 11px 12px;
-    color: #cbd5e1;
-    background: rgba(15, 23, 42, 0.55);
+    color: var(--text-muted, #cbd5e1);
+    background: var(--bg-card-soft, rgba(15, 23, 42, 0.55));
     font-size: 13px;
     line-height: 1.45;
   }
 
   .ds-tip-row strong {
-    color: #f8fafc;
+    color: var(--text-main, #f8fafc);
   }
 
   .ds-section-header {
@@ -463,7 +468,7 @@ const debtStrategyCss = `
 
   .ds-section-header h2 {
     margin: 0;
-    color: #f8fafc;
+    color: var(--text-main, #f8fafc);
     font-size: 22px;
     letter-spacing: -0.03em;
   }
@@ -475,11 +480,11 @@ const debtStrategyCss = `
   }
 
   .ds-badge {
-    border: 1px solid rgba(34, 211, 238, 0.25);
+    border: 1px solid color-mix(in srgb, var(--accent, #22d3ee) 35%, transparent);
     border-radius: 999px;
     padding: 7px 10px;
-    background: rgba(34, 211, 238, 0.1);
-    color: #67e8f9;
+    background: color-mix(in srgb, var(--accent, #22d3ee) 14%, transparent);
+    color: var(--accent, #67e8f9);
     font-size: 12px;
     font-weight: 900;
     white-space: nowrap;
@@ -494,9 +499,9 @@ const debtStrategyCss = `
   .ds-liability-card,
   .ds-payoff-item {
     min-width: 0;
-    border: 1px solid rgba(148, 163, 184, 0.14);
+    border: 1px solid var(--border-main, rgba(148, 163, 184, 0.14));
     border-radius: 16px;
-    background: rgba(2, 6, 23, 0.4);
+    background: var(--bg-card-soft, rgba(2, 6, 23, 0.4));
   }
 
   .ds-liability-card {
@@ -505,7 +510,7 @@ const debtStrategyCss = `
 
   .ds-liability-name {
     margin-bottom: 12px;
-    color: #f8fafc;
+    color: var(--text-main, #f8fafc);
     font-size: 15px;
     font-weight: 900;
     overflow-wrap: anywhere;
@@ -516,12 +521,12 @@ const debtStrategyCss = `
     justify-content: space-between;
     gap: 10px;
     margin-top: 7px;
-    color: #cbd5e1;
+    color: var(--text-muted, #cbd5e1);
     font-size: 13px;
   }
 
   .ds-liability-meta strong {
-    color: #f8fafc;
+    color: var(--text-main, #f8fafc);
   }
 
   .ds-summary-grid {
@@ -544,7 +549,7 @@ const debtStrategyCss = `
   }
 
   .ds-summary-card strong {
-    color: #f8fafc;
+    color: var(--text-main, #f8fafc);
     font-size: clamp(19px, 2.2vw, 27px);
     line-height: 1.1;
     letter-spacing: -0.04em;
@@ -552,11 +557,11 @@ const debtStrategyCss = `
   }
 
   .ds-summary-card strong.is-red {
-    color: #fb7185;
+    color: var(--danger, #fb7185);
   }
 
   .ds-summary-card strong.is-green {
-    color: #22c55e;
+    color: var(--success, #22c55e);
   }
 
   .ds-payoff-grid {
@@ -579,13 +584,13 @@ const debtStrategyCss = `
     border-radius: 999px;
     display: grid;
     place-items: center;
-    background: #2563eb;
-    color: #f8fafc;
+    background: var(--accent, #2563eb);
+    color: var(--text-main, #f8fafc);
     font-weight: 900;
   }
 
   .ds-payoff-name {
-    color: #f8fafc;
+    color: var(--text-main, #f8fafc);
     font-weight: 900;
     overflow-wrap: anywhere;
   }
@@ -600,9 +605,9 @@ const debtStrategyCss = `
     width: 100%;
     max-width: 100%;
     overflow-x: auto;
-    border: 1px solid rgba(148, 163, 184, 0.12);
+    border: 1px solid var(--border-soft, rgba(148, 163, 184, 0.12));
     border-radius: 16px;
-    background: rgba(2, 6, 23, 0.25);
+    background: var(--bg-card-soft, rgba(2, 6, 23, 0.25));
   }
 
   .ds-table-wrap table {
@@ -621,7 +626,7 @@ const debtStrategyCss = `
   }
 
   .ds-table-wrap th {
-    color: #cbd5e1;
+    color: var(--text-muted, #cbd5e1);
     font-size: 12px;
     font-weight: 900;
     letter-spacing: 0.02em;
@@ -629,7 +634,7 @@ const debtStrategyCss = `
   }
 
   .ds-table-wrap td {
-    color: #f8fafc;
+    color: var(--text-main, #f8fafc);
   }
 
   .ds-table-wrap tbody tr:last-child td {
@@ -650,15 +655,15 @@ const debtStrategyCss = `
   }
 
   .ds-empty {
-    border: 1px dashed rgba(148, 163, 184, 0.22);
-    color: #cbd5e1;
-    background: rgba(2, 6, 23, 0.25);
+    border: 1px dashed var(--border-main, rgba(148, 163, 184, 0.22));
+    color: var(--text-muted, #cbd5e1);
+    background: var(--bg-card-soft, rgba(2, 6, 23, 0.25));
   }
 
   .ds-error {
-    border: 1px solid rgba(248, 113, 113, 0.28);
-    background: rgba(239, 68, 68, 0.1);
-    color: #fecaca;
+    border: 1px solid color-mix(in srgb, var(--danger, #f87171) 40%, transparent);
+    background: color-mix(in srgb, var(--danger, #ef4444) 12%, transparent);
+    color: var(--danger, #fecaca);
   }
 
   @media (max-width: 1100px) {

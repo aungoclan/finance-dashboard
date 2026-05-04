@@ -104,10 +104,11 @@ export default function DebtPayoffPage() {
 
   return (
     <div>
+      <style>{debtPayoffCss}</style>
       <div style={headerRowStyle}>
         <div>
           <h1 style={{ marginBottom: '8px' }}>Debt Payoff Calculator</h1>
-          <p style={{ marginTop: 0, color: '#d1d5db' }}>
+          <p style={{ marginTop: 0, color: 'var(--text-muted, #d1d5db)' }}>
             Estimate how long it will take to pay off a debt using APR, minimum payment, and extra monthly payment.
           </p>
         </div>
@@ -120,9 +121,10 @@ export default function DebtPayoffPage() {
       {message && <div style={messageStyle}>{message}</div>}
 
       <div
+        className="debt-payoff-main-grid"
         style={{
           display: 'grid',
-          gridTemplateColumns: '380px 1fr',
+          gridTemplateColumns: 'minmax(320px, 380px) minmax(0, 1fr)',
           gap: '24px',
           marginTop: '24px'
         }}
@@ -255,7 +257,7 @@ export default function DebtPayoffPage() {
 
                 <div style={summaryCardStyle}>
                   <div style={summaryLabelStyle}>Total Interest Paid</div>
-                  <div style={{ ...summaryValueStyle, color: '#ef4444' }}>
+                  <div style={{ ...summaryValueStyle, color: 'var(--danger, #ef4444)' }}>
                     ${formatMoney(result.totalInterestPaid)}
                   </div>
                 </div>
@@ -267,7 +269,7 @@ export default function DebtPayoffPage() {
 
                 <div style={summaryCardStyle}>
                   <div style={summaryLabelStyle}>Extra Monthly Payment</div>
-                  <div style={{ ...summaryValueStyle, color: '#22c55e' }}>
+                  <div style={{ ...summaryValueStyle, color: 'var(--success, #22c55e)' }}>
                     ${formatMoney(result.extraPayment)}
                   </div>
                 </div>
@@ -314,6 +316,20 @@ export default function DebtPayoffPage() {
   )
 }
 
+
+const debtPayoffCss = `
+  select option {
+    background: var(--bg-card, #111827);
+    color: var(--text-main, #f8fafc);
+  }
+
+  @media (max-width: 980px) {
+    .debt-payoff-main-grid {
+      grid-template-columns: 1fr !important;
+    }
+  }
+`
+
 const headerRowStyle = {
   display: 'flex',
   justifyContent: 'space-between',
@@ -326,8 +342,8 @@ const refreshButtonStyle = {
   padding: '10px 14px',
   border: 'none',
   borderRadius: '10px',
-  background: '#2563eb',
-  color: 'white',
+  background: 'var(--button-bg, #2563eb)',
+  color: 'var(--button-text, white)',
   cursor: 'pointer'
 }
 
@@ -335,13 +351,14 @@ const messageStyle = {
   marginTop: '16px',
   padding: '12px',
   borderRadius: '10px',
-  background: '#1f2937',
-  border: '1px solid #374151',
-  color: '#f3f4f6'
+  background: 'var(--bg-card, #1f2937)',
+  border: '1px solid var(--border-main, #374151)',
+  color: 'var(--text-main, #f3f4f6)'
 }
 
 const cardStyle = {
-  background: '#1f2937',
+  background: 'var(--bg-card, #1f2937)',
+  border: '1px solid var(--border-main, #374151)',
   padding: '20px',
   borderRadius: '12px'
 }
@@ -359,13 +376,13 @@ const inputStyle = {
   width: '100%',
   padding: '10px 12px',
   borderRadius: '8px',
-  border: '1px solid #4b5563',
-  background: '#111827',
-  color: 'white'
+  border: '1px solid var(--border-main, #4b5563)',
+  background: 'var(--bg-input, var(--bg-card-soft, #111827))',
+  color: 'var(--text-main, white)'
 }
 
 const helperTextStyle = {
-  color: '#d1d5db',
+  color: 'var(--text-muted, #d1d5db)',
   fontSize: '14px',
   marginTop: '8px'
 }
@@ -374,12 +391,12 @@ const selectedCardStyle = {
   marginTop: '20px',
   padding: '14px',
   borderRadius: '10px',
-  background: '#111827',
-  border: '1px solid #374151'
+  background: 'var(--bg-card-soft, #111827)',
+  border: '1px solid var(--border-main, #374151)'
 }
 
 const mutedText = {
-  color: '#d1d5db',
+  color: 'var(--text-muted, #d1d5db)',
   fontSize: '14px',
   marginTop: '6px'
 }
@@ -389,23 +406,24 @@ const errorBoxStyle = {
   borderRadius: '10px',
   background: 'rgba(239, 68, 68, 0.12)',
   border: '1px solid rgba(239, 68, 68, 0.35)',
-  color: '#fca5a5'
+  color: 'var(--danger, #fca5a5)'
 }
 
 const summaryGridStyle = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(4, 1fr)',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
   gap: '16px'
 }
 
 const summaryCardStyle = {
-  background: '#1f2937',
+  background: 'var(--bg-card, #1f2937)',
+  border: '1px solid var(--border-main, #374151)',
   padding: '20px',
   borderRadius: '12px'
 }
 
 const summaryLabelStyle = {
-  color: '#d1d5db',
+  color: 'var(--text-muted, #d1d5db)',
   fontSize: '14px',
   marginBottom: '10px'
 }
@@ -413,7 +431,7 @@ const summaryLabelStyle = {
 const summaryValueStyle = {
   fontSize: '24px',
   fontWeight: 700,
-  color: 'white'
+  color: 'var(--text-main, white)'
 }
 
 const tableStyle = {
@@ -424,8 +442,8 @@ const tableStyle = {
 const thStyle = {
   textAlign: 'left',
   padding: '12px',
-  borderBottom: '1px solid #374151',
-  color: '#d1d5db',
+  borderBottom: '1px solid var(--border-main, #374151)',
+  color: 'var(--text-muted, #d1d5db)',
   fontWeight: 600,
   fontSize: '14px',
   whiteSpace: 'nowrap'
@@ -433,8 +451,8 @@ const thStyle = {
 
 const tdStyle = {
   padding: '12px',
-  borderBottom: '1px solid #374151',
-  color: 'white',
+  borderBottom: '1px solid var(--border-main, #374151)',
+  color: 'var(--text-main, white)',
   fontSize: '14px',
   whiteSpace: 'nowrap'
 }
