@@ -165,12 +165,12 @@ export default function PortfolioIntelligencePanel({ holdings = [] }) {
 function InsightCard({ title, value, detail, tone }) {
   const color =
     tone === 'green'
-      ? '#22c55e'
+      ? 'var(--success)'
       : tone === 'red'
-        ? '#ef4444'
+        ? 'var(--danger)'
         : tone === 'yellow'
-          ? '#f59e0b'
-          : '#60a5fa'
+          ? 'var(--warning)'
+          : 'var(--accent)'
 
   return (
     <div style={cardStyle}>
@@ -196,11 +196,13 @@ function formatPercent(value) {
 }
 
 const panelStyle = {
-  background: '#111827',
+  background: 'var(--bg-card)',
   borderRadius: '20px',
   padding: '20px',
-  border: '1px solid rgba(255,255,255,0.08)',
-  marginBottom: '22px'
+  border: '1px solid var(--border-main)',
+  marginBottom: '22px',
+  boxShadow: 'var(--shadow-card)',
+  color: 'var(--text-main)'
 }
 
 const headerStyle = {
@@ -210,15 +212,16 @@ const headerStyle = {
 const titleStyle = {
   margin: 0,
   fontSize: '22px',
-  fontWeight: 800,
-  color: '#f9fafb'
+  fontWeight: 900,
+  color: 'var(--text-main)'
 }
 
 const subtitleStyle = {
   marginTop: '6px',
   marginBottom: 0,
-  color: '#94a3b8',
-  fontSize: '14px'
+  color: 'var(--text-muted)',
+  fontSize: '14px',
+  lineHeight: 1.45
 }
 
 const gridStyle = {
@@ -229,16 +232,17 @@ const gridStyle = {
 }
 
 const cardStyle = {
-  background: '#0f172a',
+  background: 'var(--bg-card-soft)',
   borderRadius: '16px',
   padding: '16px',
-  border: '1px solid rgba(255,255,255,0.08)'
+  border: '1px solid var(--border-main)',
+  color: 'var(--text-main)'
 }
 
 const labelStyle = {
-  color: '#94a3b8',
+  color: 'var(--text-muted)',
   fontSize: '12px',
-  fontWeight: 800,
+  fontWeight: 850,
   textTransform: 'uppercase',
   letterSpacing: '0.05em'
 }
@@ -246,12 +250,12 @@ const labelStyle = {
 const valueStyle = {
   marginTop: '8px',
   fontSize: '24px',
-  fontWeight: 900
+  fontWeight: 950
 }
 
 const detailStyle = {
   marginTop: '6px',
-  color: '#cbd5e1',
+  color: 'var(--text-soft)',
   fontSize: '13px'
 }
 
@@ -262,7 +266,8 @@ const allocationBoxStyle = {
 const sectionTitleStyle = {
   margin: '0 0 14px 0',
   fontSize: '16px',
-  color: '#f9fafb'
+  color: 'var(--text-main)',
+  fontWeight: 900
 }
 
 const allocationListStyle = {
@@ -282,25 +287,27 @@ const allocationTopStyle = {
 }
 
 const assetTypeStyle = {
-  color: '#f9fafb',
-  fontWeight: 800
+  color: 'var(--text-main)',
+  fontWeight: 900
 }
 
 const allocationValueStyle = {
-  color: '#cbd5e1',
-  fontSize: '13px'
+  color: 'var(--text-soft)',
+  fontSize: '13px',
+  fontWeight: 700
 }
 
 const barTrackStyle = {
   height: '10px',
-  background: '#1f2937',
+  background: 'var(--bg-input)',
   borderRadius: '999px',
-  overflow: 'hidden'
+  overflow: 'hidden',
+  border: '1px solid var(--border-faint)'
 }
 
 const barFillStyle = {
   height: '100%',
-  background: 'linear-gradient(90deg, #2563eb, #22c55e)',
+  background: 'linear-gradient(90deg, var(--accent), var(--success))',
   borderRadius: '999px'
 }
 
@@ -308,13 +315,14 @@ const warningStyle = {
   marginTop: '18px',
   padding: '14px',
   borderRadius: '14px',
-  background: 'rgba(245,158,11,0.12)',
-  border: '1px solid rgba(245,158,11,0.3)',
-  color: '#fde68a',
-  fontSize: '14px'
+  background: 'var(--warning-soft)',
+  border: '1px solid color-mix(in srgb, var(--warning) 34%, transparent)',
+  color: 'var(--warning)',
+  fontSize: '14px',
+  fontWeight: 800
 }
 
 const emptyStyle = {
-  color: '#94a3b8',
+  color: 'var(--text-muted)',
   fontSize: '14px'
 }

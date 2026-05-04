@@ -4,11 +4,32 @@ import Sidebar from './Sidebar'
 import ErrorBoundary from './ErrorBoundary'
 import { supabase } from '../lib/supabase'
 import { APP_ROUTES } from '../lib/routes'
+import { loadUserSettings } from '../lib/appSettings'
+import { applyTheme, loadLocalTheme } from '../lib/theme'
 
 export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
+
+
+  useEffect(() => {
+    let cancelled = false
+
+    applyTheme(loadLocalTheme())
+
+    loadUserSettings()
+      .then((settings) => {
+        if (!cancelled) applyTheme(settings.uiTheme)
+      })
+      .catch((err) => {
+        console.warn('Unable to load saved theme:', err?.message || err)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     setIsMobileNavOpen(false)

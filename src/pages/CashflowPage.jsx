@@ -340,14 +340,14 @@ export default function CashflowPage() {
         : `Period: ${startDate} to ${endDate} (exclusive)`
 
   return (
-    <div>
+    <div style={pageStyle}>
       <div style={headerRowStyle}>
         <div>
           <h1 style={{ marginBottom: '8px' }}>Cashflow</h1>
-          <p style={{ marginTop: 0, color: '#d1d5db' }}>
+          <p style={{ marginTop: 0, color: 'var(--text-muted)' }}>
             Track income and expenses with database-backed categories plus transaction detail.
           </p>
-          <div style={{ color: '#9ca3af', fontSize: '14px', marginTop: '8px' }}>
+          <div style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '8px' }}>
             {viewDescription}
           </div>
         </div>
@@ -386,7 +386,7 @@ export default function CashflowPage() {
           <div style={summaryLabelStyle}>
             {viewMode === VIEW_MODES.CURRENT_MONTH ? 'Monthly Income' : 'Visible Income'}
           </div>
-          <div style={{ ...summaryValueStyle, color: '#22c55e' }}>
+          <div style={{ ...summaryValueStyle, color: 'var(--success)' }}>
             ${formatMoney(summary.totalIncome)}
           </div>
         </div>
@@ -395,7 +395,7 @@ export default function CashflowPage() {
           <div style={summaryLabelStyle}>
             {viewMode === VIEW_MODES.CURRENT_MONTH ? 'Monthly Expenses' : 'Visible Expenses'}
           </div>
-          <div style={{ ...summaryValueStyle, color: '#ef4444' }}>
+          <div style={{ ...summaryValueStyle, color: 'var(--danger)' }}>
             ${formatMoney(summary.totalExpenses)}
           </div>
         </div>
@@ -407,7 +407,7 @@ export default function CashflowPage() {
           <div
             style={{
               ...summaryValueStyle,
-              color: summary.netCashflow >= 0 ? '#22c55e' : '#ef4444'
+              color: summary.netCashflow >= 0 ? 'var(--success)' : 'var(--danger)'
             }}
           >
             ${formatMoney(summary.netCashflow)}
@@ -422,7 +422,7 @@ export default function CashflowPage() {
             <div style={entriesHeaderStyle}>
               <div>
                 <h2 style={{ marginTop: 0, marginBottom: '6px' }}>{viewTitle}</h2>
-                <div style={{ color: '#9ca3af', fontSize: '14px' }}>
+                <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
                   {entries.length} visible entr{entries.length === 1 ? 'y' : 'ies'}
                 </div>
               </div>
@@ -452,7 +452,7 @@ export default function CashflowPage() {
                         <td
                           style={{
                             ...tdStyle,
-                            color: entry.type === 'income' ? '#22c55e' : '#ef4444'
+                            color: entry.type === 'income' ? 'var(--success)' : 'var(--danger)'
                           }}
                         >
                           {entry.type}
@@ -636,7 +636,7 @@ export default function CashflowPage() {
                   {expenseCategories.map((item) => (
                     <div key={item.category} style={categoryRowStyle}>
                       <span>{item.category}</span>
-                      <strong style={{ color: '#ef4444' }}>
+                      <strong style={{ color: 'var(--danger)' }}>
                         ${formatMoney(item.total)}
                       </strong>
                     </div>
@@ -655,7 +655,7 @@ export default function CashflowPage() {
                   {incomeCategories.map((item) => (
                     <div key={item.category} style={categoryRowStyle}>
                       <span>{item.category}</span>
-                      <strong style={{ color: '#22c55e' }}>
+                      <strong style={{ color: 'var(--success)' }}>
                         ${formatMoney(item.total)}
                       </strong>
                     </div>
@@ -670,22 +670,29 @@ export default function CashflowPage() {
   )
 }
 
+const pageStyle = {
+  color: 'var(--text-main)'
+}
+
 const headerRowStyle = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
   gap: '16px',
-  marginBottom: '16px'
+  marginBottom: '16px',
+  flexWrap: 'wrap'
 }
 
 const refreshButtonStyle = {
   padding: '10px 14px',
-  border: 'none',
+  border: '1px solid var(--accent)',
   borderRadius: '10px',
-  background: '#2563eb',
-  color: 'white',
+  background: 'var(--accent)',
+  color: '#ffffff',
   cursor: 'pointer',
-  whiteSpace: 'nowrap'
+  whiteSpace: 'nowrap',
+  fontWeight: 800,
+  boxShadow: 'var(--shadow-soft)'
 }
 
 const viewModeRowStyle = {
@@ -697,18 +704,20 @@ const viewModeRowStyle = {
 
 const viewButtonStyle = {
   padding: '10px 14px',
-  border: '1px solid #374151',
+  border: '1px solid var(--border-main)',
   borderRadius: '10px',
-  background: '#111827',
-  color: '#d1d5db',
-  cursor: 'pointer'
+  background: 'var(--bg-card)',
+  color: 'var(--text-muted)',
+  cursor: 'pointer',
+  fontWeight: 700
 }
 
 const activeViewButtonStyle = {
   ...viewButtonStyle,
-  border: '1px solid #60a5fa',
-  background: '#1d4ed8',
-  color: 'white'
+  border: '1px solid var(--accent)',
+  background: 'var(--accent)',
+  color: '#ffffff',
+  boxShadow: 'var(--shadow-soft)'
 }
 
 const summaryGridStyle = {
@@ -718,31 +727,33 @@ const summaryGridStyle = {
 }
 
 const summaryCardStyle = {
-  background: '#1f2937',
+  background: 'var(--bg-card)',
   padding: '20px',
-  borderRadius: '12px',
-  minWidth: 0
+  borderRadius: '14px',
+  minWidth: 0,
+  border: '1px solid var(--border-main)',
+  boxShadow: 'var(--shadow-card)'
 }
 
 const summaryLabelStyle = {
-  color: '#d1d5db',
+  color: 'var(--text-muted)',
   fontSize: '14px',
   marginBottom: '10px'
 }
 
 const summaryValueStyle = {
   fontSize: '26px',
-  fontWeight: 700,
-  color: 'white'
+  fontWeight: 800,
+  color: 'var(--text-main)'
 }
 
 const messageStyle = {
   marginTop: '16px',
   padding: '12px',
   borderRadius: '10px',
-  background: '#1f2937',
-  border: '1px solid #374151',
-  color: '#f3f4f6'
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-main)',
+  color: 'var(--text-main)'
 }
 
 const entriesFullWidthSectionStyle = {
@@ -758,10 +769,13 @@ const mainGridStyle = {
 }
 
 const cardStyle = {
-  background: '#1f2937',
+  background: 'var(--bg-card)',
   padding: '20px',
-  borderRadius: '12px',
-  minWidth: 0
+  borderRadius: '14px',
+  minWidth: 0,
+  border: '1px solid var(--border-main)',
+  boxShadow: 'var(--shadow-card)',
+  color: 'var(--text-main)'
 }
 
 const rightStackStyle = {
@@ -812,21 +826,24 @@ const fieldStyle = {
 
 const labelStyle = {
   display: 'block',
-  marginBottom: '8px'
+  marginBottom: '8px',
+  color: 'var(--text-main)',
+  fontWeight: 750
 }
 
 const inputStyle = {
   width: '100%',
   boxSizing: 'border-box',
   padding: '10px 12px',
-  borderRadius: '8px',
-  border: '1px solid #4b5563',
-  background: '#111827',
-  color: 'white'
+  borderRadius: '10px',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)',
+  outline: 'none'
 }
 
 const helperTextStyle = {
-  color: '#9ca3af',
+  color: 'var(--text-muted)',
   fontSize: '12px',
   marginTop: '7px',
   lineHeight: 1.45
@@ -835,20 +852,23 @@ const helperTextStyle = {
 const buttonStyle = {
   width: '100%',
   padding: '12px',
-  border: 'none',
-  borderRadius: '8px',
-  background: '#2563eb',
-  color: 'white',
-  cursor: 'pointer'
+  border: '1px solid var(--accent)',
+  borderRadius: '10px',
+  background: 'var(--accent)',
+  color: '#ffffff',
+  cursor: 'pointer',
+  fontWeight: 850,
+  boxShadow: 'var(--shadow-soft)'
 }
 
 const secondaryButtonStyle = {
   padding: '10px 12px',
-  border: 'none',
-  borderRadius: '8px',
-  background: '#4b5563',
-  color: 'white',
-  cursor: 'pointer'
+  border: '1px solid var(--border-main)',
+  borderRadius: '10px',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)',
+  cursor: 'pointer',
+  fontWeight: 800
 }
 
 const tableStyle = {
@@ -860,21 +880,21 @@ const tableStyle = {
 const thStyle = {
   textAlign: 'left',
   padding: '12px',
-  borderBottom: '1px solid #374151',
-  color: '#d1d5db',
-  fontWeight: 600,
+  borderBottom: '1px solid var(--border-main)',
+  color: 'var(--text-muted)',
+  fontWeight: 800,
   fontSize: '14px',
   whiteSpace: 'nowrap',
   position: 'sticky',
   top: 0,
   zIndex: 2,
-  background: '#1f2937'
+  background: 'var(--bg-card)'
 }
 
 const tdStyle = {
   padding: '12px',
-  borderBottom: '1px solid #374151',
-  color: 'white',
+  borderBottom: '1px solid var(--border-soft)',
+  color: 'var(--text-main)',
   fontSize: '14px',
   whiteSpace: 'nowrap',
   verticalAlign: 'top'
@@ -892,9 +912,10 @@ const categoryRowStyle = {
   alignItems: 'center',
   gap: '12px',
   padding: '12px',
-  background: '#111827',
+  background: 'var(--bg-card-soft)',
   borderRadius: '10px',
-  border: '1px solid #374151'
+  border: '1px solid var(--border-main)',
+  color: 'var(--text-main)'
 }
 
 const categoryCellStyle = {
@@ -905,7 +926,7 @@ const categoryCellStyle = {
 
 const descriptionTextStyle = {
   marginTop: '5px',
-  color: '#93c5fd',
+  color: 'var(--accent)',
   fontSize: '12px',
   fontWeight: 650
 }
@@ -914,9 +935,9 @@ const legacyBadgeStyle = {
   display: 'inline-block',
   padding: '4px 7px',
   borderRadius: '999px',
-  background: 'rgba(245, 158, 11, 0.14)',
-  color: '#fde68a',
-  border: '1px solid rgba(245, 158, 11, 0.32)',
+  background: 'var(--warning-soft)',
+  color: 'var(--warning)',
+  border: '1px solid var(--warning)',
   fontSize: '11px',
   fontWeight: 700
 }
@@ -928,23 +949,25 @@ const actionRowStyle = {
 
 const editButtonStyle = {
   padding: '8px 10px',
-  border: 'none',
+  border: '1px solid var(--accent)',
   borderRadius: '8px',
-  background: '#2563eb',
-  color: 'white',
-  cursor: 'pointer'
+  background: 'var(--accent)',
+  color: '#ffffff',
+  cursor: 'pointer',
+  fontWeight: 800
 }
 
 const deleteButtonStyle = {
   padding: '8px 10px',
-  border: 'none',
+  border: '1px solid var(--danger)',
   borderRadius: '8px',
-  background: '#dc2626',
+  background: 'var(--danger)',
   color: 'white',
-  cursor: 'pointer'
+  cursor: 'pointer',
+  fontWeight: 800
 }
 
 const unassignedTextStyle = {
-  color: '#fbbf24',
+  color: 'var(--warning)',
   fontWeight: 700
 }

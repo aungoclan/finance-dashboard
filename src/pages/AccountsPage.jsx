@@ -1810,7 +1810,7 @@ export default function AccountsPage() {
 
 function StatCard({ label, value, sub, tone }) {
   const color =
-    tone === 'good' ? '#86efac' : tone === 'bad' ? '#fca5a5' : tone === 'warn' ? '#fde68a' : '#ffffff'
+    tone === 'good' ? 'var(--success)' : tone === 'bad' ? 'var(--danger)' : tone === 'warn' ? 'var(--warning)' : 'var(--text-main)'
 
   return (
     <div style={statCardStyle}>
@@ -2105,7 +2105,7 @@ function AccountCard({
 }
 
 function Metric({ label, value, sub, tone }) {
-  const color = tone === 'good' ? '#86efac' : tone === 'bad' ? '#fca5a5' : '#ffffff'
+  const color = tone === 'good' ? 'var(--success)' : tone === 'bad' ? 'var(--danger)' : 'var(--text-main)'
 
   return (
     <div style={metricStyle}>
@@ -2123,8 +2123,10 @@ const pageHeaderStyle = {
   gap: '16px',
   padding: '22px 24px',
   borderRadius: '16px',
-  background: '#111827',
-  border: '1px solid #334155'
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border-main)',
+  boxShadow: 'var(--shadow-card)',
+  color: 'var(--text-main)'
 }
 
 const headerActionsStyle = {
@@ -2138,7 +2140,7 @@ const headerActionsStyle = {
 const monthLabelStyle = {
   display: 'grid',
   gap: '7px',
-  color: '#bfdbfe',
+  color: 'var(--text-soft)',
   fontSize: '13px',
   fontWeight: 800
 }
@@ -2146,14 +2148,14 @@ const monthLabelStyle = {
 const monthInputStyle = {
   padding: '10px 12px',
   borderRadius: '10px',
-  border: '1px solid #4b5563',
-  background: '#0b1220',
-  color: '#ffffff',
+  border: '1px solid var(--border-soft)',
+  background: 'var(--bg-elevated)',
+  color: 'var(--text-main)',
   fontWeight: 800
 }
 
 const eyebrowStyle = {
-  color: '#93c5fd',
+  color: 'var(--accent)',
   fontWeight: 800,
   textTransform: 'uppercase',
   letterSpacing: '0.14em',
@@ -2169,16 +2171,16 @@ const titleStyle = {
 
 const subtitleStyle = {
   margin: '12px 0 0',
-  color: '#bfdbfe',
+  color: 'var(--text-soft)',
   lineHeight: 1.45
 }
 
 const refreshButtonStyle = {
   padding: '10px 14px',
   borderRadius: '10px',
-  border: '1px solid #315b9e',
-  background: 'rgba(37, 99, 235, 0.16)',
-  color: '#ffffff',
+  border: '1px solid var(--accent)',
+  background: 'var(--accent-soft)',
+  color: 'var(--accent-strong)',
   fontWeight: 800,
   cursor: 'pointer'
 }
@@ -2187,9 +2189,9 @@ const messageStyle = {
   marginTop: '16px',
   padding: '12px 14px',
   borderRadius: '10px',
-  background: '#111827',
-  border: '1px solid #60a5fa',
-  color: '#dbeafe'
+  background: 'var(--bg-card)',
+  border: '1px solid var(--accent)',
+  color: 'var(--text-soft)'
 }
 
 const warningGridStyle = {
@@ -2202,17 +2204,17 @@ const warningGridStyle = {
 const warnWarningStyle = {
   padding: '13px 14px',
   borderRadius: '12px',
-  background: 'rgba(245, 158, 11, 0.12)',
-  border: '1px solid rgba(245, 158, 11, 0.3)',
-  color: '#fde68a',
+  background: 'var(--warning-soft)',
+  border: '1px solid color-mix(in srgb, var(--warning) 34%, transparent)',
+  color: 'var(--warning)',
   lineHeight: 1.45
 }
 
 const badWarningStyle = {
   ...warnWarningStyle,
-  background: 'rgba(239, 68, 68, 0.12)',
-  border: '1px solid rgba(239, 68, 68, 0.3)',
-  color: '#fecaca'
+  background: 'var(--danger-soft)',
+  border: '1px solid color-mix(in srgb, var(--danger) 34%, transparent)',
+  color: 'var(--danger)'
 }
 
 const summaryGridStyle = {
@@ -2225,13 +2227,15 @@ const summaryGridStyle = {
 const statCardStyle = {
   padding: '18px',
   borderRadius: '14px',
-  background: '#111827',
-  border: '1px solid #26354d',
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border-main)',
+  boxShadow: 'var(--shadow-soft)',
+  color: 'var(--text-main)',
   minWidth: 0
 }
 
 const statLabelStyle = {
-  color: '#9fb1cc',
+  color: 'var(--text-muted)',
   fontSize: '14px'
 }
 
@@ -2244,7 +2248,7 @@ const statValueStyle = {
 
 const statSubStyle = {
   marginTop: '8px',
-  color: '#9fb1cc',
+  color: 'var(--text-muted)',
   fontSize: '13px',
   lineHeight: 1.35
 }
@@ -2274,12 +2278,12 @@ const sectionHeaderStyle = {
 const pillStyle = {
   padding: '7px 10px',
   borderRadius: '999px',
-  background: 'rgba(59, 130, 246, 0.12)',
-  color: '#bfdbfe',
+  background: 'var(--accent-soft)',
+  color: 'var(--text-soft)',
   fontSize: '12px',
   fontWeight: 850,
   whiteSpace: 'nowrap',
-  border: '1px solid rgba(96, 165, 250, 0.28)'
+  border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)'
 }
 
 const issueGridStyle = {
@@ -2291,25 +2295,25 @@ const issueGridStyle = {
 const issueWarnStyle = {
   padding: '12px',
   borderRadius: '10px',
-  background: 'rgba(245, 158, 11, 0.1)',
-  border: '1px solid rgba(245, 158, 11, 0.28)',
-  color: '#fde68a',
+  background: 'var(--warning-soft)',
+  border: '1px solid color-mix(in srgb, var(--warning) 30%, transparent)',
+  color: 'var(--warning)',
   lineHeight: 1.4
 }
 
 const issueBadStyle = {
   ...issueWarnStyle,
-  background: 'rgba(239, 68, 68, 0.1)',
-  border: '1px solid rgba(239, 68, 68, 0.28)',
-  color: '#fecaca'
+  background: 'var(--danger-soft)',
+  border: '1px solid color-mix(in srgb, var(--danger) 30%, transparent)',
+  color: 'var(--danger)'
 }
 
 const goodNoticeStyle = {
   padding: '12px',
   borderRadius: '10px',
-  background: 'rgba(34, 197, 94, 0.1)',
-  border: '1px solid rgba(34, 197, 94, 0.28)',
-  color: '#bbf7d0',
+  background: 'var(--success-soft)',
+  border: '1px solid color-mix(in srgb, var(--success) 30%, transparent)',
+  color: 'var(--success)',
   marginBottom: '14px',
   lineHeight: 1.4
 }
@@ -2317,21 +2321,22 @@ const goodNoticeStyle = {
 const tableWrapStyle = {
   overflowX: 'auto',
   borderRadius: '12px',
-  border: '1px solid #334155'
+  border: '1px solid var(--border-main)'
 }
 
 const tableStyle = {
   width: '100%',
   borderCollapse: 'collapse',
   minWidth: '820px',
-  background: '#0b1220'
+  background: 'var(--bg-elevated)',
+  color: 'var(--text-main)'
 }
 
 const thStyle = {
   textAlign: 'left',
   padding: '12px',
-  borderBottom: '1px solid #334155',
-  color: '#bfdbfe',
+  borderBottom: '1px solid var(--border-main)',
+  color: 'var(--text-soft)',
   fontSize: '12px',
   textTransform: 'uppercase',
   letterSpacing: '0.08em'
@@ -2344,7 +2349,7 @@ const thRightStyle = {
 
 const tdStyle = {
   padding: '12px',
-  borderBottom: '1px solid #1f2937',
+  borderBottom: '1px solid var(--border-faint)',
   verticalAlign: 'top'
 }
 
@@ -2357,21 +2362,21 @@ const tdRightStyle = {
 const emptyTdStyle = {
   ...tdStyle,
   textAlign: 'center',
-  color: '#94a3b8',
+  color: 'var(--text-muted)',
   padding: '22px'
 }
 
 const positiveTextStyle = {
-  color: '#86efac'
+  color: 'var(--success)'
 }
 
 const negativeTextStyle = {
-  color: '#fca5a5'
+  color: 'var(--danger)'
 }
 
 const miniReasonStyle = {
   marginTop: '6px',
-  color: '#cbd5e1',
+  color: 'var(--text-soft)',
   fontSize: '12px',
   lineHeight: 1.35
 }
@@ -2391,16 +2396,18 @@ const leftColumnStyle = {
 }
 
 const cardStyle = {
-  background: '#1f2937',
+  background: 'var(--bg-card)',
   padding: '20px',
   borderRadius: '12px',
-  border: '1px solid #374151',
+  border: '1px solid var(--border-main)',
+  boxShadow: 'var(--shadow-soft)',
+  color: 'var(--text-main)',
   minWidth: 0
 }
 
 const smallTextStyle = {
   margin: '8px 0 0',
-  color: '#bfdbfe',
+  color: 'var(--text-soft)',
   lineHeight: 1.45
 }
 
@@ -2419,15 +2426,15 @@ const inputStyle = {
   boxSizing: 'border-box',
   padding: '10px 12px',
   borderRadius: '8px',
-  border: '1px solid #4b5563',
-  background: '#111827',
-  color: 'white',
+  border: '1px solid var(--border-soft)',
+  background: 'var(--bg-elevated)',
+  color: 'var(--text-main)',
   fontSize: '15px'
 }
 
 const helperTextStyle = {
   marginTop: '7px',
-  color: '#9fb1cc',
+  color: 'var(--text-muted)',
   fontSize: '12px',
   lineHeight: 1.35
 }
@@ -2437,7 +2444,7 @@ const buttonStyle = {
   padding: '12px',
   border: 'none',
   borderRadius: '8px',
-  background: '#2563eb',
+  background: 'var(--accent)',
   color: 'white',
   cursor: 'pointer',
   fontWeight: 800,
@@ -2463,12 +2470,12 @@ const checkboxLabelStyle = {
   display: 'flex',
   alignItems: 'center',
   gap: '8px',
-  color: '#dbeafe',
+  color: 'var(--text-soft)',
   fontSize: '13px',
   padding: '10px 12px',
   borderRadius: '8px',
-  border: '1px solid #4b5563',
-  background: '#111827',
+  border: '1px solid var(--border-soft)',
+  background: 'var(--bg-card)',
   whiteSpace: 'nowrap'
 }
 
@@ -2495,12 +2502,12 @@ const accountPagerBarStyle = {
   flexWrap: 'wrap',
   padding: '12px 14px',
   borderRadius: '12px',
-  background: '#0b1220',
-  border: '1px solid #334155'
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border-main)'
 }
 
 const accountPagerLabelStyle = {
-  color: '#93c5fd',
+  color: 'var(--accent)',
   fontSize: '12px',
   fontWeight: 900,
   textTransform: 'uppercase',
@@ -2509,7 +2516,7 @@ const accountPagerLabelStyle = {
 
 const accountPagerNameStyle = {
   marginTop: '3px',
-  color: '#ffffff',
+  color: 'var(--text-main)',
   fontSize: '16px',
   fontWeight: 900
 }
@@ -2523,8 +2530,8 @@ const accountPagerActionsStyle = {
 const pagerButtonStyle = {
   padding: '9px 12px',
   borderRadius: '10px',
-  border: '1px solid #2563eb',
-  background: '#1d4ed8',
+  border: '1px solid var(--accent)',
+  background: 'var(--accent-strong)',
   color: '#ffffff',
   fontSize: '13px',
   fontWeight: 900,
@@ -2533,14 +2540,14 @@ const pagerButtonStyle = {
 
 const pagerButtonDisabledStyle = {
   ...pagerButtonStyle,
-  border: '1px solid #334155',
-  background: '#111827',
-  color: '#64748b',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card)',
+  color: 'var(--text-muted)',
   cursor: 'not-allowed'
 }
 
 const accountPagerHintStyle = {
-  color: '#9fb1cc',
+  color: 'var(--text-muted)',
   fontSize: '12px',
   lineHeight: 1.4
 }
@@ -2548,8 +2555,9 @@ const accountPagerHintStyle = {
 const accountItemStyle = {
   padding: '16px',
   borderRadius: '10px',
-  background: '#111827',
-  border: '1px solid #374151'
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border-main)',
+  color: 'var(--text-main)'
 }
 
 const accountTitleRowStyle = {
@@ -2566,15 +2574,15 @@ const accountNameStyle = {
 
 const accountMetaStyle = {
   marginTop: '6px',
-  color: '#d1d5db',
+  color: 'var(--text-soft)',
   fontSize: '14px'
 }
 
 const activeBadgeStyle = {
   padding: '5px 9px',
   borderRadius: '999px',
-  background: 'rgba(34, 197, 94, 0.12)',
-  color: '#86efac',
+  background: 'var(--success-soft)',
+  color: 'var(--success)',
   fontSize: '12px',
   fontWeight: 800,
   whiteSpace: 'nowrap'
@@ -2582,34 +2590,34 @@ const activeBadgeStyle = {
 
 const reviewBadgeStyle = {
   ...activeBadgeStyle,
-  background: 'rgba(245, 158, 11, 0.12)',
-  color: '#fde68a'
+  background: 'var(--warning-soft)',
+  color: 'var(--warning)'
 }
 
 const badBadgeStyle = {
   ...activeBadgeStyle,
-  background: 'rgba(239, 68, 68, 0.12)',
-  color: '#fecaca'
+  background: 'var(--danger-soft)',
+  color: 'var(--danger)'
 }
 
 const neutralBadgeStyle = {
   ...activeBadgeStyle,
-  background: 'rgba(148, 163, 184, 0.12)',
-  color: '#cbd5e1'
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-soft)'
 }
 
 const archivedBadgeStyle = {
   ...activeBadgeStyle,
-  background: 'rgba(148, 163, 184, 0.12)',
-  color: '#cbd5e1'
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-soft)'
 }
 
 const editBoxStyle = {
   marginTop: '14px',
   padding: '14px',
   borderRadius: '10px',
-  background: '#0b1220',
-  border: '1px solid #27364f'
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border-main)'
 }
 
 const editGridStyle = {
@@ -2637,35 +2645,36 @@ const smallButtonBaseStyle = {
 
 const smallPrimaryButtonStyle = {
   ...smallButtonBaseStyle,
-  border: '1px solid #2563eb',
-  background: '#2563eb'
+  border: '1px solid var(--accent)',
+  background: 'var(--accent)'
 }
 
 const smallGhostButtonStyle = {
   ...smallButtonBaseStyle,
-  border: '1px solid #475569',
-  background: '#111827'
+  border: '1px solid var(--border-soft)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)'
 }
 
 const smallWarnButtonStyle = {
   ...smallButtonBaseStyle,
-  border: '1px solid #92400e',
-  background: 'rgba(245, 158, 11, 0.16)',
-  color: '#fde68a'
+  border: '1px solid color-mix(in srgb, var(--warning) 45%, transparent)',
+  background: 'var(--warning-soft)',
+  color: 'var(--warning)'
 }
 
 const smallDangerButtonStyle = {
   ...smallButtonBaseStyle,
-  border: '1px solid #991b1b',
-  background: 'rgba(220, 38, 38, 0.18)',
-  color: '#fecaca'
+  border: '1px solid color-mix(in srgb, var(--danger) 45%, transparent)',
+  background: 'var(--danger-soft)',
+  color: 'var(--danger)'
 }
 
 const smallDisabledButtonStyle = {
   ...smallButtonBaseStyle,
-  border: '1px solid #334155',
-  background: '#111827',
-  color: '#64748b',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-muted)',
   cursor: 'not-allowed'
 }
 
@@ -2680,9 +2689,9 @@ const reviewChipStyle = {
   display: 'inline-block',
   padding: '5px 8px',
   borderRadius: '999px',
-  background: 'rgba(245, 158, 11, 0.12)',
-  border: '1px solid rgba(245, 158, 11, 0.28)',
-  color: '#fde68a',
+  background: 'var(--warning-soft)',
+  border: '1px solid color-mix(in srgb, var(--warning) 30%, transparent)',
+  color: 'var(--warning)',
   fontSize: '12px',
   fontWeight: 750
 }
@@ -2705,9 +2714,9 @@ const cashLedgerFormulaStyle = {
   marginTop: '12px',
   padding: '10px 12px',
   borderRadius: '12px',
-  background: '#111827',
-  border: '1px solid rgba(148, 163, 184, 0.22)',
-  color: '#cbd5e1',
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border-faint)',
+  color: 'var(--text-soft)',
   fontSize: '12px',
   lineHeight: 1.45
 }
@@ -2715,13 +2724,13 @@ const cashLedgerFormulaStyle = {
 const metricStyle = {
   padding: '10px',
   borderRadius: '8px',
-  background: '#0b1220',
-  border: '1px solid #27364f',
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border-main)',
   minWidth: 0
 }
 
 const metricLabelStyle = {
-  color: '#9fb1cc',
+  color: 'var(--text-muted)',
   fontSize: '12px'
 }
 
@@ -2733,13 +2742,13 @@ const metricValueStyle = {
 
 const metricSubStyle = {
   marginTop: '3px',
-  color: '#9fb1cc',
+  color: 'var(--text-muted)',
   fontSize: '12px'
 }
 
 const activityStyle = {
   marginTop: '12px',
-  color: '#9fb1cc',
+  color: 'var(--text-muted)',
   fontSize: '13px'
 }
 
@@ -2755,12 +2764,12 @@ const typeItemStyle = {
   gap: '12px',
   padding: '12px',
   borderRadius: '10px',
-  background: '#111827',
-  border: '1px solid #374151'
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border-main)'
 }
 
 const mutedStyle = {
-  color: '#d1d5db',
+  color: 'var(--text-soft)',
   marginTop: '4px',
   fontSize: '13px'
 }
@@ -2768,9 +2777,9 @@ const mutedStyle = {
 const emptyStyle = {
   padding: '18px',
   borderRadius: '10px',
-  background: '#111827',
-  border: '1px dashed #4b5563',
-  color: '#d1d5db'
+  background: 'var(--bg-card-soft)',
+  border: '1px dashed var(--border-soft)',
+  color: 'var(--text-soft)'
 }
 
 const cashWalletListStyle = {
@@ -2782,8 +2791,10 @@ const cashWalletListStyle = {
 const cashWalletItemStyle = {
   padding: '13px',
   borderRadius: '10px',
-  background: '#111827',
-  border: '1px solid #334155'
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border-main)',
+  boxShadow: 'var(--shadow-card)',
+  color: 'var(--text-main)'
 }
 
 const duplicateListStyle = {
@@ -2795,16 +2806,16 @@ const duplicateListStyle = {
 const duplicateItemStyle = {
   padding: '12px',
   borderRadius: '10px',
-  background: '#111827',
-  border: '1px solid rgba(245, 158, 11, 0.28)'
+  background: 'var(--bg-card)',
+  border: '1px solid color-mix(in srgb, var(--warning) 30%, transparent)'
 }
 
 
 const realDataGuardStyle = {
-  background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.18), rgba(15, 23, 42, 0.96))',
+  background: 'linear-gradient(135deg, var(--accent-soft), var(--bg-card))',
   padding: '20px',
   borderRadius: '14px',
-  border: '1px solid rgba(96, 165, 250, 0.32)',
+  border: '1px solid color-mix(in srgb, var(--accent) 34%, transparent)',
   minWidth: 0
 }
 
@@ -2826,9 +2837,9 @@ const guardRuleGridStyle = {
 const guardRuleStyle = {
   padding: '12px',
   borderRadius: '12px',
-  background: 'rgba(15, 23, 42, 0.72)',
-  border: '1px solid rgba(148, 163, 184, 0.18)',
-  color: '#dbeafe',
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-faint)',
+  color: 'var(--text-soft)',
   fontSize: '13px',
   lineHeight: 1.45,
   minWidth: 0
@@ -2838,9 +2849,9 @@ const guardWarningStyle = {
   marginTop: '12px',
   padding: '12px',
   borderRadius: '12px',
-  background: 'rgba(245, 158, 11, 0.11)',
-  border: '1px solid rgba(245, 158, 11, 0.28)',
-  color: '#fde68a',
+  background: 'var(--warning-soft)',
+  border: '1px solid color-mix(in srgb, var(--warning) 30%, transparent)',
+  color: 'var(--warning)',
   fontSize: '13px',
   lineHeight: 1.45
 }
@@ -2849,9 +2860,9 @@ const openingHintStyle = {
   marginTop: '8px',
   padding: '10px',
   borderRadius: '10px',
-  background: 'rgba(59, 130, 246, 0.1)',
-  border: '1px solid rgba(96, 165, 250, 0.22)',
-  color: '#bfdbfe',
+  background: 'var(--accent-soft)',
+  border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
+  color: 'var(--text-soft)',
   fontSize: '12px',
   lineHeight: 1.45
 }
@@ -2865,8 +2876,8 @@ const openingStatusStyle = {
   marginTop: '12px',
   padding: '12px',
   borderRadius: '10px',
-  background: '#0b1220',
-  border: '1px solid #27364f'
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border-main)'
 }
 
 
@@ -2874,7 +2885,7 @@ const ruleListStyle = {
   display: 'grid',
   gap: '8px',
   marginTop: '14px',
-  color: '#d1d5db',
+  color: 'var(--text-soft)',
   fontSize: '13px',
   lineHeight: 1.4
 }

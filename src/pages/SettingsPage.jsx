@@ -6,8 +6,8 @@ import {
   normalizeSettings,
   saveUserSettings
 } from '../lib/appSettings'
+import { applyTheme, getThemeOption, UI_THEME_OPTIONS } from '../lib/theme'
 
-const ACCOUNT_TYPES = ['All', 'Cash', 'Checking', 'Savings', 'Brokerage', 'Crypto', 'Credit', 'Loan', 'Business', 'Other']
 const CURRENCY_OPTIONS = ['USD', 'VND', 'EUR', 'CAD', 'AUD', 'JPY']
 
 export default function SettingsPage() {
@@ -33,14 +33,20 @@ export default function SettingsPage() {
     try {
       const [loadedSettings, accountResult] = await Promise.all([
         loadUserSettings(),
-        supabase.from('accounts').select('id, name, account_type, currency').order('name', { ascending: true })
+        supabase
+          .from('accounts')
+          .select('id, name, account_type, currency')
+          .order('name', { ascending: true })
       ])
 
       if (accountResult.error) throw accountResult.error
 
-      setSettings(loadedSettings)
-      setSavedSettings(loadedSettings)
-      setJsonDraft(JSON.stringify(loadedSettings, null, 2))
+      const normalized = normalizeSettings(loadedSettings)
+      applyTheme(normalized.uiTheme)
+
+      setSettings(normalized)
+      setSavedSettings(normalized)
+      setJsonDraft(JSON.stringify(normalized, null, 2))
       setAccounts(accountResult.data || [])
     } catch (err) {
       setError(err.message || 'Unable to load settings.')
@@ -50,7 +56,13 @@ export default function SettingsPage() {
   }
 
   function updateSetting(key, value) {
-    setSettings((current) => normalizeSettings({ ...current, [key]: value }))
+    const next = normalizeSettings({ ...settings, [key]: value })
+
+    if (key === 'uiTheme') {
+      applyTheme(next.uiTheme)
+    }
+
+    setSettings(next)
     setMessage('')
     setError('')
   }
@@ -62,6 +74,8 @@ export default function SettingsPage() {
 
     try {
       const normalized = await saveUserSettings(settings)
+      applyTheme(normalized.uiTheme)
+
       setSettings(normalized)
       setSavedSettings(normalized)
       setJsonDraft(JSON.stringify(normalized, null, 2))
@@ -76,7 +90,10 @@ export default function SettingsPage() {
   async function handleResetDefaults() {
     const ok = window.confirm('Reset settings to the default values? You can still review before saving.')
     if (!ok) return
+
     const next = normalizeSettings(DEFAULT_APP_SETTINGS)
+    applyTheme(next.uiTheme)
+
     setSettings(next)
     setJsonDraft(JSON.stringify(next, null, 2))
     setMessage('Defaults loaded. Click Save Settings to store them online.')
@@ -87,6 +104,8 @@ export default function SettingsPage() {
     try {
       const parsed = JSON.parse(jsonDraft)
       const next = normalizeSettings(parsed)
+      applyTheme(next.uiTheme)
+
       setSettings(next)
       setJsonDraft(JSON.stringify(next, null, 2))
       setMessage('JSON applied. Click Save Settings to store it online.')
@@ -106,6 +125,7 @@ export default function SettingsPage() {
 
   const selectedDefaultAccount = activeAccounts.find((account) => account.id === settings.defaultAccountId)
   const selectedImportAccount = activeAccounts.find((account) => account.id === settings.defaultImportAccountId)
+  const selectedTheme = getThemeOption(settings.uiTheme)
 
   if (loading) {
     return (
@@ -128,7 +148,7 @@ export default function SettingsPage() {
           <div style={eyebrowStyle}>CONTROL PANEL · SUPABASE PRO</div>
           <h1 style={titleStyle}>Settings</h1>
           <p style={subtitleStyle}>
-            Manage dashboard rules, warning thresholds, defaults, and app behavior from one online control center.
+            Manage dashboard rules, warning thresholds, defaults, theme, and app behavior from one online control center.
           </p>
         </div>
 
@@ -147,45 +167,67 @@ export default function SettingsPage() {
       {hasChanges && <div style={warningStyle}>You have unsaved changes. Click Save Settings when you are done.</div>}
 
       <section style={summaryGridStyle}>
+        <SummaryCard title="Theme" value={selectedTheme.label} subtitle={selectedTheme.description} />
         <SummaryCard title="Default Currency" value={settings.defaultCurrency} subtitle="Used as the main dashboard currency" />
-        <SummaryCard
-          title="Default Account"
-          value={selectedDefaultAccount?.name || 'Not set'}
-          subtitle="Preferred cashflow account"
-        />
-        <SummaryCard
-          title="Bill Reminder"
-          value={`${settings.billDueSoonDays} days`}
-          subtitle="Action Center due soon window"
-        />
-        <SummaryCard
-          title="Risk Threshold"
-          value={`${settings.portfolioConcentrationThreshold}%`}
-          subtitle="Single holding concentration alert"
-        />
+        <SummaryCard title="Default Account" value={selectedDefaultAccount?.name || 'Not set'} subtitle="Preferred cashflow account" />
+        <SummaryCard title="Bill Reminder" value={`${settings.billDueSoonDays} days`} subtitle="Action Center due soon window" />
       </section>
 
       <section style={mainGridStyle}>
         <div style={leftColumnStyle}>
+          <Panel title="Appearance / Theme" subtitle="Choose the dashboard color theme. Default stays Dark Classic for safety.">
+            <Field label="App Theme">
+              <select value={settings.uiTheme} onChange={(event) => updateSetting('uiTheme', event.target.value)} style={inputStyle}>
+                {UI_THEME_OPTIONS.map((theme) => (
+                  <option key={theme.value} value={theme.value}>
+                    {theme.label}
+                  </option>
+                ))}
+              </select>
+              <p style={fieldHintStyle}>{selectedTheme.description}</p>
+            </Field>
+
+            <div style={themeGridStyle}>
+              {UI_THEME_OPTIONS.map((theme) => {
+                const active = settings.uiTheme === theme.value
+                return (
+                  <button
+                    key={theme.value}
+                    type="button"
+                    onClick={() => updateSetting('uiTheme', theme.value)}
+                    style={{
+                      ...themeOptionStyle,
+                      borderColor: active ? 'var(--accent, #60a5fa)' : 'var(--border-main, #334155)',
+                      boxShadow: active ? '0 0 0 3px var(--accent-soft, rgba(37, 99, 235, 0.2))' : 'none',
+                      background: active ? 'var(--accent-soft, rgba(37, 99, 235, 0.18))' : 'var(--bg-elevated, #020617)'
+                    }}
+                  >
+                    <span style={themeOptionTopStyle}>
+                      <span style={themeDotStyle(theme.value)} />
+                      <strong>{theme.label}</strong>
+                    </span>
+                    <span style={themeDescriptionStyle}>{theme.description}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <p style={fieldHintStyle}>Theme changes preview immediately. Click Save Settings to keep the choice online.</p>
+          </Panel>
+
           <Panel title="General Defaults" subtitle="Set the values future pages can reuse instead of hard-coded rules.">
             <Field label="Default Currency">
-              <select
-                value={settings.defaultCurrency}
-                onChange={(event) => updateSetting('defaultCurrency', event.target.value)}
-                style={inputStyle}
-              >
+              <select value={settings.defaultCurrency} onChange={(event) => updateSetting('defaultCurrency', event.target.value)} style={inputStyle}>
                 {CURRENCY_OPTIONS.map((currency) => (
-                  <option key={currency} value={currency}>{currency}</option>
+                  <option key={currency} value={currency}>
+                    {currency}
+                  </option>
                 ))}
               </select>
             </Field>
 
             <Field label="Default Cashflow Account">
-              <select
-                value={settings.defaultAccountId}
-                onChange={(event) => updateSetting('defaultAccountId', event.target.value)}
-                style={inputStyle}
-              >
+              <select value={settings.defaultAccountId} onChange={(event) => updateSetting('defaultAccountId', event.target.value)} style={inputStyle}>
                 <option value="">No default account</option>
                 {activeAccounts.map((account) => (
                   <option key={account.id} value={account.id}>
@@ -197,11 +239,7 @@ export default function SettingsPage() {
             </Field>
 
             <Field label="Default Import Account">
-              <select
-                value={settings.defaultImportAccountId}
-                onChange={(event) => updateSetting('defaultImportAccountId', event.target.value)}
-                style={inputStyle}
-              >
+              <select value={settings.defaultImportAccountId} onChange={(event) => updateSetting('defaultImportAccountId', event.target.value)} style={inputStyle}>
                 <option value="">No default import account</option>
                 {activeAccounts.map((account) => (
                   <option key={account.id} value={account.id}>
@@ -237,78 +275,30 @@ export default function SettingsPage() {
                 label={settings.compactDashboard ? 'Compact mode enabled' : 'Standard dashboard spacing'}
               />
             </Field>
-<Field label="Default Money Plan Mode">
-  <select
-    value={settings.moneyPlanDefaultMode}
-    onChange={(event) => updateSetting('moneyPlanDefaultMode', event.target.value)}
-    style={inputStyle}
-  >
-    <option value="conservative">Conservative</option>
-    <option value="balanced">Balanced</option>
-    <option value="aggressive">Aggressive</option>
-  </select>
-  <p style={fieldHintStyle}>
-    Used by Money Plan Pro when loading the page.
-  </p>
-</Field>
+
+            <Field label="Default Money Plan Mode">
+              <select
+                value={settings.moneyPlanDefaultMode}
+                onChange={(event) => updateSetting('moneyPlanDefaultMode', event.target.value)}
+                style={inputStyle}
+              >
+                <option value="conservative">Conservative</option>
+                <option value="balanced">Balanced</option>
+                <option value="aggressive">Aggressive</option>
+              </select>
+              <p style={fieldHintStyle}>Used by Money Plan Pro when loading the page.</p>
+            </Field>
           </Panel>
         </div>
 
         <div style={rightColumnStyle}>
           <Panel title="Warning Thresholds" subtitle="Centralize rules so pages do not disagree with each other.">
-            <NumberField
-              label="Bills Due Soon Window"
-              value={settings.billDueSoonDays}
-              suffix="days"
-              min={1}
-              max={60}
-              onChange={(value) => updateSetting('billDueSoonDays', value)}
-            />
-
-            <NumberField
-              label="Budget Warning"
-              value={settings.budgetWarningPercent}
-              suffix="%"
-              min={1}
-              max={300}
-              onChange={(value) => updateSetting('budgetWarningPercent', value)}
-            />
-
-            <NumberField
-              label="Budget Danger"
-              value={settings.budgetDangerPercent}
-              suffix="%"
-              min={1}
-              max={500}
-              onChange={(value) => updateSetting('budgetDangerPercent', value)}
-            />
-
-            <NumberField
-              label="Single Holding Concentration"
-              value={settings.portfolioConcentrationThreshold}
-              suffix="%"
-              min={1}
-              max={100}
-              onChange={(value) => updateSetting('portfolioConcentrationThreshold', value)}
-            />
-
-            <NumberField
-              label="Crypto Allocation Warning"
-              value={settings.cryptoAllocationWarningPercent}
-              suffix="%"
-              min={1}
-              max={100}
-              onChange={(value) => updateSetting('cryptoAllocationWarningPercent', value)}
-            />
-
-            <NumberField
-              label="Stale Price Warning"
-              value={settings.stalePriceDays}
-              suffix="days"
-              min={1}
-              max={30}
-              onChange={(value) => updateSetting('stalePriceDays', value)}
-            />
+            <NumberField label="Bills Due Soon Window" value={settings.billDueSoonDays} suffix="days" min={1} max={60} onChange={(value) => updateSetting('billDueSoonDays', value)} />
+            <NumberField label="Budget Warning" value={settings.budgetWarningPercent} suffix="%" min={1} max={300} onChange={(value) => updateSetting('budgetWarningPercent', value)} />
+            <NumberField label="Budget Danger" value={settings.budgetDangerPercent} suffix="%" min={1} max={500} onChange={(value) => updateSetting('budgetDangerPercent', value)} />
+            <NumberField label="Single Holding Concentration" value={settings.portfolioConcentrationThreshold} suffix="%" min={1} max={100} onChange={(value) => updateSetting('portfolioConcentrationThreshold', value)} />
+            <NumberField label="Crypto Allocation Warning" value={settings.cryptoAllocationWarningPercent} suffix="%" min={1} max={100} onChange={(value) => updateSetting('cryptoAllocationWarningPercent', value)} />
+            <NumberField label="Stale Price Warning" value={settings.stalePriceDays} suffix="days" min={1} max={30} onChange={(value) => updateSetting('stalePriceDays', value)} />
           </Panel>
 
           <Panel title="Settings Tools" subtitle="Backup, inspect, or reset the online settings payload.">
@@ -331,12 +321,7 @@ export default function SettingsPage() {
 
             {showJson && (
               <div style={jsonBoxStyle}>
-                <textarea
-                  value={jsonDraft}
-                  onChange={(event) => setJsonDraft(event.target.value)}
-                  style={textareaStyle}
-                  spellCheck="false"
-                />
+                <textarea value={jsonDraft} onChange={(event) => setJsonDraft(event.target.value)} style={textareaStyle} spellCheck="false" />
                 <button type="button" onClick={handleApplyJson} style={smallPrimaryButtonStyle}>
                   Apply JSON
                 </button>
@@ -382,14 +367,7 @@ function NumberField({ label, value, suffix, min, max, onChange }) {
   return (
     <Field label={label}>
       <div style={numberRowStyle}>
-        <input
-          type="number"
-          value={value}
-          min={min}
-          max={max}
-          onChange={(event) => onChange(event.target.value)}
-          style={numberInputStyle}
-        />
+        <input type="number" value={value} min={min} max={max} onChange={(event) => onChange(event.target.value)} style={numberInputStyle} />
         <span style={suffixStyle}>{suffix}</span>
       </div>
     </Field>
@@ -403,20 +381,39 @@ function Toggle({ checked, onChange, label }) {
       onClick={() => onChange(!checked)}
       style={{
         ...toggleButtonStyle,
-        background: checked ? 'rgba(34, 197, 94, 0.16)' : 'rgba(15, 23, 42, 0.72)',
-        borderColor: checked ? 'rgba(34, 197, 94, 0.46)' : '#334155'
+        background: checked ? 'var(--success-soft, rgba(34, 197, 94, 0.16))' : 'var(--bg-elevated, #020617)',
+        borderColor: checked ? 'var(--success, #22c55e)' : 'var(--border-main, #334155)'
       }}
     >
       <span
         style={{
           ...toggleDotStyle,
           transform: checked ? 'translateX(24px)' : 'translateX(0px)',
-          background: checked ? '#22c55e' : '#94a3b8'
+          background: checked ? 'var(--success, #22c55e)' : 'var(--text-muted, #94a3b8)'
         }}
       />
       <span style={toggleLabelStyle}>{label}</span>
     </button>
   )
+}
+
+function themeDotStyle(theme) {
+  const colorMap = {
+    dark: '#60a5fa',
+    light: '#2563eb',
+    blueGray: '#64748b',
+    emerald: '#10b981',
+    sand: '#c08403'
+  }
+
+  return {
+    width: '14px',
+    height: '14px',
+    borderRadius: '999px',
+    background: colorMap[theme] || '#60a5fa',
+    boxShadow: `0 0 0 4px ${colorMap[theme] || '#60a5fa'}22`,
+    flexShrink: 0
+  }
 }
 
 const pageStyle = {
@@ -425,7 +422,8 @@ const pageStyle = {
   gap: '24px',
   maxWidth: '1500px',
   margin: '0 auto',
-  paddingBottom: '48px'
+  paddingBottom: '48px',
+  color: 'var(--text-main, #f8fafc)'
 }
 
 const heroStyle = {
@@ -434,15 +432,15 @@ const heroStyle = {
   alignItems: 'center',
   gap: '20px',
   padding: '28px',
-  border: '1px solid #334155',
+  border: '1px solid var(--border-main, #334155)',
   borderRadius: '22px',
-  background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.22), rgba(15, 23, 42, 0.92), rgba(20, 184, 166, 0.14))',
-  boxShadow: '0 18px 45px rgba(2, 6, 23, 0.28)',
+  background: 'linear-gradient(135deg, var(--accent-soft, rgba(37, 99, 235, 0.22)), var(--bg-card, #111827), var(--success-soft, rgba(20, 184, 166, 0.14)))',
+  boxShadow: 'var(--shadow-card, 0 18px 45px rgba(2, 6, 23, 0.28))',
   flexWrap: 'wrap'
 }
 
 const eyebrowStyle = {
-  color: '#93c5fd',
+  color: 'var(--accent, #93c5fd)',
   letterSpacing: '0.18em',
   fontSize: '13px',
   fontWeight: 900,
@@ -454,13 +452,14 @@ const titleStyle = {
   margin: 0,
   fontSize: '36px',
   lineHeight: 1.05,
-  fontWeight: 900
+  fontWeight: 900,
+  color: 'var(--text-main, #f8fafc)'
 }
 
 const subtitleStyle = {
   margin: '12px 0 0',
   maxWidth: '880px',
-  color: '#bfdbfe',
+  color: 'var(--text-soft, #bfdbfe)',
   fontSize: '18px',
   lineHeight: 1.55
 }
@@ -479,13 +478,15 @@ const summaryGridStyle = {
 
 const cardStyle = {
   padding: '22px',
-  border: '1px solid #334155',
+  border: '1px solid var(--border-main, #334155)',
   borderRadius: '18px',
-  background: '#111827'
+  background: 'var(--bg-card, #111827)',
+  boxShadow: 'var(--shadow-soft, none)',
+  color: 'var(--text-main, #f8fafc)'
 }
 
 const cardLabelStyle = {
-  color: '#bfdbfe',
+  color: 'var(--text-soft, #bfdbfe)',
   fontSize: '15px',
   marginBottom: '12px'
 }
@@ -493,13 +494,13 @@ const cardLabelStyle = {
 const cardValueStyle = {
   fontSize: '28px',
   fontWeight: 900,
-  color: '#f8fafc',
+  color: 'var(--text-main, #f8fafc)',
   wordBreak: 'break-word'
 }
 
 const cardSubStyle = {
   marginTop: '8px',
-  color: '#94a3b8',
+  color: 'var(--text-muted, #94a3b8)',
   fontSize: '14px'
 }
 
@@ -526,20 +527,23 @@ const rightColumnStyle = {
 
 const panelStyle = {
   padding: '24px',
-  border: '1px solid #334155',
+  border: '1px solid var(--border-main, #334155)',
   borderRadius: '20px',
-  background: '#111827'
+  background: 'var(--bg-card, #111827)',
+  boxShadow: 'var(--shadow-soft, none)',
+  color: 'var(--text-main, #f8fafc)'
 }
 
 const panelTitleStyle = {
   margin: 0,
   fontSize: '26px',
-  fontWeight: 900
+  fontWeight: 900,
+  color: 'var(--text-main, #f8fafc)'
 }
 
 const panelSubtitleStyle = {
   margin: '8px 0 0',
-  color: '#bfdbfe',
+  color: 'var(--text-soft, #bfdbfe)',
   lineHeight: 1.5,
   fontSize: '16px'
 }
@@ -558,7 +562,7 @@ const fieldStyle = {
 }
 
 const labelStyle = {
-  color: '#e5e7eb',
+  color: 'var(--text-main, #e5e7eb)',
   fontWeight: 800,
   fontSize: '15px'
 }
@@ -568,17 +572,48 @@ const inputStyle = {
   boxSizing: 'border-box',
   padding: '13px 14px',
   borderRadius: '12px',
-  border: '1px solid #334155',
-  background: '#020617',
-  color: '#f8fafc',
+  border: '1px solid var(--border-main, #334155)',
+  background: 'var(--bg-elevated, #020617)',
+  color: 'var(--text-main, #f8fafc)',
   fontSize: '16px',
   outline: 'none'
 }
 
 const fieldHintStyle = {
   margin: 0,
-  color: '#94a3b8',
-  fontSize: '13px'
+  color: 'var(--text-muted, #94a3b8)',
+  fontSize: '13px',
+  lineHeight: 1.45
+}
+
+const themeGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+  gap: '12px'
+}
+
+const themeOptionStyle = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '8px',
+  padding: '14px',
+  border: '1px solid var(--border-main, #334155)',
+  borderRadius: '14px',
+  color: 'var(--text-main, #f8fafc)',
+  cursor: 'pointer',
+  textAlign: 'left'
+}
+
+const themeOptionTopStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '10px'
+}
+
+const themeDescriptionStyle = {
+  color: 'var(--text-muted, #94a3b8)',
+  fontSize: '13px',
+  lineHeight: 1.4
 }
 
 const numberRowStyle = {
@@ -593,7 +628,7 @@ const numberInputStyle = {
 }
 
 const suffixStyle = {
-  color: '#bfdbfe',
+  color: 'var(--text-soft, #bfdbfe)',
   fontWeight: 800
 }
 
@@ -604,8 +639,8 @@ const toggleButtonStyle = {
   width: '100%',
   padding: '12px 14px',
   borderRadius: '14px',
-  border: '1px solid #334155',
-  color: '#f8fafc',
+  border: '1px solid var(--border-main, #334155)',
+  color: 'var(--text-main, #f8fafc)',
   cursor: 'pointer',
   textAlign: 'left'
 }
@@ -620,7 +655,7 @@ const toggleDotStyle = {
 
 const toggleLabelStyle = {
   fontWeight: 800,
-  color: '#e5e7eb'
+  color: 'var(--text-main, #e5e7eb)'
 }
 
 const buttonRowStyle = {
@@ -630,8 +665,8 @@ const buttonRowStyle = {
 }
 
 const primaryButtonStyle = {
-  border: '1px solid #60a5fa',
-  background: '#2563eb',
+  border: '1px solid var(--accent, #60a5fa)',
+  background: 'var(--accent, #2563eb)',
   color: 'white',
   borderRadius: '12px',
   padding: '12px 18px',
@@ -646,9 +681,9 @@ const smallPrimaryButtonStyle = {
 }
 
 const ghostButtonStyle = {
-  border: '1px solid #334155',
-  background: '#0f172a',
-  color: '#bfdbfe',
+  border: '1px solid var(--border-main, #334155)',
+  background: 'var(--bg-elevated, #0f172a)',
+  color: 'var(--text-soft, #bfdbfe)',
   borderRadius: '12px',
   padding: '12px 18px',
   fontWeight: 900,
@@ -657,9 +692,9 @@ const ghostButtonStyle = {
 }
 
 const dangerOutlineButtonStyle = {
-  border: '1px solid rgba(248, 113, 113, 0.55)',
-  background: 'rgba(127, 29, 29, 0.12)',
-  color: '#fecaca',
+  border: '1px solid var(--danger, rgba(248, 113, 113, 0.55))',
+  background: 'var(--danger-soft, rgba(127, 29, 29, 0.12))',
+  color: 'var(--danger, #fecaca)',
   borderRadius: '12px',
   padding: '12px 18px',
   fontWeight: 900,
@@ -669,27 +704,27 @@ const dangerOutlineButtonStyle = {
 
 const successStyle = {
   padding: '14px 18px',
-  border: '1px solid rgba(34, 197, 94, 0.5)',
-  background: 'rgba(22, 101, 52, 0.2)',
-  color: '#86efac',
+  border: '1px solid var(--success, rgba(34, 197, 94, 0.5))',
+  background: 'var(--success-soft, rgba(22, 101, 52, 0.2))',
+  color: 'var(--success, #86efac)',
   borderRadius: '14px',
   fontWeight: 800
 }
 
 const errorStyle = {
   padding: '14px 18px',
-  border: '1px solid rgba(248, 113, 113, 0.5)',
-  background: 'rgba(127, 29, 29, 0.2)',
-  color: '#fecaca',
+  border: '1px solid var(--danger, rgba(248, 113, 113, 0.5))',
+  background: 'var(--danger-soft, rgba(127, 29, 29, 0.2))',
+  color: 'var(--danger, #fecaca)',
   borderRadius: '14px',
   fontWeight: 800
 }
 
 const warningStyle = {
   padding: '14px 18px',
-  border: '1px solid rgba(251, 191, 36, 0.5)',
-  background: 'rgba(120, 53, 15, 0.24)',
-  color: '#fde68a',
+  border: '1px solid var(--warning, rgba(251, 191, 36, 0.5))',
+  background: 'var(--warning-soft, rgba(120, 53, 15, 0.24))',
+  color: 'var(--warning, #fde68a)',
   borderRadius: '14px',
   fontWeight: 800
 }
@@ -707,9 +742,9 @@ const textareaStyle = {
   boxSizing: 'border-box',
   padding: '14px',
   borderRadius: '14px',
-  border: '1px solid #334155',
-  background: '#020617',
-  color: '#dbeafe',
+  border: '1px solid var(--border-main, #334155)',
+  background: 'var(--bg-elevated, #020617)',
+  color: 'var(--text-main, #dbeafe)',
   fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
   fontSize: '13px',
   lineHeight: 1.5,

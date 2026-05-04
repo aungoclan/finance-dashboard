@@ -1157,10 +1157,10 @@ export default function DashboardPage() {
               ...styles.scoreValue,
               color:
                 dataHealth.score >= 85
-                  ? '#86efac'
+                  ? 'var(--success)'
                   : dataHealth.score >= 65
-                    ? '#fde68a'
-                    : '#fca5a5'
+                    ? 'var(--warning)'
+                    : 'var(--danger)'
             }}
           >
             {loading ? '...' : `${dataHealth.score}/100`}
@@ -1187,7 +1187,7 @@ export default function DashboardPage() {
           <div
             style={{
               ...styles.scoreValue,
-              color: moneyPlan.cashBufferPercent >= 100 ? '#86efac' : '#fde68a'
+              color: moneyPlan.cashBufferPercent >= 100 ? 'var(--success)' : 'var(--warning)'
             }}
           >
             {loading ? '...' : formatPercent(moneyPlan.cashBufferPercent)}
@@ -1396,7 +1396,7 @@ export default function DashboardPage() {
                       <div
                         style={{
                           ...styles.miniText,
-                          color: toNumber(item.unrealized_pl) >= 0 ? '#22c55e' : '#ef4444'
+                          color: toNumber(item.unrealized_pl) >= 0 ? 'var(--success)' : 'var(--danger)'
                         }}
                       >
                         ${formatHoldingsMoney(item.unrealized_pl || 0)}
@@ -1632,11 +1632,11 @@ function buildCommandCenter({
 }
 
 function getToneColor(tone) {
-  if (tone === 'green' || tone === 'success') return '#22c55e'
-  if (tone === 'red' || tone === 'danger') return '#ef4444'
-  if (tone === 'yellow' || tone === 'warning') return '#f59e0b'
-  if (tone === 'blue' || tone === 'info') return '#60a5fa'
-  return '#f9fafb'
+  if (tone === 'green' || tone === 'success') return 'var(--success)'
+  if (tone === 'red' || tone === 'danger') return 'var(--danger)'
+  if (tone === 'yellow' || tone === 'warning') return 'var(--warning)'
+  if (tone === 'blue' || tone === 'info') return 'var(--accent)'
+  return 'var(--text-main)'
 }
 
 function StatCard({ label, value, note, tone = 'default' }) {
@@ -1660,7 +1660,7 @@ function SnapshotRow({ label, value }) {
 
 const styles = {
   page: {
-    color: '#f9fafb'
+    color: 'var(--text-main)'
   },
   hero: {
     display: 'flex',
@@ -1671,12 +1671,13 @@ const styles = {
     padding: 24,
     borderRadius: 22,
     background:
-      'linear-gradient(135deg, rgba(37,99,235,0.28), rgba(15,23,42,1) 55%, rgba(34,197,94,0.16))',
-    border: '1px solid rgba(255,255,255,0.08)',
+      'linear-gradient(135deg, var(--accent-soft), var(--bg-card) 58%, var(--success-soft))',
+    border: '1px solid var(--border-main)',
+    boxShadow: 'var(--shadow-card)',
     marginBottom: 18
   },
   eyebrow: {
-    color: '#93c5fd',
+    color: 'var(--accent)',
     fontSize: 13,
     fontWeight: 900,
     letterSpacing: '0.1em',
@@ -1687,33 +1688,35 @@ const styles = {
     margin: 0,
     fontSize: 34,
     lineHeight: 1.1,
-    letterSpacing: '-0.04em'
+    letterSpacing: '-0.04em',
+    color: 'var(--text-main)'
   },
   subtitle: {
     marginTop: 10,
     marginBottom: 0,
-    color: '#cbd5e1',
+    color: 'var(--text-soft)',
     fontSize: 15,
     lineHeight: 1.55,
     maxWidth: 760
   },
   refreshButton: {
     padding: '12px 16px',
-    border: '1px solid rgba(255,255,255,0.14)',
+    border: '1px solid color-mix(in srgb, var(--accent) 44%, transparent)',
     borderRadius: 14,
-    background: '#2563eb',
+    background: 'linear-gradient(135deg, var(--accent), var(--accent-strong))',
     color: 'white',
     cursor: 'pointer',
     fontWeight: 800,
-    boxShadow: '0 10px 24px rgba(37,99,235,0.25)'
+    boxShadow: 'var(--shadow-soft)'
   },
   errorBox: {
     padding: '14px 16px',
     borderRadius: 14,
-    background: 'rgba(239,68,68,0.12)',
-    border: '1px solid rgba(239,68,68,0.35)',
-    color: '#fecaca',
-    marginBottom: 16
+    background: 'var(--danger-soft)',
+    border: '1px solid color-mix(in srgb, var(--danger) 38%, transparent)',
+    color: 'var(--danger)',
+    marginBottom: 16,
+    fontWeight: 800
   },
   commandGrid: {
     display: 'grid',
@@ -1722,11 +1725,12 @@ const styles = {
     marginBottom: 18
   },
   scoreCard: {
-    background: '#111827',
+    background: 'var(--bg-card)',
     padding: 20,
     borderRadius: 20,
-    border: '1px solid rgba(148,163,184,0.22)',
-    boxShadow: '0 14px 34px rgba(0,0,0,0.24)'
+    border: '1px solid var(--border-main)',
+    boxShadow: 'var(--shadow-card)',
+    color: 'var(--text-main)'
   },
   scoreValue: {
     fontSize: 34,
@@ -1741,15 +1745,16 @@ const styles = {
     marginBottom: 18
   },
   statCard: {
-    background: '#1f2937',
+    background: 'var(--bg-card)',
     padding: 18,
     borderRadius: 18,
     minHeight: 126,
-    border: '1px solid rgba(148,163,184,0.22)',
-    boxShadow: '0 14px 34px rgba(0,0,0,0.28)'
+    border: '1px solid var(--border-main)',
+    boxShadow: 'var(--shadow-card)',
+    color: 'var(--text-main)'
   },
   cardLabel: {
-    color: '#94a3b8',
+    color: 'var(--text-muted)',
     fontSize: 13,
     fontWeight: 850,
     textTransform: 'uppercase',
@@ -1759,12 +1764,12 @@ const styles = {
   value: {
     fontSize: 28,
     fontWeight: 900,
-    color: '#f9fafb',
+    color: 'var(--text-main)',
     letterSpacing: '-0.035em'
   },
   note: {
     marginTop: 8,
-    color: '#94a3b8',
+    color: 'var(--text-muted)',
     fontSize: 13,
     lineHeight: 1.45
   },
@@ -1784,12 +1789,13 @@ const styles = {
     gap: 18
   },
   panel: {
-    background: '#1f2937',
+    background: 'var(--bg-card)',
     borderRadius: 20,
     padding: 20,
-    border: '1px solid rgba(148,163,184,0.22)',
-    boxShadow: '0 14px 34px rgba(0,0,0,0.24)',
-    minWidth: 0
+    border: '1px solid var(--border-main)',
+    boxShadow: 'var(--shadow-card)',
+    minWidth: 0,
+    color: 'var(--text-main)'
   },
   panelHeader: {
     display: 'flex',
@@ -1802,12 +1808,13 @@ const styles = {
     margin: 0,
     fontSize: 19,
     fontWeight: 900,
-    letterSpacing: '-0.02em'
+    letterSpacing: '-0.02em',
+    color: 'var(--text-main)'
   },
   panelSubtitle: {
     marginTop: 6,
     marginBottom: 0,
-    color: '#94a3b8',
+    color: 'var(--text-muted)',
     fontSize: 13,
     lineHeight: 1.45
   },
@@ -1821,11 +1828,11 @@ const styles = {
     alignItems: 'start',
     gap: 12,
     textDecoration: 'none',
-    color: '#f9fafb',
+    color: 'var(--text-main)',
     padding: 14,
     borderRadius: 15,
-    background: '#111827',
-    border: '1px solid #334155'
+    background: 'var(--bg-card-soft)',
+    border: '1px solid var(--border-main)'
   },
   dot: {
     width: 10,
@@ -1835,11 +1842,12 @@ const styles = {
   },
   actionTitle: {
     fontWeight: 900,
-    fontSize: 14
+    fontSize: 14,
+    color: 'var(--text-main)'
   },
   actionText: {
     marginTop: 5,
-    color: '#9ca3af',
+    color: 'var(--text-muted)',
     fontSize: 12,
     lineHeight: 1.45
   },
@@ -1859,16 +1867,18 @@ const styles = {
     alignItems: 'center',
     padding: 13,
     borderRadius: 15,
-    background: '#111827',
-    border: '1px solid #334155'
+    background: 'var(--bg-card-soft)',
+    border: '1px solid var(--border-main)',
+    color: 'var(--text-main)'
   },
   listTitle: {
     fontSize: 14,
-    fontWeight: 900
+    fontWeight: 900,
+    color: 'var(--text-main)'
   },
   listSub: {
     marginTop: 5,
-    color: '#9ca3af',
+    color: 'var(--text-muted)',
     fontSize: 12,
     lineHeight: 1.35
   },
@@ -1878,28 +1888,28 @@ const styles = {
   },
   miniText: {
     marginTop: 4,
-    color: '#94a3b8',
+    color: 'var(--text-muted)',
     fontSize: 11,
     fontWeight: 750
   },
   greenText: {
-    color: '#22c55e',
+    color: 'var(--success)',
     fontWeight: 900
   },
   redText: {
-    color: '#ef4444',
+    color: 'var(--danger)',
     fontWeight: 900
   },
   yellowText: {
-    color: '#f59e0b',
+    color: 'var(--warning)',
     fontWeight: 900
   },
   empty: {
     padding: 18,
     borderRadius: 14,
-    background: '#111827',
-    border: '1px dashed #4b5563',
-    color: '#94a3b8',
+    background: 'var(--bg-card-soft)',
+    border: '1px dashed var(--border-soft)',
+    color: 'var(--text-muted)',
     textAlign: 'center',
     lineHeight: 1.45
   },
@@ -1908,13 +1918,13 @@ const styles = {
     justifyContent: 'space-between',
     gap: 12,
     padding: '12px 0',
-    borderBottom: '1px solid rgba(255,255,255,0.07)'
+    borderBottom: '1px solid var(--border-faint)'
   },
   snapshotLabel: {
-    color: '#94a3b8'
+    color: 'var(--text-muted)'
   },
   snapshotValue: {
-    color: '#f9fafb',
+    color: 'var(--text-main)',
     fontWeight: 900
   },
   tagWrap: {
@@ -1927,9 +1937,9 @@ const styles = {
     display: 'inline-block',
     padding: '7px 10px',
     borderRadius: 999,
-    background: 'rgba(245, 158, 11, 0.12)',
-    color: '#fde68a',
-    border: '1px solid rgba(245, 158, 11, 0.28)',
+    background: 'var(--warning-soft)',
+    color: 'var(--warning)',
+    border: '1px solid color-mix(in srgb, var(--warning) 30%, transparent)',
     fontSize: 12,
     fontWeight: 800
   },
@@ -1939,7 +1949,7 @@ const styles = {
     marginTop: 4,
     padding: '10px 13px',
     borderRadius: 11,
-    background: '#2563eb',
+    background: 'linear-gradient(135deg, var(--accent), var(--accent-strong))',
     color: 'white',
     fontWeight: 850
   },
@@ -1950,7 +1960,8 @@ const styles = {
   sectionTitle: {
     margin: 0,
     fontSize: 22,
-    fontWeight: 900
+    fontWeight: 900,
+    color: 'var(--text-main)'
   },
   chartsGrid: {
     display: 'grid',
@@ -1959,12 +1970,13 @@ const styles = {
     alignItems: 'stretch'
   },
   chartShell: {
-    background: '#1f2937',
+    background: 'var(--bg-card)',
     borderRadius: 20,
     padding: 12,
-    border: '1px solid rgba(148,163,184,0.22)',
+    border: '1px solid var(--border-main)',
     minHeight: 320,
     overflow: 'hidden',
-    boxShadow: '0 14px 34px rgba(0,0,0,0.24)'
+    boxShadow: 'var(--shadow-card)',
+    color: 'var(--text-main)'
   }
 }

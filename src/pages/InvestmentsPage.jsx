@@ -1079,7 +1079,7 @@ function getTypeBadgeStyle(type) {
     return {
       ...base,
       background: 'rgba(34,197,94,0.14)',
-      color: '#86efac',
+      color: 'var(--success)',
       border: '1px solid rgba(34,197,94,0.28)'
     }
   }
@@ -1088,7 +1088,7 @@ function getTypeBadgeStyle(type) {
     return {
       ...base,
       background: 'rgba(239,68,68,0.14)',
-      color: '#fca5a5',
+      color: 'var(--danger)',
       border: '1px solid rgba(239,68,68,0.28)'
     }
   }
@@ -1112,13 +1112,14 @@ const pageHeaderStyle = {
 
 const titleStyle = {
   margin: 0,
+  color: 'var(--text-main)',
   fontSize: '34px',
   fontWeight: 800
 }
 
 const subtitleStyle = {
   marginTop: '8px',
-  color: '#cbd5e1',
+  color: 'var(--text-muted)',
   fontSize: '16px',
   maxWidth: '920px',
   lineHeight: 1.55
@@ -1133,19 +1134,19 @@ const fundingGuardStyle = {
   marginBottom: '20px',
   padding: '16px',
   borderRadius: '18px',
-  background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.18), rgba(15, 23, 42, 0.96))',
-  border: '1px solid rgba(96, 165, 250, 0.26)'
+  background: 'linear-gradient(135deg, var(--info-soft), var(--bg-card))',
+  border: '1px solid var(--border-accent)'
 }
 
 const guardTitleStyle = {
-  color: '#bfdbfe',
+  color: 'var(--accent)',
   fontWeight: 900,
   marginBottom: '6px'
 }
 
 const guardTextStyle = {
   margin: 0,
-  color: '#cbd5e1',
+  color: 'var(--text-muted)',
   fontSize: '14px',
   lineHeight: 1.55,
   maxWidth: '900px'
@@ -1154,8 +1155,8 @@ const guardTextStyle = {
 const guardPillStyle = {
   padding: '7px 10px',
   borderRadius: '999px',
-  background: 'rgba(34, 197, 94, 0.12)',
-  border: '1px solid rgba(34, 197, 94, 0.26)',
+  background: 'var(--success-soft)',
+  border: '1px solid color-mix(in srgb, var(--success) 30%, transparent)',
   color: '#bbf7d0',
   fontSize: '12px',
   fontWeight: 900,
@@ -1170,19 +1171,21 @@ const layoutStyle = {
 }
 
 const formCardStyle = {
-  background: '#1f2937',
+  background: 'var(--bg-card)',
   padding: '22px',
   borderRadius: '18px',
-  border: '1px solid rgba(255,255,255,0.08)',
+  border: '1px solid var(--border-main)',
+  boxShadow: 'var(--shadow-card)',
   position: 'sticky',
   top: '20px'
 }
 
 const listCardStyle = {
-  background: '#1f2937',
+  background: 'var(--bg-card)',
   padding: '22px',
   borderRadius: '18px',
-  border: '1px solid rgba(255,255,255,0.08)',
+  border: '1px solid var(--border-main)',
+  boxShadow: 'var(--shadow-card)',
   minWidth: 0
 }
 
@@ -1190,8 +1193,9 @@ const stickyHeaderStyle = {
   position: 'sticky',
   top: 0,
   zIndex: 20,
-  background: '#1f2937',
-  paddingBottom: '14px'
+  background: 'var(--bg-card)',
+  paddingBottom: '14px',
+  borderBottom: '1px solid var(--border-main)'
 }
 
 const listTopStyle = {
@@ -1205,6 +1209,7 @@ const listTopStyle = {
 
 const cardTitleStyle = {
   margin: 0,
+  color: 'var(--text-main)',
   fontSize: '24px',
   fontWeight: 800
 }
@@ -1212,7 +1217,7 @@ const cardTitleStyle = {
 const cardSubtitleStyle = {
   marginTop: '6px',
   marginBottom: 0,
-  color: '#94a3b8',
+  color: 'var(--text-muted)',
   fontSize: '14px',
   lineHeight: 1.45
 }
@@ -1238,13 +1243,13 @@ const twoColumnStyle = {
 const labelStyle = {
   display: 'block',
   marginBottom: '8px',
-  color: '#e5e7eb',
+  color: 'var(--text-main)',
   fontWeight: 700
 }
 
 const helpTextStyle = {
   marginTop: '7px',
-  color: '#94a3b8',
+  color: 'var(--text-muted)',
   fontSize: '12px',
   lineHeight: 1.45
 }
@@ -1253,9 +1258,9 @@ const warningTextStyle = {
   marginTop: '10px',
   padding: '10px 12px',
   borderRadius: '12px',
-  color: '#fde68a',
-  background: 'rgba(245, 158, 11, 0.1)',
-  border: '1px solid rgba(245, 158, 11, 0.22)',
+  color: 'var(--warning)',
+  background: 'var(--warning-soft)',
+  border: '1px solid color-mix(in srgb, var(--warning) 35%, transparent)',
   fontSize: '12px',
   lineHeight: 1.45
 }
@@ -1264,9 +1269,9 @@ const inputStyle = {
   width: '100%',
   padding: '11px 12px',
   borderRadius: '10px',
-  border: '1px solid #4b5563',
-  background: '#111827',
-  color: 'white',
+  border: '1px solid var(--border-input)',
+  background: 'var(--bg-input)',
+  color: 'var(--text-main)',
   outline: 'none'
 }
 
@@ -1275,8 +1280,8 @@ const buttonStyle = {
   padding: '13px',
   border: 'none',
   borderRadius: '10px',
-  background: '#2563eb',
-  color: 'white',
+  background: 'var(--button-bg)',
+  color: 'var(--button-text)',
   cursor: 'pointer',
   fontWeight: 800
 }
@@ -1285,8 +1290,8 @@ const refreshButtonStyle = {
   padding: '11px 14px',
   border: 'none',
   borderRadius: '10px',
-  background: '#2563eb',
-  color: 'white',
+  background: 'var(--button-bg)',
+  color: 'var(--button-text)',
   cursor: 'pointer',
   fontWeight: 800
 }
@@ -1295,8 +1300,8 @@ const secondaryButtonStyle = {
   padding: '9px 12px',
   border: 'none',
   borderRadius: '10px',
-  background: '#4b5563',
-  color: 'white',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--button-text)',
   cursor: 'pointer',
   fontWeight: 700
 }
@@ -1305,24 +1310,24 @@ const messageStyle = {
   marginBottom: '16px',
   padding: '12px 14px',
   borderRadius: '12px',
-  background: '#111827',
-  border: '1px solid #374151',
-  color: '#f3f4f6'
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-main)',
+  color: 'var(--text-main)'
 }
 
 const syncBoxStyle = {
   marginBottom: '16px',
   padding: '14px',
   borderRadius: '16px',
-  background: 'rgba(15, 23, 42, 0.66)',
-  border: '1px solid rgba(148, 163, 184, 0.2)'
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-main)'
 }
 
 const checkboxRowStyle = {
   display: 'flex',
   gap: '10px',
   alignItems: 'flex-start',
-  color: '#e5e7eb',
+  color: 'var(--text-main)',
   fontWeight: 800,
   lineHeight: 1.35
 }
@@ -1334,12 +1339,12 @@ const cashPreviewStyle = {
   gap: '12px',
   padding: '12px',
   borderRadius: '14px',
-  background: '#111827',
-  border: '1px solid rgba(96, 165, 250, 0.22)'
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-accent)'
 }
 
 const cashPreviewAmountStyle = {
-  color: '#fca5a5',
+  color: 'var(--danger)',
   fontWeight: 950,
   fontSize: '18px',
   whiteSpace: 'nowrap'
@@ -1347,7 +1352,7 @@ const cashPreviewAmountStyle = {
 
 const cashPreviewIncomeAmountStyle = {
   ...cashPreviewAmountStyle,
-  color: '#86efac'
+  color: 'var(--success)'
 }
 
 const filterGridStyle = {
@@ -1359,9 +1364,9 @@ const filterGridStyle = {
 const summaryPillStyle = {
   padding: '10px 12px',
   borderRadius: '999px',
-  background: 'rgba(37,99,235,0.16)',
-  border: '1px solid rgba(96,165,250,0.24)',
-  color: '#bfdbfe',
+  background: 'var(--info-soft)',
+  border: '1px solid var(--border-accent)',
+  color: 'var(--accent)',
   fontWeight: 800,
   whiteSpace: 'nowrap'
 }
@@ -1377,8 +1382,8 @@ const transactionListStyle = {
 const transactionItemStyle = {
   padding: '16px',
   borderRadius: '14px',
-  background: '#111827',
-  border: '1px solid #374151'
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-main)'
 }
 
 const transactionMainStyle = {
@@ -1397,6 +1402,7 @@ const transactionTitleRowStyle = {
 
 const symbolStyle = {
   fontSize: '20px',
+  color: 'var(--text-main)',
   fontWeight: 900
 }
 
@@ -1405,14 +1411,14 @@ const cashSyncedBadgeStyle = {
   borderRadius: '999px',
   fontSize: '12px',
   fontWeight: 900,
-  background: 'rgba(14, 165, 233, 0.14)',
-  color: '#bae6fd',
-  border: '1px solid rgba(14, 165, 233, 0.28)'
+  background: 'var(--info-soft)',
+  color: 'var(--accent)',
+  border: '1px solid var(--border-accent)'
 }
 
 const fundingLineStyle = {
   marginTop: '7px',
-  color: '#bfdbfe',
+  color: 'var(--accent)',
   fontSize: '13px',
   lineHeight: 1.35
 }
@@ -1424,13 +1430,14 @@ const transactionRightStyle = {
 
 const valueStyle = {
   fontWeight: 900,
+  color: 'var(--text-main)',
   fontSize: '18px',
   marginBottom: '6px'
 }
 
 const mutedText = {
   marginTop: '5px',
-  color: '#cbd5e1',
+  color: 'var(--text-muted)',
   fontSize: '14px'
 }
 
@@ -1441,15 +1448,15 @@ const actionRowStyle = {
   gap: '12px',
   marginTop: '14px',
   paddingTop: '12px',
-  borderTop: '1px solid rgba(255,255,255,0.08)'
+  borderTop: '1px solid var(--border-main)'
 }
 
 const editButtonStyle = {
   padding: '8px 12px',
   border: 'none',
   borderRadius: '10px',
-  background: '#2563eb',
-  color: 'white',
+  background: 'var(--button-bg)',
+  color: 'var(--button-text)',
   cursor: 'pointer',
   fontWeight: 700
 }
@@ -1458,8 +1465,8 @@ const deleteButtonStyle = {
   padding: '8px 12px',
   border: 'none',
   borderRadius: '10px',
-  background: '#dc2626',
-  color: 'white',
+  background: 'var(--danger)',
+  color: 'var(--button-text)',
   cursor: 'pointer',
   fontWeight: 700
 }
@@ -1467,8 +1474,8 @@ const deleteButtonStyle = {
 const emptyStyle = {
   padding: '24px',
   borderRadius: '14px',
-  background: '#111827',
-  border: '1px solid #374151',
-  color: '#cbd5e1',
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-main)',
+  color: 'var(--text-muted)',
   textAlign: 'center'
 }

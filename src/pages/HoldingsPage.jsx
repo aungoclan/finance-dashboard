@@ -346,7 +346,7 @@ export default function HoldingsPage() {
       <div style={headerRowStyle}>
         <div>
           <h1 style={{ marginBottom: '8px' }}>Holdings</h1>
-          <p style={{ marginTop: 0, color: '#d1d5db' }}>
+          <p style={{ marginTop: 0, color: 'var(--text-muted)' }}>
             View your current positions, market value, and unrealized profit/loss.
           </p>
         </div>
@@ -376,7 +376,7 @@ export default function HoldingsPage() {
         <div style={priceStatusCardStyle}>
           <h2 style={{ marginTop: 0 }}>Price Refresh Status</h2>
 
-          <div style={{ overflowX: 'auto' }}>
+          <div style={priceStatusTableScrollStyle}>
             <table style={tableStyle}>
               <thead>
                 <tr>
@@ -465,7 +465,7 @@ export default function HoldingsPage() {
           ) : holdings.length === 0 ? (
             <p>No holdings yet.</p>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
+            <div style={holdingsTableScrollStyle}>
               <table style={tableStyle}>
                 <thead>
                   <tr>
@@ -631,7 +631,7 @@ export default function HoldingsPage() {
             Holdings are still totaled by symbol above. This section shows where each symbol is held by account, so taxable brokerage and IRA/Roth positions stay clear.
           </p>
 
-          <div style={{ overflowX: 'auto' }}>
+          <div style={breakdownTableScrollStyle}>
             <table style={tableStyle}>
               <thead>
                 <tr>
@@ -688,16 +688,16 @@ const refreshButtonStyle = {
   padding: '10px 14px',
   border: 'none',
   borderRadius: '10px',
-  background: '#16a34a',
-  color: 'white'
+  background: 'var(--success)',
+  color: 'var(--text-main)'
 }
 
 const secondaryButtonStyle = {
   padding: '10px 14px',
   border: 'none',
   borderRadius: '10px',
-  background: '#2563eb',
-  color: 'white',
+  background: 'var(--accent)',
+  color: 'var(--text-main)',
   cursor: 'pointer'
 }
 
@@ -706,18 +706,18 @@ const messageStyle = {
   marginBottom: '16px',
   padding: '12px',
   borderRadius: '10px',
-  background: '#374151',
-  border: '1px solid #4b5563',
-  color: '#f3f4f6'
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-main)',
+  color: 'var(--text-main)'
 }
 
 const priceStatusCardStyle = {
   marginTop: '16px',
   marginBottom: '16px',
-  background: '#1f2937',
+  background: 'var(--bg-card)',
   padding: '20px',
   borderRadius: '12px',
-  border: '1px solid #374151'
+  border: '1px solid var(--border-main)'
 }
 
 const summaryGridStyle = {
@@ -727,13 +727,13 @@ const summaryGridStyle = {
 }
 
 const summaryCardStyle = {
-  background: '#1f2937',
+  background: 'var(--bg-card)',
   padding: '20px',
   borderRadius: '12px'
 }
 
 const summaryLabelStyle = {
-  color: '#d1d5db',
+  color: 'var(--text-muted)',
   fontSize: '14px',
   marginBottom: '10px'
 }
@@ -741,7 +741,7 @@ const summaryLabelStyle = {
 const summaryValueStyle = {
   fontSize: '26px',
   fontWeight: 700,
-  color: 'white'
+  color: 'var(--text-main)'
 }
 
 const contentGridStyle = {
@@ -752,10 +752,10 @@ const contentGridStyle = {
 }
 
 const cardStyle = {
-  background: '#1f2937',
+  background: 'var(--bg-card)',
   padding: '20px',
   borderRadius: '12px',
-  border: '1px solid #374151'
+  border: '1px solid var(--border-main)'
 }
 
 const currentHoldingsCardStyle = {
@@ -775,16 +775,16 @@ const fieldStyle = {
 const labelStyle = {
   display: 'block',
   marginBottom: '8px',
-  color: '#f9fafb'
+  color: 'var(--text-main)'
 }
 
 const inputStyle = {
   width: '100%',
   padding: '10px 12px',
   borderRadius: '8px',
-  border: '1px solid #4b5563',
-  background: '#111827',
-  color: 'white',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-input)',
+  color: 'var(--text-main)',
   boxSizing: 'border-box'
 }
 
@@ -793,8 +793,8 @@ const primaryButtonStyle = {
   padding: '12px',
   border: 'none',
   borderRadius: '8px',
-  background: '#2563eb',
-  color: 'white'
+  background: 'var(--accent)',
+  color: 'var(--text-main)'
 }
 
 const unlockButtonStyle = {
@@ -803,8 +803,8 @@ const unlockButtonStyle = {
   padding: '12px',
   border: 'none',
   borderRadius: '8px',
-  background: '#f59e0b',
-  color: '#111827',
+  background: 'var(--warning)',
+  color: 'var(--warning-contrast, #111827)',
   fontWeight: 800
 }
 
@@ -812,46 +812,68 @@ const lockBoxStyle = {
   marginBottom: '16px',
   padding: '12px',
   borderRadius: '10px',
-  background: '#111827',
-  border: '1px solid #374151'
+  background: 'var(--bg-input)',
+  border: '1px solid var(--border-main)'
 }
 
 const checkboxRowStyle = {
   display: 'flex',
   alignItems: 'center',
   gap: '10px',
-  color: '#f9fafb',
+  color: 'var(--text-main)',
   fontSize: '14px',
   lineHeight: 1.5
 }
 
 const lockedInfoStyle = {
   marginTop: '10px',
-  color: '#fbbf24',
+  color: 'var(--warning)',
   fontSize: '14px',
   fontWeight: 700
 }
 
 const helperTextStyle = {
   marginTop: '16px',
-  color: '#d1d5db',
+  color: 'var(--text-muted)',
   fontSize: '14px',
   lineHeight: 1.6
 }
 
 
+const priceStatusTableScrollStyle = {
+  overflowX: 'auto',
+  maxHeight: '360px',
+  overflowY: 'auto',
+  borderRadius: '10px'
+}
+
+const holdingsTableScrollStyle = {
+  overflowX: 'auto',
+  maxHeight: '620px',
+  overflowY: 'auto',
+  borderRadius: '10px'
+}
+
+const breakdownTableScrollStyle = {
+  overflowX: 'auto',
+  maxHeight: '460px',
+  overflowY: 'auto',
+  borderRadius: '10px'
+}
+
+
 const breakdownCardStyle = {
   marginTop: '24px',
-  background: '#1f2937',
+  background: 'var(--bg-card)',
   padding: '20px',
   borderRadius: '12px',
-  border: '1px solid #374151'
+  border: '1px solid var(--border-main)'
 }
 
 const breakdownHelperStyle = {
   marginTop: 0,
   marginBottom: '16px',
-  color: '#d1d5db',
+  color: 'var(--text-muted)',
   fontSize: '14px',
   lineHeight: 1.6
 }
@@ -866,7 +888,7 @@ const accountLineStyle = {
   justifyContent: 'space-between',
   alignItems: 'center',
   gap: '12px',
-  color: '#dbeafe',
+  color: 'var(--text-main)',
   fontSize: '13px'
 }
 
@@ -878,17 +900,21 @@ const tableStyle = {
 const thStyle = {
   textAlign: 'left',
   padding: '12px',
-  borderBottom: '1px solid #374151',
-  color: '#d1d5db',
+  borderBottom: '1px solid var(--border-main)',
+  color: 'var(--text-muted)',
   fontWeight: 600,
   fontSize: '14px',
-  whiteSpace: 'nowrap'
+  whiteSpace: 'nowrap',
+  position: 'sticky',
+  top: 0,
+  zIndex: 2,
+  background: 'var(--bg-card)'
 }
 
 const tdStyle = {
   padding: '12px',
   borderBottom: '1px solid #374151',
-  color: 'white',
+  color: 'var(--text-main)',
   fontSize: '14px',
   whiteSpace: 'nowrap'
 }

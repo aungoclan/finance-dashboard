@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { DEFAULT_UI_THEME, normalizeTheme } from './theme'
 
 export const DEFAULT_APP_SETTINGS = {
   defaultCurrency: 'USD',
@@ -19,7 +20,9 @@ export const DEFAULT_APP_SETTINGS = {
 
   dashboardSnapshotEnabled: true,
   showArchivedAccounts: false,
-  compactDashboard: false
+  compactDashboard: false,
+
+  uiTheme: DEFAULT_UI_THEME
 }
 
 export function mergeSettings(settings) {
@@ -89,7 +92,9 @@ export function normalizeSettings(settings) {
 
     dashboardSnapshotEnabled: Boolean(merged.dashboardSnapshotEnabled),
     showArchivedAccounts: Boolean(merged.showArchivedAccounts),
-    compactDashboard: Boolean(merged.compactDashboard)
+    compactDashboard: Boolean(merged.compactDashboard),
+
+    uiTheme: normalizeTheme(merged.uiTheme)
   }
 }
 

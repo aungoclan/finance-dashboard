@@ -1090,7 +1090,7 @@ export default function NetWorthPage() {
       <div style={headerRowStyle}>
         <div>
           <h1 style={{ marginBottom: '8px' }}>Net Worth</h1>
-          <p style={{ marginTop: 0, color: '#d1d5db' }}>
+          <p style={{ marginTop: 0, color: 'var(--text-muted)' }}>
             Track assets, liabilities, net worth, debt payments, and statement cycles.
           </p>
         </div>
@@ -1101,8 +1101,8 @@ export default function NetWorthPage() {
         <SummaryCard label="Investment Assets" value={money(summary.investmentAssetsTotal)} />
         <SummaryCard label="External Assets" value={money(summary.externalAssetsTotal)} />
         <SummaryCard label="Total Assets" value={money(summary.totalAssets)} />
-        <SummaryCard label="Liabilities" value={money(summary.liabilitiesTotal)} color="#ef4444" />
-        <SummaryCard label="Net Worth" value={money(summary.netWorth)} color={summary.netWorth >= 0 ? '#22c55e' : '#ef4444'} />
+        <SummaryCard label="Liabilities" value={money(summary.liabilitiesTotal)} color="var(--danger)" />
+        <SummaryCard label="Net Worth" value={money(summary.netWorth)} color={summary.netWorth >= 0 ? 'var(--success)' : 'var(--danger)'} />
       </div>
 
       {message && <div style={messageStyle}>{message}</div>}
@@ -1164,7 +1164,7 @@ export default function NetWorthPage() {
                     <div style={mutedText}>
                       Due: {item.due_day ? `Day ${item.due_day}` : 'Not set'} · Statement: {item.statement_day ? `Day ${item.statement_day}` : 'Not set'} · Autopay: {item.autopay_enabled ? 'On' : 'Off'}
                     </div>
-                    <div style={{ ...mutedText, color: status.tone === 'bad' ? '#f87171' : status.tone === 'good' ? '#4ade80' : status.tone === 'warn' ? '#fbbf24' : '#d1d5db' }}>
+                    <div style={{ ...mutedText, color: status.tone === 'bad' ? 'var(--danger)' : status.tone === 'good' ? 'var(--success)' : status.tone === 'warn' ? 'var(--warning)' : 'var(--text-muted)' }}>
                       This month: {status.label}
                     </div>
                     {activeStatement && (
@@ -1172,7 +1172,7 @@ export default function NetWorthPage() {
                         Statement closing: {money(activeStatement.closing_balance)} · Paid: {money(activeStatement.payments_made)}
                       </div>
                     )}
-                    <div style={{ ...mutedText, color: billStatus.tone === 'good' ? '#4ade80' : '#fbbf24' }}>
+                    <div style={{ ...mutedText, color: billStatus.tone === 'good' ? 'var(--success)' : 'var(--warning)' }}>
                       Bills: {billStatus.label}{billStatus.bill ? ` · ${money(billStatus.bill.amount)} due day ${billStatus.bill.due_day}` : ''}
                     </div>
                     {item.notes && <div style={mutedText}>Notes: {item.notes}</div>}
@@ -1425,39 +1425,39 @@ function PreviewMetric({ label, value }) {
 }
 
 const headerRowStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }
-const refreshButtonStyle = { padding: '10px 14px', border: 'none', borderRadius: '10px', background: '#2563eb', color: 'white', cursor: 'pointer' }
+const refreshButtonStyle = { padding: '10px 14px', border: 'none', borderRadius: '10px', background: 'var(--accent)', color: '#ffffff', cursor: 'pointer', boxShadow: 'var(--shadow-soft)' }
 const summaryGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }
-const summaryCardStyle = { background: '#1f2937', padding: '20px', borderRadius: '12px', border: '1px solid #334155' }
-const summaryLabelStyle = { display: 'block', color: '#d1d5db', fontSize: '14px', marginBottom: '8px' }
-const summaryValueStyle = { fontSize: '24px', fontWeight: 700, color: 'white' }
-const messageStyle = { marginTop: '16px', padding: '12px', borderRadius: '10px', background: '#1f2937', border: '1px solid #374151', color: '#f3f4f6' }
-const infoPanelStyle = { marginTop: '16px', padding: '14px 16px', borderRadius: '12px', background: 'rgba(37, 99, 235, 0.12)', border: '1px solid rgba(96, 165, 250, 0.35)', color: '#dbeafe', lineHeight: 1.5 }
+const summaryCardStyle = { background: 'var(--bg-card)', padding: '20px', borderRadius: '14px', border: '1px solid var(--border-main)', boxShadow: 'var(--shadow-card)' }
+const summaryLabelStyle = { display: 'block', color: 'var(--text-muted)', fontSize: '14px', marginBottom: '8px' }
+const summaryValueStyle = { fontSize: '24px', fontWeight: 700, color: 'var(--text-main)' }
+const messageStyle = { marginTop: '16px', padding: '12px', borderRadius: '10px', background: 'var(--bg-card-soft)', border: '1px solid var(--border-main)', color: 'var(--text-main)' }
+const infoPanelStyle = { marginTop: '16px', padding: '14px 16px', borderRadius: '12px', background: 'var(--accent-soft)', border: '1px solid var(--border-main)', color: 'var(--text-soft)', lineHeight: 1.5 }
 const twoColumnGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }
-const cardStyle = { background: '#1f2937', padding: '20px', borderRadius: '12px', border: '1px solid #334155', minWidth: 0 }
+const cardStyle = { background: 'var(--bg-card)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-main)', minWidth: 0, boxShadow: 'var(--shadow-card)' }
 const liabilityScrollAreaStyle = { maxHeight: '520px', overflowY: 'auto', paddingRight: '6px' }
-const paymentCardStyle = { ...cardStyle, marginTop: '24px', background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98))' }
-const statementCardStyle = { ...cardStyle, marginTop: '24px', background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.98), rgba(30, 41, 59, 0.98))', borderColor: 'rgba(20, 184, 166, 0.35)' }
+const paymentCardStyle = { ...cardStyle, marginTop: '24px', background: 'var(--bg-card)' }
+const statementCardStyle = { ...cardStyle, marginTop: '24px', background: 'var(--bg-card)', borderColor: 'var(--border-main)' }
 const formHeaderStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }
 const paymentGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }
 const statementGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }
-const paymentPreviewStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px', padding: '14px', borderRadius: '12px', border: '1px solid #334155', background: '#111827' }
-const statementHelperStyle = { display: 'grid', gap: '12px', padding: '14px', borderRadius: '12px', border: '1px solid rgba(20, 184, 166, 0.35)', background: 'rgba(15, 118, 110, 0.12)', marginBottom: '16px' }
-const statementFormulaStyle = { padding: '10px 12px', borderRadius: '10px', background: '#111827', border: '1px solid #334155', color: '#ccfbf1', fontWeight: 700 }
+const paymentPreviewStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px', padding: '14px', borderRadius: '12px', border: '1px solid var(--border-main)', background: 'var(--bg-card-soft)' }
+const statementHelperStyle = { display: 'grid', gap: '12px', padding: '14px', borderRadius: '12px', border: '1px solid var(--border-main)', background: 'var(--success-soft)', marginBottom: '16px' }
+const statementFormulaStyle = { padding: '10px 12px', borderRadius: '10px', background: 'var(--bg-card-soft)', border: '1px solid var(--border-main)', color: 'var(--text-main)', fontWeight: 700 }
 const statementQuickActionsStyle = { display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' }
 const fieldStyle = { marginBottom: '16px' }
 const labelStyle = { display: 'block', marginBottom: '8px' }
-const inputStyle = { width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #4b5563', background: '#111827', color: 'white' }
-const textareaStyle = { width: '100%', minHeight: '90px', padding: '10px 12px', borderRadius: '8px', border: '1px solid #4b5563', background: '#111827', color: 'white', resize: 'vertical' }
-const buttonStyle = { width: '100%', padding: '12px', border: 'none', borderRadius: '8px', background: '#2563eb', color: 'white', cursor: 'pointer' }
-const secondaryButtonStyle = { padding: '10px 12px', border: 'none', borderRadius: '8px', background: '#4b5563', color: 'white', cursor: 'pointer' }
-const primarySmallButtonStyle = { padding: '10px 12px', border: 'none', borderRadius: '8px', background: '#2563eb', color: 'white', cursor: 'pointer' }
-const listItemStyle = { display: 'flex', justifyContent: 'space-between', gap: '16px', padding: '16px', borderRadius: '10px', background: '#111827', border: '1px solid #374151', flexWrap: 'wrap' }
-const mutedText = { marginTop: '6px', color: '#d1d5db', fontSize: '14px' }
+const inputStyle = { width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border-soft)', background: 'var(--bg-elevated)', color: 'var(--text-main)', boxSizing: 'border-box' }
+const textareaStyle = { width: '100%', minHeight: '90px', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border-soft)', background: 'var(--bg-elevated)', color: 'var(--text-main)', resize: 'vertical', boxSizing: 'border-box' }
+const buttonStyle = { width: '100%', padding: '12px', border: 'none', borderRadius: '10px', background: 'var(--accent)', color: '#ffffff', cursor: 'pointer' }
+const secondaryButtonStyle = { padding: '10px 12px', border: '1px solid var(--border-main)', borderRadius: '10px', background: 'var(--bg-card-soft)', color: 'var(--text-main)', cursor: 'pointer' }
+const primarySmallButtonStyle = { padding: '10px 12px', border: 'none', borderRadius: '10px', background: 'var(--accent)', color: '#ffffff', cursor: 'pointer' }
+const listItemStyle = { display: 'flex', justifyContent: 'space-between', gap: '16px', padding: '16px', borderRadius: '12px', background: 'var(--bg-card-soft)', border: '1px solid var(--border-main)', flexWrap: 'wrap' }
+const mutedText = { marginTop: '6px', color: 'var(--text-muted)', fontSize: '14px' }
 const actionRowStyle = { display: 'flex', gap: '8px', alignItems: 'flex-start', flexWrap: 'wrap' }
 const liabilityActionRowStyle = { ...actionRowStyle, justifyContent: 'flex-end' }
-const checkboxRowStyle = { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', color: '#e5e7eb' }
-const editButtonStyle = { padding: '8px 10px', border: 'none', borderRadius: '8px', background: '#2563eb', color: 'white', cursor: 'pointer' }
-const paymentButtonStyle = { padding: '8px 10px', border: 'none', borderRadius: '8px', background: '#16a34a', color: 'white', cursor: 'pointer' }
-const statementButtonStyle = { padding: '8px 10px', border: 'none', borderRadius: '8px', background: '#0f766e', color: 'white', cursor: 'pointer' }
-const billSyncButtonStyle = { padding: '8px 10px', border: 'none', borderRadius: '8px', background: '#7c3aed', color: 'white', cursor: 'pointer' }
-const deleteButtonStyle = { padding: '8px 10px', border: 'none', borderRadius: '8px', background: '#dc2626', color: 'white', cursor: 'pointer' }
+const checkboxRowStyle = { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', color: 'var(--text-main)' }
+const editButtonStyle = { padding: '8px 10px', border: 'none', borderRadius: '10px', background: 'var(--accent)', color: '#ffffff', cursor: 'pointer' }
+const paymentButtonStyle = { padding: '8px 10px', border: 'none', borderRadius: '10px', background: 'var(--success)', color: '#ffffff', cursor: 'pointer' }
+const statementButtonStyle = { padding: '8px 10px', border: 'none', borderRadius: '10px', background: 'var(--accent-strong)', color: '#ffffff', cursor: 'pointer' }
+const billSyncButtonStyle = { padding: '8px 10px', border: 'none', borderRadius: '10px', background: 'var(--warning)', color: '#ffffff', cursor: 'pointer' }
+const deleteButtonStyle = { padding: '8px 10px', border: 'none', borderRadius: '10px', background: 'var(--danger)', color: '#ffffff', cursor: 'pointer' }
