@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase'
 
 const INVESTMENT_ACCOUNT_TYPES = ['brokerage', 'ira', 'crypto']
 const FUNDING_ACCOUNT_TYPES = ['cash', 'checking', 'savings', 'business']
+const INVESTMENT_CASH_SOURCE_TYPES = ['brokerage', 'ira', 'crypto']
+const CASH_SYNC_ACCOUNT_TYPES = [...FUNDING_ACCOUNT_TYPES, ...INVESTMENT_CASH_SOURCE_TYPES]
 const CASHFLOW_TRANSFER_CATEGORY = 'Transfer'
 
 function buildEmptyForm() {
@@ -46,9 +48,24 @@ export default function InvestmentsPage() {
     return accounts.filter((account) => INVESTMENT_ACCOUNT_TYPES.includes(account.account_type))
   }, [accounts])
 
-  const fundingAccounts = useMemo(() => {
+  const cashReserveFundingAccounts = useMemo(() => {
     return accounts.filter((account) => FUNDING_ACCOUNT_TYPES.includes(account.account_type))
   }, [accounts])
+
+  const investmentCashFundingAccounts = useMemo(() => {
+    return accounts.filter((account) => INVESTMENT_CASH_SOURCE_TYPES.includes(account.account_type))
+  }, [accounts])
+
+  const fundingAccounts = useMemo(() => {
+    const combined = [...cashReserveFundingAccounts, ...investmentCashFundingAccounts]
+    const seen = new Set()
+
+    return combined.filter((account) => {
+      if (!account?.id || seen.has(account.id)) return false
+      seen.add(account.id)
+      return true
+    })
+  }, [cashReserveFundingAccounts, investmentCashFundingAccounts])
 
   const selectedInvestmentAccount = useMemo(() => {
     return accounts.find((account) => account.id === formData.account_id) || null
@@ -427,11 +444,8 @@ export default function InvestmentsPage() {
 
       if (cashSyncEnabled) {
         if (!fundingAccount) throw new Error(formData.type === 'sell' ? 'Please select Deposit To / Receive Cash To' : 'Please select Pay From / Funding Source')
-        if (!FUNDING_ACCOUNT_TYPES.includes(fundingAccount.account_type)) {
-          throw new Error('Cash sync account must be Cash Wallet, Checking, Savings, or Business')
-        }
-        if (fundingAccount.id === formData.account_id) {
-          throw new Error('Cash sync account should be different from the investment account')
+        if (!CASH_SYNC_ACCOUNT_TYPES.includes(fundingAccount.account_type)) {
+          throw new Error('Cash sync account must be Cash Wallet, Checking, Savings, Business, Brokerage, IRA, or Crypto')
         }
         if (!cashSyncAmount || cashSyncAmount <= 0) {
           throw new Error(formData.type === 'sell' ? 'Sell deposit amount must be greater than zero. Check quantity, unit price, and fee.' : 'Cash sync amount must be greater than zero')
@@ -684,7 +698,7 @@ export default function InvestmentsPage() {
         <div>
           <h1 style={titleStyle}>Investments</h1>
           <p style={subtitleStyle}>
-            Add, edit, search, and review investment transactions. Buy orders can sync cash outflow, and Sell orders can sync cash deposits to Cash Wallet, Checking, Savings, or Business.
+            Add, edit, search, and review investment transactions. Buy orders can sync cash outflow from Cash/Tiet Kiem or from cash already inside brokerage/IRA accounts. Sell orders can sync cash deposits back to Cash Wallet, Savings, Brokerage, IRA, or Crypto accounts.
           </p>
         </div>
 
@@ -697,9 +711,9 @@ export default function InvestmentsPage() {
 
       <div style={fundingGuardStyle}>
         <div>
-          <div style={guardTitleStyle}>Bài 58B · Investment Buy/Sell Cash Sync</div>
+          <div style={guardTitleStyle}>Bài 64A · Investment Account Funding Source</div>
           <p style={guardTextStyle}>
-            A Buy moves cash into an investment position. A Sell moves cash back out to a deposit account. Turn on cash sync to create the matching Cashflow Transfer row and avoid overstating Net Worth or cash.
+            A Buy moves available cash into an investment position. Use Cash/Tiet Kiem for outside funding, or choose the same brokerage/IRA account when using dividend cash already inside that account. Sell orders can deposit cash back to either outside cash or investment cash.
           </p>
         </div>
         <div style={guardPillStyle}>Manual-first · anti-duplicate</div>
@@ -858,7 +872,7 @@ export default function InvestmentsPage() {
               </label>
 
               <div style={helpTextStyle}>
-                {isSellTransaction ? 'This creates a Cashflow income with category Transfer. It records cash received from selling investments.' : 'This creates a Cashflow expense with category Transfer. It reduces the funding account cash movement, but keeps the investment position in Holdings.'}
+                {isSellTransaction ? 'This creates a Cashflow income with category Transfer. Choose outside cash or the investment account where sale proceeds stay.' : 'This creates a Cashflow expense with category Transfer. Choose Cash/Tiet Kiem for outside money, or choose the brokerage/IRA account when using dividend cash already inside that account.'}
               </div>
 
               {canSyncCash && formData.cash_sync_enabled && (
@@ -872,12 +886,31 @@ export default function InvestmentsPage() {
                       style={inputStyle}
                     >
                       <option value="">{isSellTransaction ? 'Select destination account' : 'Select funding account'}</option>
-                      {fundingAccounts.map((account) => (
-                        <option key={account.id} value={account.id}>
-                          {account.name} ({account.account_type})
-                        </option>
-                      ))}
+                      {cashReserveFundingAccounts.length > 0 && (
+                        <optgroup label="Cash / Reserve">
+                          {cashReserveFundingAccounts.map((account) => (
+                            <option key={account.id} value={account.id}>
+                              {account.name} ({account.account_type})
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {investmentCashFundingAccounts.length > 0 && (
+                        <optgroup label="Investment Cash">
+                          {investmentCashFundingAccounts.map((account) => (
+                            <option key={account.id} value={account.id}>
+                              {account.name} ({account.account_type})
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
                     </select>
+                  </div>
+
+                  <div style={infoTextStyle}>
+                    {selectedFundingAccount && INVESTMENT_CASH_SOURCE_TYPES.includes(selectedFundingAccount.account_type)
+                      ? 'Investment cash source selected. This is useful for dividends or sale proceeds that stay inside Robinhood, Roth IRA, or Kraken. It does not touch Cash Wallet or Tiet Kiem.'
+                      : 'Cash / reserve source selected. This affects outside cash accounts such as Cash Wallet, checking, savings, or Tiet Kiem.'}
                   </div>
 
                   <div style={cashPreviewStyle}>
@@ -1250,6 +1283,17 @@ const labelStyle = {
 const helpTextStyle = {
   marginTop: '7px',
   color: 'var(--text-muted)',
+  fontSize: '12px',
+  lineHeight: 1.45
+}
+
+const infoTextStyle = {
+  marginBottom: '12px',
+  padding: '10px 12px',
+  borderRadius: '12px',
+  color: 'var(--text-muted)',
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-main)',
   fontSize: '12px',
   lineHeight: 1.45
 }
