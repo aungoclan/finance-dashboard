@@ -69,6 +69,7 @@ const ACCOUNT_TYPES = [
 const ARCHIVE_PREFIX = '[ARCHIVED] '
 const LARGE_EXPENSE_REVIEW_AMOUNT = 1000
 const DUPLICATE_WINDOW_LIMIT = 8
+const INVESTMENT_INCOME_TYPES = new Set(['dividend', 'interest'])
 
 const ACCOUNT_TYPE_LABELS = ACCOUNT_TYPES.reduce((map, item) => {
   map[item.value] = item.label
@@ -251,6 +252,15 @@ function getAccountSeed(account) {
     unrealizedPLPercent: 0,
     positionCount: 0,
     investmentTxCount: 0,
+    monthlyInvestmentIncome: 0,
+    monthlyInvestmentOnlyIncome: 0,
+    monthlyInvestmentCashflowIncome: 0,
+    monthlyInvestmentIncomeCount: 0,
+    monthlyInvestmentOnlyCount: 0,
+    monthlyInvestmentCashflowCount: 0,
+    allTimeInvestmentIncome: 0,
+    allTimeInvestmentOnlyIncome: 0,
+    allTimeInvestmentCashflowIncome: 0,
 
     monthlyIncome: 0,
     monthlyExpense: 0,
@@ -290,6 +300,51 @@ function getAccountSeed(account) {
     needsReview: false,
     reviewReasons: []
   }
+}
+
+
+function isInvestmentIncomeTransaction(tx) {
+  return INVESTMENT_INCOME_TYPES.has(normalize(tx?.type))
+}
+
+function getInvestmentIncomeAmount(tx) {
+  if (!isInvestmentIncomeTransaction(tx)) return 0
+
+  const quantity = Math.abs(toNumber(tx?.quantity))
+  const unitPrice = Math.abs(toNumber(tx?.unit_price))
+  const fee = Math.max(toNumber(tx?.fee), 0)
+  const gross = quantity > 0 ? quantity * unitPrice : unitPrice
+
+  return Math.max(gross - fee, 0)
+}
+
+function findMatchingInvestmentIncomeCashflow(tx, cashflowEntries) {
+  if (!isInvestmentIncomeTransaction(tx)) return null
+
+  const amount = getInvestmentIncomeAmount(tx)
+  if (amount <= 0) return null
+
+  const txDate = tx?.transaction_date || ''
+  const accountId = tx?.account_id || ''
+  const symbol = normalize(tx?.assets?.symbol)
+  const txType = normalize(tx?.type)
+
+  return (cashflowEntries || []).find((entry) => {
+    if (normalize(entry?.type) !== 'income') return false
+    if ((entry?.account_id || '') !== accountId) return false
+    if ((entry?.entry_date || '') !== txDate) return false
+    if (Math.abs(toNumber(entry?.amount) - amount) >= 0.01) return false
+
+    const description = normalize(entry?.description)
+    const category = normalize(entry?.category)
+    const hasSymbol = symbol ? description.includes(symbol) : true
+    const hasIncomeLabel =
+      txType === 'interest'
+        ? description.includes('interest') || category.includes('interest')
+        : description.includes('dividend') || category.includes('dividend')
+
+    return hasSymbol || hasIncomeLabel
+  }) || null
 }
 
 
@@ -873,6 +928,41 @@ export default function AccountsPage() {
       row.costBasis = holdings.reduce((sum, item) => sum + toNumber(item.cost_basis), 0)
       row.unrealizedPL = holdings.reduce((sum, item) => sum + toNumber(item.unrealized_pl), 0)
       row.unrealizedPLPercent = row.costBasis > 0 ? (row.unrealizedPL / row.costBasis) * 100 : 0
+    })
+
+    transactions.forEach((tx) => {
+      if (!isInvestmentIncomeTransaction(tx)) return
+
+      const accountId = tx.account_id || 'unassigned'
+      const row = map.get(accountId)
+      if (!row) return
+
+      const amount = getInvestmentIncomeAmount(tx)
+      if (amount <= 0) return
+
+      const date = tx.transaction_date || ''
+      const inThisMonth = date >= startDate && date < endDate
+      const matchedCashflow = findMatchingInvestmentIncomeCashflow(tx, cashflowEntries)
+
+      row.allTimeInvestmentIncome += amount
+      if (matchedCashflow) {
+        row.allTimeInvestmentCashflowIncome += amount
+      } else {
+        row.allTimeInvestmentOnlyIncome += amount
+      }
+
+      if (inThisMonth) {
+        row.monthlyInvestmentIncome += amount
+        row.monthlyInvestmentIncomeCount += 1
+
+        if (matchedCashflow) {
+          row.monthlyInvestmentCashflowIncome += amount
+          row.monthlyInvestmentCashflowCount += 1
+        } else {
+          row.monthlyInvestmentOnlyIncome += amount
+          row.monthlyInvestmentOnlyCount += 1
+        }
+      }
     })
 
     const duplicateMap = new Map()
@@ -1971,6 +2061,28 @@ function AccountCard({
               sub={formatPercent(account.unrealizedPLPercent)}
               tone={account.unrealizedPL >= 0 ? 'good' : 'bad'}
             />
+            {isInvestmentAccount(account.account_type) && (
+              <>
+                <Metric
+                  label="Investment Income"
+                  value={money(account.monthlyInvestmentIncome)}
+                  sub={`${account.monthlyInvestmentIncomeCount} dividend/interest entr${account.monthlyInvestmentIncomeCount === 1 ? 'y' : 'ies'} this month`}
+                  tone={account.monthlyInvestmentIncome > 0 ? 'good' : 'neutral'}
+                />
+                <Metric
+                  label="Investment Only"
+                  value={money(account.monthlyInvestmentOnlyIncome)}
+                  sub="Tracked/reinvested · not Cashflow"
+                  tone={account.monthlyInvestmentOnlyIncome > 0 ? 'good' : 'neutral'}
+                />
+                <Metric
+                  label="Cashflow Posted Income"
+                  value={money(account.monthlyInvestmentCashflowIncome)}
+                  sub={`${account.monthlyInvestmentCashflowCount} posted entr${account.monthlyInvestmentCashflowCount === 1 ? 'y' : 'ies'}`}
+                  tone={account.monthlyInvestmentCashflowIncome > 0 ? 'good' : 'neutral'}
+                />
+              </>
+            )}
             {isCashAccount(account.account_type) && (
               <Metric
                 label="Final Cash Balance"

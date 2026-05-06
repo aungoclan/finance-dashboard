@@ -13,19 +13,19 @@ const DIVIDEND_USE_MODES = {
   track_only: {
     label: 'Track Only',
     shortLabel: 'Track Only',
-    description: 'Save in Dividend Tracker only. Does not affect Cashflow or monthly living income.',
+    description: 'Save in Dividend Tracker only. Does not affect Cashflow, account cash, holdings, or monthly living income.',
     postToCashflow: false
   },
   reinvested: {
     label: 'Reinvested / DRIP',
     shortLabel: 'Reinvested',
-    description: 'Dividend is kept inside investment accounts and used to buy ETF/stock later. Not posted to Cashflow.',
+    description: 'Records dividend as investment-only / reinvested income. It does not post to Cashflow, does not increase account cash, and does not auto-buy shares.',
     postToCashflow: false
   },
   cashflow: {
     label: 'Post to Cashflow',
     shortLabel: 'Cashflow',
-    description: 'Count this dividend as personal income in Cashflow, Budget, Money Plan, and dashboards.',
+    description: 'Count this dividend as personal income in Cashflow, Budget, Money Plan, and dashboards. This is the only mode that posts a cashflow income entry.',
     postToCashflow: true
   }
 }
@@ -629,6 +629,29 @@ export default function DividendIncomePage() {
     }
   }, [enrichedTransactions, filteredTransactions, incomeProjection])
 
+  const selectedAccountName = accountNameMap[formData.account_id] || 'the selected brokerage / IRA account'
+  const activeUseMode = DIVIDEND_USE_MODES[formData.dividend_use_mode] || DIVIDEND_USE_MODES.track_only
+  const useModeNotice = useMemo(() => {
+    if (formData.dividend_use_mode === 'cashflow') {
+      return {
+        title: 'Post to Cashflow behavior',
+        text: `This will save the dividend/interest record and also create a Cashflow income entry for ${selectedAccountName}. Use this only when you want the income counted in monthly personal cashflow.`
+      }
+    }
+
+    if (formData.dividend_use_mode === 'reinvested') {
+      return {
+        title: 'Reinvested / DRIP behavior',
+        text: `This records the dividend as investment-only income. It will not show as Month Income on the account card, will not create account cash, and will not auto-buy shares. If the dividend was reinvested, go to Investments → Add Transaction → Buy, then choose ${selectedAccountName} as both the investment account and funding source.`
+      }
+    }
+
+    return {
+      title: 'Track Only behavior',
+      text: 'This saves the income in the Dividend Tracker only. It will not change Cashflow, account cash, holdings, cost basis, or monthly living income.'
+    }
+  }, [formData.dividend_use_mode, selectedAccountName])
+
   const recentTransactions = useMemo(() => filteredTransactions.slice(0, 30), [filteredTransactions])
   const reviewTransactions = useMemo(
     () => enrichedTransactions.filter((tx) => tx.incomeAmount <= 0).slice(0, 12),
@@ -841,10 +864,15 @@ export default function DividendIncomePage() {
       const incomeLabel = formData.income_type === 'interest' ? 'Interest' : 'Dividend'
       const useModeLabel = getDividendUseModeLabel(formData.dividend_use_mode)
 
+      const investmentOnlyMessage =
+        formData.dividend_use_mode === 'reinvested'
+          ? `${incomeLabel} saved as Reinvested / DRIP. This did not post Cashflow, did not increase account cash, and did not buy shares automatically. If reinvested, add the Buy transaction in Investments using the same brokerage / IRA account as funding source.`
+          : `${incomeLabel} saved as ${useModeLabel}. This is tracker-only and does not affect Cashflow, account cash, or holdings.`
+
       setMessage(
         postedToCashflow
           ? `${incomeLabel} saved and posted to Cashflow`
-          : `${incomeLabel} saved as ${useModeLabel}. If you reinvest it, add the ETF/stock buy transaction separately.`
+          : investmentOnlyMessage
       )
     } catch (error) {
       console.error('handleAddDividend error:', error)
@@ -940,7 +968,7 @@ export default function DividendIncomePage() {
         <StatCard label="This Year" value={formatMoney(summary.thisYearIncome)} note="Year-to-date income" />
         <StatCard label="TTM Income" value={formatMoney(summary.trailing12Income)} note="Trailing 12 months received" />
         <StatCard label="Estimated Monthly Avg" value={formatMoney(summary.estimatedMonthlyAverage)} note="Based on TTM income + current holdings" />
-        <StatCard label="Investment Only" value={formatMoney(summary.investmentOnlyIncome)} note="Tracked here, not counted in Cashflow" />
+        <StatCard label="Investment Only" value={formatMoney(summary.investmentOnlyIncome)} note="Tracker only: not account cash or Cashflow" />
         <StatCard label="Cashflow Posted" value={formatMoney(summary.cashflowPostedIncome)} note="Dividend/interest counted as income" />
         <StatCard label="Needs Review" value={summary.needsAmountReview} note="Rows missing usable amount" tone={summary.needsAmountReview > 0 ? 'warning' : 'normal'} />
       </section>
@@ -949,7 +977,7 @@ export default function DividendIncomePage() {
         <div style={formIntroStyle}>
           <h2 style={sectionTitleStyle}>Add Dividend / Interest</h2>
           <p style={mutedStyle}>
-            Saves an investment income transaction. Use Track Only or Reinvested/DRIP when the dividend stays inside your brokerage and should not affect living Cashflow.
+            Saves an investment income transaction. Track Only and Reinvested/DRIP are investment-tracker modes only. They do not post Cashflow, do not increase account cash, and do not auto-buy shares.
           </p>
         </div>
 
@@ -1066,6 +1094,16 @@ export default function DividendIncomePage() {
                 </label>
               ))}
             </div>
+
+            <div style={useModeNoticeStyle}>
+              <strong>{useModeNotice.title}</strong>
+              <p>{useModeNotice.text}</p>
+              <div style={useModeMiniStepsStyle}>
+                {formData.dividend_use_mode === 'reinvested'
+                  ? 'Next step when actually reinvested: Investments → Add Transaction → Buy → Pay From this same brokerage / IRA account.'
+                  : activeUseMode.description}
+              </div>
+            </div>
           </div>
 
           <div style={formActionsStyle}>
@@ -1083,9 +1121,9 @@ export default function DividendIncomePage() {
           </p>
         </div>
         <div style={guideGridStyle}>
-          <GuideCard title="1. Dividend Received" text="Save dividend as Track Only or Reinvested/DRIP. This keeps Dividend Tracker accurate without inflating living income." />
-          <GuideCard title="2. Buy ETF / Stock" text="When you use that dividend to buy SCHD, JEPQ, JEPI, or another ETF, add/import the buy transaction separately so holdings shares update." />
-          <GuideCard title="3. Cashflow Optional" text="Only choose Post to Cashflow when the money is truly available for spending or you want it counted in monthly personal income." />
+          <GuideCard title="1. Dividend Received" text="Save dividend as Track Only or Reinvested/DRIP. This keeps Dividend Tracker accurate, but it does not create Cashflow income or account cash." />
+          <GuideCard title="2. Buy ETF / Stock" text="When you use that dividend to buy SCHD, JEPQ, JEPI, or another ETF, add/import the Buy transaction separately. Choose the same brokerage/IRA account as the funding source so holdings and cost basis update." />
+          <GuideCard title="3. Cashflow Optional" text="Only choose Post to Cashflow when you want the money counted as monthly personal income. For Roth IRA or brokerage reinvestment cash, keep it investment-only." />
         </div>
       </section>
 
@@ -1259,7 +1297,7 @@ export default function DividendIncomePage() {
         <div style={tableHeaderStyle}>
           <div>
             <h2 style={sectionTitleStyle}>Dividend / Interest Ledger</h2>
-            <p style={mutedStyle}>Showing up to 30 filtered income rows. Investment Only means it is tracked here but not counted as personal Cashflow income. If reinvested, add the buy transaction separately.</p>
+            <p style={mutedStyle}>Showing up to 30 filtered income rows. Investment Only means it is tracked here only: not Cashflow, not account cash, and not shares. If reinvested, add the Buy transaction separately in Investments.</p>
           </div>
         </div>
 
@@ -1583,6 +1621,24 @@ const useModeDescriptionStyle = {
   color: '#93a4bd',
   fontSize: '12px',
   fontWeight: 600
+}
+
+const useModeNoticeStyle = {
+  gridColumn: '1 / -1',
+  marginTop: '14px',
+  border: '1px solid rgba(96, 165, 250, 0.45)',
+  background: 'rgba(37, 99, 235, 0.1)',
+  borderRadius: '14px',
+  padding: '14px 16px',
+  color: '#e5e7eb',
+  lineHeight: 1.45
+}
+
+const useModeMiniStepsStyle = {
+  marginTop: '10px',
+  color: '#bfdbfe',
+  fontSize: '13px',
+  fontWeight: 800
 }
 
 const formActionsStyle = {
