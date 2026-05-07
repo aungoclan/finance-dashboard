@@ -126,26 +126,19 @@ function getLiabilityStatementDate(liability, statementMonthKey) {
   return getSafeDueDate(statementMonthKey, liability.statement_day)
 }
 
-function getLiabilityDatesForDueMonth(liability, dueMonthKey) {
-  const entryDate = getSafeDueDate(dueMonthKey, liability?.due_day)
+function getLiabilityDatesForStatementMonth(liability, statementMonthKey) {
+  const statementDate = getLiabilityStatementDate(liability, statementMonthKey)
 
-  if (!liability?.statement_day) {
+  if (!statementDate) {
     return {
       statementDate: '',
-      entryDate
+      entryDate: getSafeDueDate(statementMonthKey, liability?.due_day)
     }
   }
 
-  const dueDay = Number(liability?.due_day || 1)
-  const statementDay = Number(liability?.statement_day || 1)
-  const statementMonthKey =
-    Number.isFinite(dueDay) && Number.isFinite(statementDay) && dueDay <= statementDay
-      ? addMonthsToMonthKey(dueMonthKey, -1)
-      : dueMonthKey
-
   return {
-    statementDate: getLiabilityStatementDate(liability, statementMonthKey),
-    entryDate
+    statementDate,
+    entryDate: getDateFromMonthDayAfterDate(statementDate, liability?.due_day)
   }
 }
 
@@ -322,12 +315,12 @@ function buildBillControlRows({
   return bills.map((bill) => {
     const linkedLiability = getLinkedLiabilityForBill(bill, liabilities)
     const isDebtLinkedBill = Boolean(linkedLiability)
-    const liabilityDueMonthDates = isDebtLinkedBill
-      ? getLiabilityDatesForDueMonth(linkedLiability, targetMonthKey)
+    const liabilityStatementMonthDates = isDebtLinkedBill
+      ? getLiabilityDatesForStatementMonth(linkedLiability, targetMonthKey)
       : null
-    const statementDate = liabilityDueMonthDates?.statementDate || ''
+    const statementDate = liabilityStatementMonthDates?.statementDate || ''
     const entryDate = isDebtLinkedBill
-      ? liabilityDueMonthDates?.entryDate || getSafeDueDate(targetMonthKey, linkedLiability?.due_day || bill.due_day)
+      ? liabilityStatementMonthDates?.entryDate || getSafeDueDate(targetMonthKey, linkedLiability?.due_day || bill.due_day)
       : getSafeDueDate(targetMonthKey, bill.due_day)
     const amount = toMoneyNumber(bill.amount)
     const category = getBillCategoryName(bill)
