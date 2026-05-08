@@ -20,10 +20,153 @@ const VIEW_MODES = {
   UNASSIGNED: 'unassigned'
 }
 
+
+const CASH_ACCOUNT_TYPES = ['cash', 'checking', 'savings', 'business']
+
+function toNumber(value) {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : 0
+}
+
+function pad2(value) {
+  return String(value).padStart(2, '0')
+}
+
+function parseMonthKey(monthKey) {
+  const [yearText, monthText] = String(monthKey || '').split('-')
+  const year = Number(yearText)
+  const month = Number(monthText)
+
+  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
+    const now = new Date()
+    return { year: now.getFullYear(), month: now.getMonth() + 1 }
+  }
+
+  return { year, month }
+}
+
+function shiftMonthKey(monthKey, offset) {
+  const { year, month } = parseMonthKey(monthKey)
+  const shifted = new Date(year, month - 1 + offset, 1)
+  return `${shifted.getFullYear()}-${pad2(shifted.getMonth() + 1)}`
+}
+
+function getMonthRangeFromKey(monthKey) {
+  const { year, month } = parseMonthKey(monthKey)
+  const next = new Date(year, month, 1)
+
+  return {
+    startDate: `${year}-${pad2(month)}-01`,
+    endDate: `${next.getFullYear()}-${pad2(next.getMonth() + 1)}-01`
+  }
+}
+
+function isArchivedAccount(account) {
+  return String(account?.name || '').startsWith('[ARCHIVED] ')
+}
+
+function getEntryAmount(entry) {
+  return Math.abs(toNumber(entry?.amount))
+}
+
+function getLedgerFinalBalance(ledger) {
+  if (!ledger) return 0
+
+  const actual = ledger.actual_cash_count
+  if (actual !== null && actual !== undefined) return toNumber(actual)
+
+  return toNumber(ledger.expected_closing_balance)
+}
+
+function getNetForAccount(entries, accountId, range = null) {
+  let income = 0
+  let expense = 0
+
+  for (const entry of entries || []) {
+    if ((entry.account_id || '') !== accountId) continue
+
+    const entryDate = String(entry.entry_date || '')
+    if (range && (entryDate < range.startDate || entryDate >= range.endDate)) continue
+
+    if (entry.type === 'income') income += getEntryAmount(entry)
+    if (entry.type === 'expense') expense += getEntryAmount(entry)
+  }
+
+  return income - expense
+}
+
+function buildCashBalanceSummary({ accounts = [], entries = [], ledgers = [], monthKey }) {
+  const currentRange = getMonthRangeFromKey(monthKey)
+  const previousMonthKey = shiftMonthKey(monthKey, -1)
+  const cashAccounts = (accounts || [])
+    .filter((account) => !isArchivedAccount(account))
+    .filter((account) => CASH_ACCOUNT_TYPES.includes(account.account_type))
+
+  const currentLedgerByAccount = new Map()
+  const previousLedgerByAccount = new Map()
+
+  for (const ledger of ledgers || []) {
+    if (!ledger.cash_account_id) continue
+    if (ledger.month_key === monthKey) currentLedgerByAccount.set(ledger.cash_account_id, ledger)
+    if (ledger.month_key === previousMonthKey) previousLedgerByAccount.set(ledger.cash_account_id, ledger)
+  }
+
+  let cashWalletBalance = 0
+  let spendableBalance = 0
+  let reserveBalance = 0
+  let businessBalance = 0
+  let currentLedgerCount = 0
+  let carryoverCount = 0
+
+  for (const account of cashAccounts) {
+    let balance = getNetForAccount(entries, account.id)
+
+    if (account.account_type === 'cash') {
+      const currentLedger = currentLedgerByAccount.get(account.id)
+      const previousLedger = previousLedgerByAccount.get(account.id)
+
+      if (currentLedger) {
+        balance = getLedgerFinalBalance(currentLedger)
+        currentLedgerCount += 1
+      } else if (previousLedger) {
+        balance = getLedgerFinalBalance(previousLedger) + getNetForAccount(entries, account.id, currentRange)
+        carryoverCount += 1
+      }
+
+      cashWalletBalance += balance
+    }
+
+    if (account.account_type === 'cash' || account.account_type === 'checking') {
+      spendableBalance += balance
+    } else if (account.account_type === 'savings') {
+      reserveBalance += balance
+    } else if (account.account_type === 'business') {
+      businessBalance += balance
+    }
+  }
+
+  const sourceLabel =
+    currentLedgerCount > 0
+      ? 'Current Cash Ledger snapshot'
+      : carryoverCount > 0
+        ? 'Previous ledger + current month movement'
+        : 'Cashflow fallback · no ledger yet'
+
+  return {
+    cashWalletBalance,
+    spendableBalance,
+    reserveBalance,
+    businessBalance,
+    sourceLabel
+  }
+}
+
 export default function CashflowPage() {
   const [accounts, setAccounts] = useState([])
   const [categories, setCategories] = useState([])
   const [entries, setEntries] = useState([])
+  const [balanceEntries, setBalanceEntries] = useState([])
+  const [cashWalletLedgers, setCashWalletLedgers] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -122,9 +265,47 @@ export default function CashflowPage() {
         throw entryError
       }
 
+      const { data: balanceEntryData, error: balanceEntryError } = await supabase
+        .from('cashflow_entries')
+        .select(`
+          id,
+          account_id,
+          entry_date,
+          type,
+          amount
+        `)
+        .eq('user_id', user.id)
+
+      if (balanceEntryError) {
+        throw balanceEntryError
+      }
+
+      const { data: ledgerData, error: ledgerError } = await supabase
+        .from('cash_wallet_monthly_ledger')
+        .select(`
+          id,
+          user_id,
+          cash_account_id,
+          month_key,
+          opening_balance,
+          actual_cash_count,
+          expected_closing_balance,
+          status,
+          locked,
+          created_at
+        `)
+        .eq('user_id', user.id)
+        .order('month_key', { ascending: false })
+
+      if (ledgerError) {
+        console.warn('Cash Wallet Ledger unavailable on Cashflow page:', ledgerError.message)
+      }
+
       setCategories(categoryData)
       setAccounts(accountData || [])
       setEntries(entryData || [])
+      setBalanceEntries(balanceEntryData || [])
+      setCashWalletLedgers(ledgerError ? [] : ledgerData || [])
     } catch (error) {
       console.error(error)
       setMessage(
@@ -322,6 +503,12 @@ export default function CashflowPage() {
   }
 
   const summary = calculateCashflowSummary(entries)
+  const cashBalanceSummary = buildCashBalanceSummary({
+    accounts,
+    entries: balanceEntries,
+    ledgers: cashWalletLedgers,
+    monthKey: startDate.slice(0, 7)
+  })
   const expenseCategories = calculateCategorySummary(entries, 'expense')
   const incomeCategories = calculateCategorySummary(entries, 'income')
 
@@ -382,27 +569,42 @@ export default function CashflowPage() {
       </div>
 
       <div style={summaryGridStyle}>
+        <div style={importantSummaryCardStyle}>
+          <div style={summaryLabelStyle}>Cash Wallet Balance</div>
+          <div
+            style={{
+              ...summaryValueStyle,
+              color: cashBalanceSummary.cashWalletBalance >= 0 ? 'var(--success)' : 'var(--danger)'
+            }}
+          >
+            ${formatMoney(cashBalanceSummary.cashWalletBalance)}
+          </div>
+          <div style={summarySubTextStyle}>{cashBalanceSummary.sourceLabel}</div>
+        </div>
+
         <div style={summaryCardStyle}>
           <div style={summaryLabelStyle}>
-            {viewMode === VIEW_MODES.CURRENT_MONTH ? 'Monthly Income' : 'Visible Income'}
+            {viewMode === VIEW_MODES.CURRENT_MONTH ? 'Income Movement' : 'Visible Income'}
           </div>
           <div style={{ ...summaryValueStyle, color: 'var(--success)' }}>
             ${formatMoney(summary.totalIncome)}
           </div>
+          <div style={summarySubTextStyle}>Cashflow entries only</div>
         </div>
 
         <div style={summaryCardStyle}>
           <div style={summaryLabelStyle}>
-            {viewMode === VIEW_MODES.CURRENT_MONTH ? 'Monthly Expenses' : 'Visible Expenses'}
+            {viewMode === VIEW_MODES.CURRENT_MONTH ? 'Expense Movement' : 'Visible Expenses'}
           </div>
           <div style={{ ...summaryValueStyle, color: 'var(--danger)' }}>
             ${formatMoney(summary.totalExpenses)}
           </div>
+          <div style={summarySubTextStyle}>Cash out / payments posted</div>
         </div>
 
         <div style={summaryCardStyle}>
           <div style={summaryLabelStyle}>
-            {viewMode === VIEW_MODES.CURRENT_MONTH ? 'Net Cashflow' : 'Visible Net Cashflow'}
+            {viewMode === VIEW_MODES.CURRENT_MONTH ? 'Net Movement' : 'Visible Net Movement'}
           </div>
           <div
             style={{
@@ -412,7 +614,13 @@ export default function CashflowPage() {
           >
             ${formatMoney(summary.netCashflow)}
           </div>
+          <div style={summarySubTextStyle}>Income - expenses for this view</div>
         </div>
+      </div>
+
+      <div style={cashExplainerStyle}>
+        <strong>Cashflow = movement.</strong> The first card shows your actual Cash Wallet balance for the selected month.
+        Income, expenses, and net movement explain why the balance changed, but they are not the same as final cash on hand.
       </div>
 
       {message && <div style={messageStyle}>{message}</div>}
@@ -722,7 +930,7 @@ const activeViewButtonStyle = {
 
 const summaryGridStyle = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
   gap: '16px'
 }
 
@@ -733,6 +941,30 @@ const summaryCardStyle = {
   minWidth: 0,
   border: '1px solid var(--border-main)',
   boxShadow: 'var(--shadow-card)'
+}
+
+const importantSummaryCardStyle = {
+  ...summaryCardStyle,
+  border: '1px solid var(--accent)',
+  background: 'linear-gradient(135deg, var(--bg-card), var(--bg-card-soft))'
+}
+
+const summarySubTextStyle = {
+  marginTop: '8px',
+  color: 'var(--text-muted)',
+  fontSize: '12px',
+  lineHeight: 1.4
+}
+
+const cashExplainerStyle = {
+  marginTop: '12px',
+  padding: '12px 14px',
+  borderRadius: '12px',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-muted)',
+  fontSize: '13px',
+  lineHeight: 1.45
 }
 
 const summaryLabelStyle = {
