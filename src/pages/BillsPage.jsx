@@ -284,6 +284,67 @@ function getDueLabel(dateKey, dueSoonDays) {
   }
 }
 
+function niceDate(value) {
+  if (!value) return 'Not set'
+  const d = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(d.getTime())) return value
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function findLiabilityStatementForMonth(liabilityStatements = [], liabilityId, monthKey) {
+  return liabilityStatements.find((row) => row.liability_id === liabilityId && row.month_key === monthKey) || null
+}
+
+function getDebtBillPaymentSummary({ statement, linkedLiability, targetMonthKey, entryDate, statementDate }) {
+  const minimumDue = statement?.minimum_due == null ? toMoneyNumber(linkedLiability?.minimum_payment) : toMoneyNumber(statement.minimum_due)
+  const paid = toMoneyNumber(statement?.payments_made)
+  const principalPaid = toMoneyNumber(statement?.principal_paid)
+  const remaining = Math.max(0, minimumDue - paid)
+  const dueDate = statement?.due_date || entryDate
+  const cycleStatementDate = statement?.statement_date || statementDate
+
+  let label = 'Not paid yet'
+  let tone = 'default'
+  let helper = 'No Net Worth payment has been recorded for this statement month.'
+
+  if (statement?.status === 'paid' || (minimumDue > 0 && paid >= minimumDue)) {
+    label = 'Paid in Net Worth'
+    tone = 'good'
+    helper = 'Payment has been recorded from Net Worth. No Cashflow auto-entry is needed here.'
+  } else if (paid > 0) {
+    label = 'Partial payment'
+    tone = 'warning'
+    helper = `Partial Net Worth payment recorded. Remaining minimum due: $${formatMoney(remaining)}.`
+  } else {
+    const due = getDueLabel(dueDate, 7)
+    if (due.tone === 'danger') {
+      label = 'Not paid · overdue'
+      tone = 'danger'
+      helper = 'This debt bill is still unpaid for the selected statement month.'
+    } else if (due.tone === 'warning') {
+      label = `Not paid · ${due.label.toLowerCase()}`
+      tone = 'warning'
+      helper = 'Use Record Payment in Net Worth after you pay it.'
+    }
+  }
+
+  return {
+    label,
+    tone,
+    helper,
+    paid,
+    principalPaid,
+    minimumDue,
+    remaining,
+    dueDate,
+    statementDate: cycleStatementDate,
+    monthKey: statement?.month_key || targetMonthKey,
+    note: statement?.note || '',
+    hasStatement: Boolean(statement),
+    isPaidOrPartial: paid > 0 || statement?.status === 'paid' || statement?.status === 'partial'
+  }
+}
+
 function getAccountLabel(accountId, accounts = []) {
   if (!accountId) return 'Unassigned'
 
@@ -304,7 +365,8 @@ function buildBillControlRows({
   targetMonthKey,
   billAccountMap = {},
   dueSoonDays = 7,
-  liabilities = []
+  liabilities = [],
+  liabilityStatements = []
 }) {
   const existingEntryMap = new Map()
 
@@ -322,6 +384,18 @@ function buildBillControlRows({
     const entryDate = isDebtLinkedBill
       ? liabilityStatementMonthDates?.entryDate || getSafeDueDate(targetMonthKey, linkedLiability?.due_day || bill.due_day)
       : getSafeDueDate(targetMonthKey, bill.due_day)
+    const liabilityStatement = isDebtLinkedBill
+      ? findLiabilityStatementForMonth(liabilityStatements, linkedLiability.id, targetMonthKey)
+      : null
+    const debtPaymentSummary = isDebtLinkedBill
+      ? getDebtBillPaymentSummary({
+          statement: liabilityStatement,
+          linkedLiability,
+          targetMonthKey,
+          entryDate,
+          statementDate
+        })
+      : null
     const amount = toMoneyNumber(bill.amount)
     const category = getBillCategoryName(bill)
     const description = getBillDescription(bill)
@@ -346,7 +420,7 @@ function buildBillControlRows({
       : null
 
     const postedEntry = exactPostedEntry || debtPaymentPostedEntry || null
-    const alreadyAdded = Boolean(postedEntry)
+    const alreadyAdded = Boolean(postedEntry) || Boolean(debtPaymentSummary?.isPaidOrPartial)
 
     const savedAccountId = billAccountMap[bill.id] || ''
     const defaultDebtAccountId = linkedLiability?.default_payment_account_id || ''
@@ -372,7 +446,7 @@ function buildBillControlRows({
       reason = 'Not Monthly'
     } else if (alreadyAdded) {
       status = BILL_STATUS.ADDED
-      reason = isDebtLinkedBill ? 'Paid / Posted' : 'Added This Month'
+      reason = isDebtLinkedBill ? (postedEntry ? 'Paid / Posted' : debtPaymentSummary?.label || 'Paid in Net Worth') : 'Added This Month'
     } else if (missingAmount) {
       status = BILL_STATUS.BLOCKED
       reason = 'Missing Amount'
@@ -405,6 +479,8 @@ function buildBillControlRows({
       postedAccountId,
       postedEntry,
       postedEntryId: postedEntry?.id || null,
+      liabilityStatement,
+      debtPaymentSummary,
       accountLabel: getAccountLabel(accountId, accounts),
       postedAccountLabel: getAccountLabel(postedAccountId, accounts),
       frequency: bill.frequency || 'monthly',
@@ -452,6 +528,7 @@ export default function BillsPage() {
   const [targetMonthKey, setTargetMonthKey] = useState(getCurrentMonthKey())
   const [bills, setBills] = useState([])
   const [liabilities, setLiabilities] = useState([])
+  const [liabilityStatements, setLiabilityStatements] = useState([])
   const [accounts, setAccounts] = useState([])
   const [categories, setCategories] = useState([])
   const [monthlyCashflowEntries, setMonthlyCashflowEntries] = useState([])
@@ -508,7 +585,7 @@ export default function BillsPage() {
       const cashflowLookupStart = getPreviousMonthStart(targetMonthKey)
       const cashflowLookupEnd = getNextMonthEnd(targetMonthKey)
 
-      const [billResult, accountResult, liabilityResult, cashflowResult] = await Promise.all([
+      const [billResult, accountResult, liabilityResult, statementResult, cashflowResult] = await Promise.all([
         supabase
           .from('bills')
           .select(`
@@ -536,6 +613,12 @@ export default function BillsPage() {
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false }),
+
+        supabase
+          .from('liability_monthly_statements')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('month_key', { ascending: false }),
 
         supabase
           .from('cashflow_entries')
@@ -567,6 +650,7 @@ export default function BillsPage() {
       if (billResult.error) throw billResult.error
       if (accountResult.error) throw accountResult.error
       if (liabilityResult.error) throw liabilityResult.error
+      if (statementResult.error) throw statementResult.error
       if (cashflowResult.error) throw cashflowResult.error
 
       let savedMap = {}
@@ -582,6 +666,7 @@ export default function BillsPage() {
       setCategories(categoryData)
       setBills(billResult.data || [])
       setLiabilities(liabilityResult.data || [])
+      setLiabilityStatements(statementResult.data || [])
       setAccounts(accountResult.data || [])
       setMonthlyCashflowEntries(cashflowResult.data || [])
       setBillAccountMap(savedMap && typeof savedMap === 'object' ? savedMap : {})
@@ -924,7 +1009,8 @@ export default function BillsPage() {
         targetMonthKey,
         billAccountMap,
         dueSoonDays: appSettings.billDueSoonDays,
-        liabilities
+        liabilities,
+        liabilityStatements
       }),
     [
       bills,
@@ -932,7 +1018,9 @@ export default function BillsPage() {
       accounts,
       targetMonthKey,
       billAccountMap,
-      appSettings.billDueSoonDays
+      appSettings.billDueSoonDays,
+      liabilities,
+      liabilityStatements
     ]
   )
 
@@ -1276,6 +1364,10 @@ export default function BillsPage() {
                           </div>
                         )}
 
+                        {row.isDebtLinkedBill && row.debtPaymentSummary && (
+                          <DebtBillPaidStatus row={row} />
+                        )}
+
                         {getFriendlyBillNote(row) && (
                           <div style={mutedTextStyle}>{getFriendlyBillNote(row)}</div>
                         )}
@@ -1345,6 +1437,30 @@ export default function BillsPage() {
   )
 }
 
+
+function DebtBillPaidStatus({ row }) {
+  const summary = row.debtPaymentSummary
+
+  return (
+    <div style={debtPaidStatusStyle}>
+      <div style={debtPaidStatusHeaderStyle}>
+        <strong>Debt payment status</strong>
+        <span style={getDebtPaidBadgeStyle(summary.tone)}>{summary.label}</span>
+      </div>
+      <div style={debtPaidGridStyle}>
+        <span>Statement month: {summary.monthKey}</span>
+        <span>Statement date: {niceDate(summary.statementDate)}</span>
+        <span>Payment due: {niceDate(summary.dueDate)}</span>
+        <span>Minimum due: ${formatMoney(summary.minimumDue)}</span>
+        <span>Paid this cycle: ${formatMoney(summary.paid)}</span>
+        <span>Principal paid: ${formatMoney(summary.principalPaid)}</span>
+      </div>
+      <div style={debtPaidHelperStyle}>{summary.helper}</div>
+      {summary.note && <div style={debtPaidNoteStyle}>Note: {summary.note}</div>}
+    </div>
+  )
+}
+
 function Field({ label, children }) {
   return (
     <div style={fieldStyle}>
@@ -1381,6 +1497,13 @@ function getStatusBadgeStyle(status) {
   return mutedBadgeStyle
 }
 
+function getDebtPaidBadgeStyle(tone) {
+  if (tone === 'good') return addedBadgeStyle
+  if (tone === 'danger') return dangerBadgeStyle
+  if (tone === 'warning') return warningBadgeStyle
+  return mutedBadgeStyle
+}
+
 function getDueBadgeStyle(tone) {
   if (tone === 'posted') return addedBadgeStyle
   if (tone === 'danger') return dangerBadgeStyle
@@ -1406,6 +1529,48 @@ function getBillItemStyle(row) {
   }
 
   return { ...billItemStyle, opacity: 0.76 }
+}
+
+
+const debtPaidStatusStyle = {
+  marginTop: '12px',
+  padding: '12px',
+  borderRadius: '14px',
+  border: '1px solid var(--border-main, #374151)',
+  background: 'var(--bg-card-soft, #0f172a)'
+}
+
+const debtPaidStatusHeaderStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: '10px',
+  alignItems: 'center',
+  flexWrap: 'wrap',
+  marginBottom: '8px',
+  color: 'var(--text-main, #f9fafb)'
+}
+
+const debtPaidGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+  gap: '6px 12px',
+  color: 'var(--text-muted, #9ca3af)',
+  fontSize: '13px',
+  lineHeight: 1.45
+}
+
+const debtPaidHelperStyle = {
+  marginTop: '8px',
+  color: 'var(--text-soft, #cbd5e1)',
+  fontSize: '13px',
+  lineHeight: 1.45
+}
+
+const debtPaidNoteStyle = {
+  marginTop: '6px',
+  color: 'var(--text-muted, #9ca3af)',
+  fontSize: '12px',
+  lineHeight: 1.45
 }
 
 const pageHeaderStyle = {

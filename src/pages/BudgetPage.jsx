@@ -534,15 +534,15 @@ export default function BudgetPage() {
   )
 
   return (
-    <div>
+    <div style={pageStyle}>
       <div style={headerRowStyle}>
         <div>
           <div style={eyebrowStyle}>Bài 45 · Budget Carry-Forward Pro</div>
-          <h1 style={{ marginBottom: '8px' }}>Budget</h1>
-          <p style={{ marginTop: 0, color: '#d1d5db' }}>
+          <h1 style={pageTitleStyle}>Budget</h1>
+          <p style={pageDescriptionStyle}>
             Set monthly budgets by database-backed category, compare actual expenses, and carry surplus or overspending forward.
           </p>
-          <div style={{ color: '#9ca3af', fontSize: '14px', marginTop: '8px' }}>
+          <div style={pageMetaStyle}>
             Selected Month: {month}/{year} · Warning {appSettings.budgetWarningPercent}% · Danger {appSettings.budgetDangerPercent}%
           </div>
         </div>
@@ -865,7 +865,7 @@ function SummaryCard({ label, value, note, tone = 'default' }) {
         ? '#ef4444'
         : tone === 'warning'
           ? '#f59e0b'
-          : 'white'
+          : 'var(--text-main)'
 
   return (
     <div style={summaryCardStyle}>
@@ -933,6 +933,31 @@ function getCarryRowStyle(row) {
   }
 }
 
+
+
+const pageStyle = {
+  color: 'var(--text-main)'
+}
+
+const pageTitleStyle = {
+  marginBottom: '8px',
+  color: 'var(--text-main)'
+}
+
+const pageDescriptionStyle = {
+  marginTop: 0,
+  color: 'var(--text-soft)',
+  maxWidth: '760px',
+  lineHeight: 1.55
+}
+
+const pageMetaStyle = {
+  color: 'var(--text-muted)',
+  fontSize: '14px',
+  marginTop: '8px',
+  fontWeight: 600
+}
+
 const headerRowStyle = {
   display: 'flex',
   justifyContent: 'space-between',
@@ -942,7 +967,7 @@ const headerRowStyle = {
 }
 
 const eyebrowStyle = {
-  color: '#38bdf8',
+  color: 'var(--accent)',
   fontSize: '12px',
   fontWeight: 900,
   letterSpacing: '0.12em',
@@ -961,17 +986,17 @@ const monthControlStyle = {
 const monthInputStyle = {
   padding: '11px 12px',
   borderRadius: '10px',
-  border: '1px solid #4b5563',
-  background: '#111827',
-  color: 'white',
-  colorScheme: 'dark'
+  border: '1px solid var(--border-soft)',
+  background: 'var(--bg-elevated)',
+  color: 'var(--text-main)',
+  colorScheme: 'inherit'
 }
 
 const refreshButtonStyle = {
   padding: '11px 14px',
   border: 'none',
   borderRadius: '10px',
-  background: '#2563eb',
+  background: 'var(--accent-strong)',
   color: 'white',
   cursor: 'pointer',
   fontWeight: 800
@@ -985,15 +1010,17 @@ const summaryGridStyle = {
 }
 
 const summaryCardStyle = {
-  background: '#1f2937',
+  background: 'var(--bg-card)',
+  color: 'var(--text-main)',
   padding: '18px',
   borderRadius: '14px',
-  border: '1px solid rgba(148,163,184,0.22)',
+  border: '1px solid var(--border-main)',
+  boxShadow: 'var(--shadow-soft)',
   minWidth: 0
 }
 
 const summaryLabelStyle = {
-  color: '#d1d5db',
+  color: 'var(--text-soft)',
   fontSize: '13px',
   marginBottom: '10px',
   fontWeight: 800
@@ -1007,7 +1034,7 @@ const summaryValueStyle = {
 
 const summaryNoteStyle = {
   marginTop: '8px',
-  color: '#9ca3af',
+  color: 'var(--text-muted)',
   fontSize: '12px',
   lineHeight: 1.45
 }
@@ -1016,9 +1043,9 @@ const messageStyle = {
   marginBottom: '16px',
   padding: '12px',
   borderRadius: '10px',
-  background: '#1f2937',
-  border: '1px solid #374151',
-  color: '#f3f4f6'
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-main)',
+  color: 'var(--text-main)'
 }
 
 const mainGridStyle = {
@@ -1042,10 +1069,12 @@ const rightColumnStyle = {
 }
 
 const cardStyle = {
-  background: '#1f2937',
+  background: 'var(--bg-card)',
+  color: 'var(--text-main)',
   padding: '20px',
   borderRadius: '14px',
-  border: '1px solid rgba(148,163,184,0.22)',
+  border: '1px solid var(--border-main)',
+  boxShadow: 'var(--shadow-card)',
   minWidth: 0
 }
 
@@ -1076,7 +1105,7 @@ const sectionHeaderStyle = {
 }
 
 const sectionSubStyle = {
-  color: '#9ca3af',
+  color: 'var(--text-muted)',
   fontSize: '13px',
   lineHeight: 1.5,
   marginTop: '7px'
@@ -1098,7 +1127,7 @@ const labelStyle = {
   display: 'block',
   marginBottom: '8px',
   fontWeight: 800,
-  color: '#e5e7eb'
+  color: 'var(--text-main)'
 }
 
 const inputStyle = {
@@ -1106,14 +1135,15 @@ const inputStyle = {
   boxSizing: 'border-box',
   padding: '11px 12px',
   borderRadius: '9px',
-  border: '1px solid #4b5563',
-  background: '#111827',
-  color: 'white'
+  border: '1px solid var(--border-soft)',
+  background: 'var(--bg-elevated)',
+  color: 'var(--text-main)',
+  colorScheme: 'inherit'
 }
 
 const helperTextStyle = {
   marginTop: '7px',
-  color: '#9ca3af',
+  color: 'var(--text-muted)',
   fontSize: '12px',
   lineHeight: 1.45
 }
@@ -1123,7 +1153,7 @@ const buttonStyle = {
   padding: '12px',
   border: 'none',
   borderRadius: '9px',
-  background: '#2563eb',
+  background: 'var(--accent-strong)',
   color: 'white',
   cursor: 'pointer',
   fontWeight: 850
@@ -1131,10 +1161,10 @@ const buttonStyle = {
 
 const secondaryButtonStyle = {
   padding: '10px 12px',
-  border: 'none',
+  border: '1px solid var(--border-main)',
   borderRadius: '9px',
-  background: '#4b5563',
-  color: 'white',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)',
   cursor: 'pointer',
   fontWeight: 800
 }
@@ -1144,7 +1174,7 @@ const greenButtonStyle = {
   padding: '12px',
   border: 'none',
   borderRadius: '9px',
-  background: '#16a34a',
+  background: 'var(--success)',
   color: 'white',
   cursor: 'pointer',
   fontWeight: 850,
@@ -1153,8 +1183,9 @@ const greenButtonStyle = {
 
 const disabledButtonStyle = {
   ...greenButtonStyle,
-  background: '#374151',
-  color: '#9ca3af',
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-main)',
+  color: 'var(--text-muted)',
   cursor: 'not-allowed'
 }
 
@@ -1173,19 +1204,19 @@ const tableStyle = {
 const thStyle = {
   textAlign: 'left',
   padding: '12px',
-  borderBottom: '1px solid #374151',
-  color: '#d1d5db',
+  borderBottom: '1px solid var(--border-main)',
+  color: 'var(--text-soft)',
   whiteSpace: 'nowrap',
   position: 'sticky',
   top: 0,
   zIndex: 2,
-  background: '#1f2937'
+  background: 'var(--bg-card)'
 }
 
 const tdStyle = {
   padding: '12px',
-  borderBottom: '1px solid #374151',
-  color: 'white',
+  borderBottom: '1px solid var(--border-faint)',
+  color: 'var(--text-main)',
   whiteSpace: 'nowrap'
 }
 
@@ -1198,7 +1229,7 @@ const editButtonStyle = {
   padding: '8px 10px',
   border: 'none',
   borderRadius: '8px',
-  background: '#2563eb',
+  background: 'var(--accent-strong)',
   color: 'white',
   cursor: 'pointer',
   fontWeight: 800
@@ -1208,7 +1239,7 @@ const deleteButtonStyle = {
   padding: '8px 10px',
   border: 'none',
   borderRadius: '8px',
-  background: '#dc2626',
+  background: 'var(--danger-dark)',
   color: 'white',
   cursor: 'pointer',
   fontWeight: 800
@@ -1224,8 +1255,8 @@ const carrySummaryGridStyle = {
 const carryStatStyle = {
   padding: '12px',
   borderRadius: '12px',
-  background: '#111827',
-  border: '1px solid #374151'
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-main)'
 }
 
 const carryStatValueStyle = {
@@ -1235,7 +1266,7 @@ const carryStatValueStyle = {
 
 const carryStatLabelStyle = {
   marginTop: '4px',
-  color: '#d1d5db',
+  color: 'var(--text-soft)',
   fontSize: '11px',
   fontWeight: 800
 }
@@ -1255,8 +1286,8 @@ const carryRowStyle = {
   alignItems: 'center',
   padding: '13px',
   borderRadius: '14px',
-  background: '#111827',
-  border: '1px solid #374151'
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-main)'
 }
 
 const carryCheckboxStyle = {
@@ -1274,7 +1305,7 @@ const carryTitleRowStyle = {
 }
 
 const carryMetaStyle = {
-  color: '#9ca3af',
+  color: 'var(--text-muted)',
   fontSize: '12px',
   lineHeight: 1.45
 }
@@ -1285,15 +1316,15 @@ const carryAmountStyle = {
 
 const miniTextStyle = {
   marginTop: '4px',
-  color: '#9ca3af',
+  color: 'var(--text-muted)',
   fontSize: '11px'
 }
 
 const emptyStyle = {
   padding: '16px',
   borderRadius: '14px',
-  background: '#111827',
-  border: '1px dashed #4b5563',
-  color: '#d1d5db',
+  background: 'var(--bg-card-soft)',
+  border: '1px dashed var(--border-soft)',
+  color: 'var(--text-soft)',
   lineHeight: 1.5
 }

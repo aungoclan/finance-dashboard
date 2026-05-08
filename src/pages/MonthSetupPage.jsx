@@ -760,10 +760,10 @@ const checklistScore =
                             <div style={billTitleRowStyle}>
                               <strong style={billNameStyle}>{row.bill.name || 'Unnamed Debt Bill'}</strong>
                               <span style={warningBadgeStyle}>Record in Net Worth</span>
-                              <span style={getTimingBadgeStyle(row.timing?.tone)}>{row.timing?.label}</span>
+                              <span style={neutralBadgeStyle}>Protected</span>
                             </div>
                             <div style={mutedTextStyle}>
-                              Category: {row.category || 'Debt Payment'} · Amount: ${formatMoney(row.amount)} · Reminder date: {row.entryDate}
+                              Category: {row.category || 'Debt Payment'} · Amount: ${formatMoney(row.amount)} · Cashflow auto-entry blocked
                             </div>
                             <div style={detailTextStyle}>Description: {row.description}</div>
                             <div style={reviewTextStyle}>{getFriendlyDebtBillNote(row)}</div>
@@ -791,12 +791,12 @@ function SummaryCard({ label, value, note, tone = 'default' }) {
           ...summaryValueStyle,
           color:
             tone === 'good'
-              ? '#22c55e'
+              ? 'var(--success, #22c55e)'
               : tone === 'danger'
-                ? '#ef4444'
+                ? 'var(--danger, #ef4444)'
                 : tone === 'warning'
-                  ? '#f59e0b'
-                  : 'white'
+                  ? 'var(--warning, #f59e0b)'
+                  : 'var(--text-main, #0f172a)'
         }}
       >
         {value}

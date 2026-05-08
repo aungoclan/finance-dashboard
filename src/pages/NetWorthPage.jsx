@@ -161,6 +161,72 @@ function statementStatus(statement, liability) {
   return { label: 'Schedule needed', tone: 'warn' }
 }
 
+function getStatementForLiabilityMonth(statements = [], liabilityId, monthKey) {
+  return statements.find((row) => row.liability_id === liabilityId && row.month_key === monthKey) || null
+}
+
+function getRecentStatementsForLiability(statements = [], liabilityId, limit = 6) {
+  return statements
+    .filter((row) => row.liability_id === liabilityId)
+    .sort((a, b) => String(b.month_key || '').localeCompare(String(a.month_key || '')))
+    .slice(0, limit)
+}
+
+function getStatementPaymentSummary(statement, liability, selectedMonthKey = currentMonthKey()) {
+  const minimumDue = statement?.minimum_due == null ? toNumber(liability?.minimum_payment) : toNumber(statement.minimum_due)
+  const paid = toNumber(statement?.payments_made)
+  const principalPaid = toNumber(statement?.principal_paid)
+  const dueDate = statement?.due_date || dueDateForStatementMonth(liability, selectedMonthKey)
+  const statementDate = statement?.statement_date || statementDateForMonth(liability, selectedMonthKey)
+  const remaining = Math.max(0, minimumDue - paid)
+
+  let label = 'Not paid yet'
+  let tone = 'neutral'
+  let helper = 'No payment has been recorded for this statement month.'
+
+  if (statement?.status === 'paid' || (minimumDue > 0 && paid >= minimumDue)) {
+    label = 'Paid'
+    tone = 'good'
+    helper = 'Payment was recorded in Net Worth and linked to this statement cycle.'
+  } else if (paid > 0) {
+    label = 'Partial'
+    tone = 'warn'
+    helper = `Partial payment recorded. Remaining minimum due: ${money(remaining)}.`
+  } else {
+    const days = daysUntil(dueDate)
+    if (days != null && days < 0) {
+      label = 'Not paid · overdue'
+      tone = 'bad'
+      helper = 'No payment is recorded for this statement cycle and the due date has passed.'
+    } else if (days != null && days <= 7) {
+      label = `Not paid · due in ${days}d`
+      tone = 'warn'
+      helper = 'No payment is recorded yet. Use Record Payment when you pay it.'
+    }
+  }
+
+  return {
+    label,
+    tone,
+    helper,
+    paid,
+    principalPaid,
+    minimumDue,
+    remaining,
+    dueDate,
+    statementDate,
+    closingBalance: statement ? toNumber(statement.closing_balance) : null,
+    note: statement?.note || ''
+  }
+}
+
+function getToneColor(tone) {
+  if (tone === 'good') return 'var(--success, #22c55e)'
+  if (tone === 'warn') return 'var(--warning, #f59e0b)'
+  if (tone === 'bad') return 'var(--danger, #ef4444)'
+  return 'var(--text-muted, #9ca3af)'
+}
+
 function makeDebtPaymentDescription({ liabilityName, principalAmount, interestFeeAmount, note }) {
   const pieces = [
     `Debt Payment: ${liabilityName}`,
@@ -278,6 +344,7 @@ export default function NetWorthPage() {
   const [assetAccounts, setAssetAccounts] = useState([])
   const [liabilities, setLiabilities] = useState([])
   const [statements, setStatements] = useState([])
+  const [selectedLiabilityMonthKey, setSelectedLiabilityMonthKey] = useState(currentMonthKey())
   const [bills, setBills] = useState([])
   const [investmentMarketValue, setInvestmentMarketValue] = useState(0)
   const [debtPaymentCategoryId, setDebtPaymentCategoryId] = useState(null)
@@ -1108,7 +1175,7 @@ export default function NetWorthPage() {
       {message && <div style={messageStyle}>{message}</div>}
 
       <div style={infoPanelStyle}>
-        <strong>Bài 55D Debt Bill Sync:</strong> sync each liability to Bills as a monthly payment reminder. Statement updates adjust debt balance; Record Payment creates cash outflow; Bill Sync creates or updates the monthly bill template.
+        <strong>Bài 65 Mini Debt/Bill Paid Status Tracker:</strong> Liabilities now show paid status by selected statement month, paid amount, due date, and recent payment history. Record Payment still remains the single safe action for debt payments.
       </div>
 
       {paymentLiability && (
@@ -1146,16 +1213,27 @@ export default function NetWorthPage() {
           loading={loading}
           empty="No liabilities yet."
           bodyStyle={liabilityScrollAreaStyle}
+          action={
+            <label style={monthPickerLabelStyle}>
+              Statement month
+              <input
+                type="month"
+                value={selectedLiabilityMonthKey}
+                onChange={(event) => setSelectedLiabilityMonthKey(event.target.value || currentMonthKey())}
+                style={monthPickerInputStyle}
+              />
+            </label>
+          }
         >
             {liabilities.map((item) => {
-              const activeStatement = statements.find(
-                (row) => row.liability_id === item.id && row.month_key === currentMonthKey()
-              )
+              const activeStatement = getStatementForLiabilityMonth(statements, item.id, selectedLiabilityMonthKey)
               const status = statementStatus(activeStatement, item)
+              const paymentSummary = getStatementPaymentSummary(activeStatement, item, selectedLiabilityMonthKey)
+              const recentHistory = getRecentStatementsForLiability(statements, item.id, 6)
               const billStatus = liabilityBillStatus(item, bills)
               return (
                 <div key={item.id} style={listItemStyle}>
-                  <div style={{ minWidth: 0 }}>
+                  <div style={{ minWidth: 0, flex: '1 1 520px' }}>
                     <strong>{item.name}</strong>
                     <div style={mutedText}>Type: {item.liability_type}</div>
                     <div style={mutedText}>Balance: {money(item.current_balance)}</div>
@@ -1164,15 +1242,15 @@ export default function NetWorthPage() {
                     <div style={mutedText}>
                       Due: {item.due_day ? `Day ${item.due_day}` : 'Not set'} · Statement: {item.statement_day ? `Day ${item.statement_day}` : 'Not set'} · Autopay: {item.autopay_enabled ? 'On' : 'Off'}
                     </div>
-                    <div style={{ ...mutedText, color: status.tone === 'bad' ? '#f87171' : status.tone === 'good' ? '#4ade80' : status.tone === 'warn' ? '#fbbf24' : '#d1d5db' }}>
-                      This month: {status.label}
-                    </div>
-                    {activeStatement && (
-                      <div style={mutedText}>
-                        Statement closing: {money(activeStatement.closing_balance)} · Paid: {money(activeStatement.payments_made)}
-                      </div>
-                    )}
-                    <div style={{ ...mutedText, color: billStatus.tone === 'good' ? '#4ade80' : '#fbbf24' }}>
+
+                    <DebtPaidStatusPanel
+                      monthKey={selectedLiabilityMonthKey}
+                      status={status}
+                      paymentSummary={paymentSummary}
+                      recentHistory={recentHistory}
+                    />
+
+                    <div style={{ ...mutedText, color: billStatus.tone === 'good' ? 'var(--success, #22c55e)' : 'var(--warning, #f59e0b)' }}>
                       Bills: {billStatus.label}{billStatus.bill ? ` · ${money(billStatus.bill.amount)} due day ${billStatus.bill.due_day}` : ''}
                     </div>
                     {item.notes && <div style={mutedText}>Notes: {item.notes}</div>}
@@ -1242,11 +1320,70 @@ function SummaryCard({ label, value, color = 'var(--text-main)' }) {
   )
 }
 
-function ListCard({ title, loading, empty, children, bodyStyle }) {
+function ListCard({ title, loading, empty, children, bodyStyle, action }) {
   return (
     <div style={cardStyle}>
-      <h2 style={{ marginTop: 0 }}>{title}</h2>
+      <div style={listCardHeaderStyle}>
+        <h2 style={{ marginTop: 0, marginBottom: 0 }}>{title}</h2>
+        {action}
+      </div>
       {loading ? <p>Loading...</p> : !children || children.length === 0 ? <p>{empty}</p> : <div style={{ display: 'grid', gap: '12px', ...bodyStyle }}>{children}</div>}
+    </div>
+  )
+}
+
+function DebtPaidStatusPanel({ monthKey, status, paymentSummary, recentHistory = [] }) {
+  return (
+    <div style={paidStatusPanelStyle}>
+      <div style={paidStatusHeaderStyle}>
+        <div>
+          <div style={paidStatusTitleStyle}>Debt payment status · {monthKey}</div>
+          <div style={{ ...paidStatusValueStyle, color: getToneColor(paymentSummary.tone) }}>{paymentSummary.label}</div>
+        </div>
+        <div style={{ ...paidStatusBadgeStyle, color: getToneColor(status.tone), borderColor: getToneColor(status.tone) }}>
+          {status.label}
+        </div>
+      </div>
+
+      <div style={paidStatusMetricGridStyle}>
+        <PreviewMetric label="Statement date" value={niceDate(paymentSummary.statementDate)} />
+        <PreviewMetric label="Payment due" value={niceDate(paymentSummary.dueDate)} />
+        <PreviewMetric label="Minimum due" value={money(paymentSummary.minimumDue)} />
+        <PreviewMetric label="Paid this cycle" value={money(paymentSummary.paid)} />
+        <PreviewMetric label="Principal paid" value={money(paymentSummary.principalPaid)} />
+        <PreviewMetric label="Remaining minimum" value={money(paymentSummary.remaining)} />
+      </div>
+
+      <div style={paidStatusHelperStyle}>{paymentSummary.helper}</div>
+      {paymentSummary.closingBalance != null && (
+        <div style={mutedText}>Statement closing balance: {money(paymentSummary.closingBalance)}</div>
+      )}
+      {paymentSummary.note && <div style={mutedText}>Payment / statement note: {paymentSummary.note}</div>}
+
+      <div style={historyTitleStyle}>Recent payment history</div>
+      {recentHistory.length === 0 ? (
+        <div style={mutedText}>No statement/payment history has been recorded yet.</div>
+      ) : (
+        <div style={historyListStyle}>
+          {recentHistory.map((row) => {
+            const paid = toNumber(row.payments_made)
+            const minimumDue = toNumber(row.minimum_due)
+            const isPaid = row.status === 'paid' || (minimumDue > 0 && paid >= minimumDue)
+            const isPartial = !isPaid && paid > 0
+            const label = isPaid ? 'Paid' : isPartial ? 'Partial' : row.status || 'Open'
+            const color = isPaid ? 'var(--success, #22c55e)' : isPartial ? 'var(--warning, #f59e0b)' : 'var(--text-muted, #9ca3af)'
+
+            return (
+              <div key={row.id || `${row.liability_id}-${row.month_key}`} style={historyItemStyle}>
+                <span>{row.month_key}</span>
+                <strong style={{ color }}>{label}</strong>
+                <span>{money(paid)} paid</span>
+                <span>Due {niceDate(row.due_date)}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -1423,6 +1560,21 @@ function Field({ label, children }) {
 function PreviewMetric({ label, value }) {
   return <div><span style={summaryLabelStyle}>{label}</span><strong>{value}</strong></div>
 }
+
+
+const listCardHeaderStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }
+const monthPickerLabelStyle = { display: 'grid', gap: '6px', color: 'var(--text-muted)', fontSize: '12px', fontWeight: 800 }
+const monthPickerInputStyle = { width: '180px', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border-soft)', background: 'var(--bg-elevated)', color: 'var(--text-main)', boxSizing: 'border-box' }
+const paidStatusPanelStyle = { marginTop: '12px', padding: '14px', borderRadius: '14px', border: '1px solid var(--border-main)', background: 'var(--bg-card)', color: 'var(--text-main)' }
+const paidStatusHeaderStyle = { display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '12px' }
+const paidStatusTitleStyle = { color: 'var(--text-muted)', fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }
+const paidStatusValueStyle = { marginTop: '4px', fontSize: '20px', fontWeight: 900 }
+const paidStatusBadgeStyle = { padding: '6px 10px', borderRadius: '999px', border: '1px solid var(--border-main)', fontWeight: 900, fontSize: '12px', background: 'var(--bg-card-soft)' }
+const paidStatusMetricGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px', marginBottom: '10px' }
+const paidStatusHelperStyle = { color: 'var(--text-soft, var(--text-muted))', fontSize: '13px', lineHeight: 1.45 }
+const historyTitleStyle = { marginTop: '12px', marginBottom: '8px', color: 'var(--text-main)', fontWeight: 900, fontSize: '13px' }
+const historyListStyle = { display: 'grid', gap: '6px' }
+const historyItemStyle = { display: 'grid', gridTemplateColumns: '90px 80px 100px minmax(120px, 1fr)', gap: '8px', alignItems: 'center', color: 'var(--text-muted)', fontSize: '12px', padding: '8px 10px', borderRadius: '10px', background: 'var(--bg-card-soft)', border: '1px solid var(--border-main)' }
 
 const headerRowStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '24px', flexWrap: 'wrap', color: 'var(--text-main)' }
 const refreshButtonStyle = { padding: '10px 14px', border: 'none', borderRadius: '10px', background: 'var(--accent)', color: '#ffffff', cursor: 'pointer', boxShadow: 'var(--shadow-soft)' }
