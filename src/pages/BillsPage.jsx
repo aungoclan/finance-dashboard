@@ -300,6 +300,9 @@ function getDebtBillPaymentSummary({ statement, linkedLiability, targetMonthKey,
   const paid = toMoneyNumber(statement?.payments_made)
   const principalPaid = toMoneyNumber(statement?.principal_paid)
   const remaining = Math.max(0, minimumDue - paid)
+  const paidTowardMinimum = minimumDue > 0 ? Math.min(paid, minimumDue) : 0
+  const extraPaid = Math.max(0, paid - Math.max(0, minimumDue))
+  const hasExtraPayment = extraPaid > 0.004
   const dueDate = statement?.due_date || entryDate
   const cycleStatementDate = statement?.statement_date || statementDate
 
@@ -308,13 +311,17 @@ function getDebtBillPaymentSummary({ statement, linkedLiability, targetMonthKey,
   let helper = 'No Net Worth payment has been recorded for this statement month.'
 
   if (statement?.status === 'paid' || (minimumDue > 0 && paid >= minimumDue)) {
-    label = 'Paid in Net Worth'
+    label = hasExtraPayment ? 'Paid + Extra in Net Worth' : 'Paid in Net Worth'
     tone = 'good'
-    helper = 'Payment has been recorded from Net Worth. No Cashflow auto-entry is needed here.'
+    helper = hasExtraPayment
+      ? `Minimum is covered and $${formatMoney(extraPaid)} extra was paid toward this debt cycle. No Cashflow auto-entry is needed here.`
+      : 'Minimum payment has been recorded from Net Worth. No Cashflow auto-entry is needed here.'
   } else if (paid > 0) {
-    label = 'Partial payment'
-    tone = 'warning'
-    helper = `Partial Net Worth payment recorded. Remaining minimum due: $${formatMoney(remaining)}.`
+    label = minimumDue > 0 ? 'Partial payment' : 'Payment recorded'
+    tone = minimumDue > 0 ? 'warning' : 'good'
+    helper = minimumDue > 0
+      ? `Partial Net Worth payment recorded. Remaining minimum due: $${formatMoney(remaining)}.`
+      : 'Net Worth payment was recorded even though no minimum due is set for this statement month.'
   } else {
     const due = getDueLabel(dueDate, 7)
     if (due.tone === 'danger') {
@@ -333,6 +340,9 @@ function getDebtBillPaymentSummary({ statement, linkedLiability, targetMonthKey,
     tone,
     helper,
     paid,
+    paidTowardMinimum,
+    extraPaid,
+    hasExtraPayment,
     principalPaid,
     minimumDue,
     remaining,
@@ -1452,8 +1462,11 @@ function DebtBillPaidStatus({ row }) {
         <span>Statement date: {niceDate(summary.statementDate)}</span>
         <span>Payment due: {niceDate(summary.dueDate)}</span>
         <span>Minimum due: ${formatMoney(summary.minimumDue)}</span>
-        <span>Paid this cycle: ${formatMoney(summary.paid)}</span>
+        <span>Paid toward minimum: ${formatMoney(summary.paidTowardMinimum)}</span>
+        <span>Extra paid: ${formatMoney(summary.extraPaid)}</span>
+        <span>Total paid this cycle: ${formatMoney(summary.paid)}</span>
         <span>Principal paid: ${formatMoney(summary.principalPaid)}</span>
+        <span>Remaining minimum: ${formatMoney(summary.remaining)}</span>
       </div>
       <div style={debtPaidHelperStyle}>{summary.helper}</div>
       {summary.note && <div style={debtPaidNoteStyle}>Note: {summary.note}</div>}

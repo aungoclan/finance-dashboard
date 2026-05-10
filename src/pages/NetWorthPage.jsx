@@ -179,19 +179,26 @@ function getStatementPaymentSummary(statement, liability, selectedMonthKey = cur
   const dueDate = statement?.due_date || dueDateForStatementMonth(liability, selectedMonthKey)
   const statementDate = statement?.statement_date || statementDateForMonth(liability, selectedMonthKey)
   const remaining = Math.max(0, minimumDue - paid)
+  const paidTowardMinimum = minimumDue > 0 ? Math.min(paid, minimumDue) : 0
+  const extraPaid = Math.max(0, paid - Math.max(0, minimumDue))
+  const hasExtraPayment = extraPaid > 0.004
 
   let label = 'Not paid yet'
   let tone = 'neutral'
   let helper = 'No payment has been recorded for this statement month.'
 
   if (statement?.status === 'paid' || (minimumDue > 0 && paid >= minimumDue)) {
-    label = 'Paid'
+    label = hasExtraPayment ? 'Paid + Extra' : 'Paid'
     tone = 'good'
-    helper = 'Payment was recorded in Net Worth and linked to this statement cycle.'
+    helper = hasExtraPayment
+      ? `Minimum is covered and ${money(extraPaid)} extra was paid toward this debt cycle.`
+      : 'Minimum payment was recorded in Net Worth and linked to this statement cycle.'
   } else if (paid > 0) {
-    label = 'Partial'
-    tone = 'warn'
-    helper = `Partial payment recorded. Remaining minimum due: ${money(remaining)}.`
+    label = minimumDue > 0 ? 'Partial' : 'Payment recorded'
+    tone = minimumDue > 0 ? 'warn' : 'good'
+    helper = minimumDue > 0
+      ? `Partial payment recorded. Remaining minimum due: ${money(remaining)}.`
+      : 'Payment was recorded even though no minimum due is set for this statement cycle.'
   } else {
     const days = daysUntil(dueDate)
     if (days != null && days < 0) {
@@ -210,6 +217,9 @@ function getStatementPaymentSummary(statement, liability, selectedMonthKey = cur
     tone,
     helper,
     paid,
+    paidTowardMinimum,
+    extraPaid,
+    hasExtraPayment,
     principalPaid,
     minimumDue,
     remaining,
@@ -1349,7 +1359,9 @@ function DebtPaidStatusPanel({ monthKey, status, paymentSummary, recentHistory =
         <PreviewMetric label="Statement date" value={niceDate(paymentSummary.statementDate)} />
         <PreviewMetric label="Payment due" value={niceDate(paymentSummary.dueDate)} />
         <PreviewMetric label="Minimum due" value={money(paymentSummary.minimumDue)} />
-        <PreviewMetric label="Paid this cycle" value={money(paymentSummary.paid)} />
+        <PreviewMetric label="Paid toward minimum" value={money(paymentSummary.paidTowardMinimum)} />
+        <PreviewMetric label="Extra paid" value={money(paymentSummary.extraPaid)} />
+        <PreviewMetric label="Total paid this cycle" value={money(paymentSummary.paid)} />
         <PreviewMetric label="Principal paid" value={money(paymentSummary.principalPaid)} />
         <PreviewMetric label="Remaining minimum" value={money(paymentSummary.remaining)} />
       </div>
@@ -1368,17 +1380,18 @@ function DebtPaidStatusPanel({ monthKey, status, paymentSummary, recentHistory =
           {recentHistory.map((row) => {
             const paid = toNumber(row.payments_made)
             const minimumDue = toNumber(row.minimum_due)
+            const extraPaid = Math.max(0, paid - Math.max(0, minimumDue))
             const isPaid = row.status === 'paid' || (minimumDue > 0 && paid >= minimumDue)
             const isPartial = !isPaid && paid > 0
-            const label = isPaid ? 'Paid' : isPartial ? 'Partial' : row.status || 'Open'
+            const label = isPaid ? (extraPaid > 0.004 ? 'Paid + Extra' : 'Paid') : isPartial ? 'Partial' : row.status || 'Open'
             const color = isPaid ? 'var(--success, #22c55e)' : isPartial ? 'var(--warning, #f59e0b)' : 'var(--text-muted, #9ca3af)'
 
             return (
               <div key={row.id || `${row.liability_id}-${row.month_key}`} style={historyItemStyle}>
                 <span>{row.month_key}</span>
                 <strong style={{ color }}>{label}</strong>
-                <span>{money(paid)} paid</span>
-                <span>Due {niceDate(row.due_date)}</span>
+                <span>{money(paid)} total</span>
+                <span>{extraPaid > 0.004 ? `${money(extraPaid)} extra` : `Due ${niceDate(row.due_date)}`}</span>
               </div>
             )
           })}
