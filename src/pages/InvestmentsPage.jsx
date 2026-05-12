@@ -330,6 +330,33 @@ export default function InvestmentsPage() {
     }
   }
 
+  const isOutsideCashFundingAccount = (account) => {
+    return Boolean(account && FUNDING_ACCOUNT_TYPES.includes(account.account_type))
+  }
+
+  const isInvestmentCashFundingAccount = (account) => {
+    return Boolean(account && INVESTMENT_CASH_SOURCE_TYPES.includes(account.account_type))
+  }
+
+  const shouldCreateCashflowForFundingAccount = (account) => {
+    // Important: brokerage/IRA/crypto funding is internal investment cash.
+    // It must stay inside investment_transactions and must NOT create a Cashflow entry,
+    // otherwise Accounts will show a false personal cashflow expense/income.
+    return isOutsideCashFundingAccount(account)
+  }
+
+  const deleteLinkedCashflowEntry = async({ userId, cashflowEntryId }) => {
+    if (!cashflowEntryId) return
+
+    const { error } = await supabase
+      .from('cashflow_entries')
+      .delete()
+      .eq('id', cashflowEntryId)
+      .eq('user_id', userId)
+
+    if (error) throw error
+  }
+
   const createInvestmentCashSyncEntry = async({
     userId,
     transactionId,
@@ -480,7 +507,7 @@ export default function InvestmentsPage() {
 
         let nextCashflowId = null
 
-        if (cashSyncEnabled) {
+        if (cashSyncEnabled && shouldCreateCashflowForFundingAccount(fundingAccount)) {
           const cashflowPayload = {
             user_id: user.id,
             account_id: fundingAccount.id,
@@ -518,19 +545,9 @@ export default function InvestmentsPage() {
             nextCashflowId = cashflowEntry?.id || null
           }
         } else if (existingCashflowId) {
-          const shouldDelete = window.confirm(
-            'This transaction had a linked cash movement. Cash sync is now off. Delete the linked Cashflow entry too?'
-          )
-
-          if (shouldDelete) {
-            const { error: deleteCashflowError } = await supabase
-              .from('cashflow_entries')
-              .delete()
-              .eq('id', existingCashflowId)
-              .eq('user_id', user.id)
-
-            if (deleteCashflowError) throw deleteCashflowError
-          }
+          // If the transaction is changed from outside cash funding to brokerage/IRA/crypto
+          // internal cash, remove the old Cashflow link automatically.
+          await deleteLinkedCashflowEntry({ userId: user.id, cashflowEntryId: existingCashflowId })
         }
 
         const { error: linkError } = await supabase
@@ -541,7 +558,13 @@ export default function InvestmentsPage() {
 
         if (linkError) throw linkError
 
-        setMessage(cashSyncEnabled ? 'Transaction updated and cash movement synced' : 'Transaction updated successfully')
+        setMessage(
+          cashSyncEnabled
+            ? shouldCreateCashflowForFundingAccount(fundingAccount)
+              ? 'Transaction updated and outside cashflow synced'
+              : 'Transaction updated as internal investment cash movement'
+            : 'Transaction updated successfully'
+        )
       } else {
         const { data: newTransaction, error: insertError } = await supabase
           .from('investment_transactions')
@@ -554,7 +577,7 @@ export default function InvestmentsPage() {
 
         if (insertError) throw insertError
 
-        if (cashSyncEnabled) {
+        if (cashSyncEnabled && shouldCreateCashflowForFundingAccount(fundingAccount)) {
           const cashflowEntry = await createInvestmentCashSyncEntry({
             userId: user.id,
             transactionId: newTransaction.id,
@@ -574,7 +597,13 @@ export default function InvestmentsPage() {
           if (linkError) throw linkError
         }
 
-        setMessage(cashSyncEnabled ? 'Transaction added and cash movement synced' : 'Transaction added successfully')
+        setMessage(
+          cashSyncEnabled
+            ? shouldCreateCashflowForFundingAccount(fundingAccount)
+              ? 'Transaction added and outside cashflow synced'
+              : 'Transaction added as internal investment cash movement'
+            : 'Transaction added successfully'
+        )
       }
 
       resetForm()
@@ -872,7 +901,7 @@ export default function InvestmentsPage() {
               </label>
 
               <div style={helpTextStyle}>
-                {isSellTransaction ? 'This creates a Cashflow income with category Transfer. Choose outside cash or the investment account where sale proceeds stay.' : 'This creates a Cashflow expense with category Transfer. Choose Cash/Tiet Kiem for outside money, or choose the brokerage/IRA account when using dividend cash already inside that account.'}
+                {isSellTransaction ? 'This creates a Cashflow income with category Transfer. Choose outside cash or the investment account where sale proceeds stay.' : 'Cash/Reserve creates a Cashflow Transfer. Brokerage/IRA/Crypto uses internal investment cash and does not touch Cashflow.'}
               </div>
 
               {canSyncCash && formData.cash_sync_enabled && (
@@ -909,13 +938,13 @@ export default function InvestmentsPage() {
 
                   <div style={infoTextStyle}>
                     {selectedFundingAccount && INVESTMENT_CASH_SOURCE_TYPES.includes(selectedFundingAccount.account_type)
-                      ? 'Investment cash source selected. This is useful for dividends or sale proceeds that stay inside Robinhood, Roth IRA, or Kraken. It does not touch Cash Wallet or Tiet Kiem.'
-                      : 'Cash / reserve source selected. This affects outside cash accounts such as Cash Wallet, checking, savings, or Tiet Kiem.'}
+                      ? 'Investment cash source selected. This records an internal investment cash movement only — no Cashflow entry will be created.'
+                      : 'Cash / reserve source selected. This will create an outside Cashflow Transfer entry.'}
                   </div>
 
                   <div style={cashPreviewStyle}>
                     <div>
-                      <strong>{isSellTransaction ? 'Estimated cash deposit' : 'Estimated cash outflow'}</strong>
+                      <strong>{selectedFundingAccount && isInvestmentCashFundingAccount(selectedFundingAccount) ? (isSellTransaction ? 'Internal investment cash deposit' : 'Internal investment cash used') : (isSellTransaction ? 'Estimated cash deposit' : 'Estimated cash outflow')}</strong>
                       <div style={helpTextStyle}>
                         {isSellTransaction ? 'Quantity × Unit Price - Fee' : 'Quantity × Unit Price + Fee'}
                       </div>

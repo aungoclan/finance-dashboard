@@ -261,6 +261,13 @@ function getAccountSeed(account) {
     allTimeInvestmentIncome: 0,
     allTimeInvestmentOnlyIncome: 0,
     allTimeInvestmentCashflowIncome: 0,
+    monthlyInternalInvestmentCashIn: 0,
+    monthlyInternalInvestmentCashOut: 0,
+    monthlyInternalInvestmentCashNet: 0,
+    monthlyInternalInvestmentCashCount: 0,
+    allTimeInternalInvestmentCashIn: 0,
+    allTimeInternalInvestmentCashOut: 0,
+    allTimeInternalInvestmentCashNet: 0,
 
     monthlyIncome: 0,
     monthlyExpense: 0,
@@ -316,6 +323,29 @@ function getInvestmentIncomeAmount(tx) {
   const gross = quantity > 0 ? quantity * unitPrice : unitPrice
 
   return Math.max(gross - fee, 0)
+}
+
+function getInvestmentCashMovementAmount(tx) {
+  const explicitAmount = Math.abs(toNumber(tx?.cash_sync_amount))
+  if (explicitAmount > 0) return explicitAmount
+
+  const quantity = Math.abs(toNumber(tx?.quantity))
+  const unitPrice = Math.abs(toNumber(tx?.unit_price))
+  const fee = Math.max(toNumber(tx?.fee), 0)
+  const gross = quantity * unitPrice
+
+  if (normalize(tx?.type) === 'sell') return Math.max(gross - fee, 0)
+  if (normalize(tx?.type) === 'buy') return Math.max(gross + fee, 0)
+
+  return 0
+}
+
+function isInternalInvestmentCashMovement(tx, accountRowsById) {
+  if (!tx?.cash_sync_enabled || !tx?.funding_account_id) return false
+  if (!['buy', 'sell'].includes(normalize(tx?.type))) return false
+
+  const fundingAccount = accountRowsById.get(tx.funding_account_id)
+  return isInvestmentAccount(fundingAccount?.account_type)
 }
 
 function findMatchingInvestmentIncomeCashflow(tx, cashflowEntries) {
@@ -557,6 +587,11 @@ export default function AccountsPage() {
           quantity,
           unit_price,
           fee,
+          funding_account_id,
+          cashflow_entry_id,
+          cash_sync_enabled,
+          cash_sync_direction,
+          cash_sync_amount,
           created_at,
           assets (
             id,
@@ -908,6 +943,11 @@ export default function AccountsPage() {
       )
     }
 
+    const accountRowsById = new Map()
+    map.forEach((row, accountId) => {
+      accountRowsById.set(accountId, row)
+    })
+
     const txByAccount = new Map()
 
     transactions.forEach((tx) => {
@@ -928,6 +968,33 @@ export default function AccountsPage() {
       row.costBasis = holdings.reduce((sum, item) => sum + toNumber(item.cost_basis), 0)
       row.unrealizedPL = holdings.reduce((sum, item) => sum + toNumber(item.unrealized_pl), 0)
       row.unrealizedPLPercent = row.costBasis > 0 ? (row.unrealizedPL / row.costBasis) * 100 : 0
+    })
+
+    transactions.forEach((tx) => {
+      if (!isInternalInvestmentCashMovement(tx, accountRowsById)) return
+
+      const fundingAccountId = tx.funding_account_id || 'unassigned'
+      const row = map.get(fundingAccountId)
+      if (!row) return
+
+      const amount = getInvestmentCashMovementAmount(tx)
+      if (amount <= 0) return
+
+      const date = tx.transaction_date || ''
+      const inThisMonth = date >= startDate && date < endDate
+      const txType = normalize(tx.type)
+
+      if (txType === 'sell') {
+        row.allTimeInternalInvestmentCashIn += amount
+        if (inThisMonth) row.monthlyInternalInvestmentCashIn += amount
+      }
+
+      if (txType === 'buy') {
+        row.allTimeInternalInvestmentCashOut += amount
+        if (inThisMonth) row.monthlyInternalInvestmentCashOut += amount
+      }
+
+      if (inThisMonth) row.monthlyInternalInvestmentCashCount += 1
     })
 
     transactions.forEach((tx) => {
@@ -1022,6 +1089,8 @@ export default function AccountsPage() {
       const monthlyNet = row.monthlyIncome - row.monthlyExpense
       const lastMonthNet = row.lastMonthIncome - row.lastMonthExpense
       const allTimeNet = row.allTimeIncome - row.allTimeExpense
+      row.monthlyInternalInvestmentCashNet = row.monthlyInvestmentOnlyIncome + row.monthlyInternalInvestmentCashIn - row.monthlyInternalInvestmentCashOut
+      row.allTimeInternalInvestmentCashNet = row.allTimeInvestmentOnlyIncome + row.allTimeInternalInvestmentCashIn - row.allTimeInternalInvestmentCashOut
       const reviewReasons = []
 
       if (row.id === 'unassigned') {
@@ -2080,6 +2149,18 @@ function AccountCard({
                   value={money(account.monthlyInvestmentCashflowIncome)}
                   sub={`${account.monthlyInvestmentCashflowCount} posted entr${account.monthlyInvestmentCashflowCount === 1 ? 'y' : 'ies'}`}
                   tone={account.monthlyInvestmentCashflowIncome > 0 ? 'good' : 'neutral'}
+                />
+                <Metric
+                  label="Net Investment Cash"
+                  value={money(account.monthlyInternalInvestmentCashNet)}
+                  sub="Investment-only income + sells - buys"
+                  tone={account.monthlyInternalInvestmentCashNet >= 0 ? 'good' : 'bad'}
+                />
+                <Metric
+                  label="Investment Cash Detail"
+                  value={`${money(account.monthlyInvestmentOnlyIncome)} + ${money(account.monthlyInternalInvestmentCashIn)} / ${money(account.monthlyInternalInvestmentCashOut)}`}
+                  sub="Investment-only income + sell proceeds / buy cash used"
+                  tone="neutral"
                 />
               </>
             )}
