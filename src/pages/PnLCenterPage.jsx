@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Card from '../components/ui/Card'
 import PageHeader from '../components/ui/PageHeader'
-import StatCard from '../components/ui/StatCard'
 import { calculateHoldings, calculatePortfolioSummary } from '../lib/holdings'
 import { supabase } from '../lib/supabase'
 
@@ -69,9 +68,9 @@ function getPnlTone(value) {
 
 function getPnlColor(value) {
   const n = toNumber(value)
-  if (n > 0) return '#22c55e'
-  if (n < 0) return '#ef4444'
-  return '#f9fafb'
+  if (n > 0) return 'var(--success, #16a34a)'
+  if (n < 0) return 'var(--danger, #dc2626)'
+  return 'var(--text-main, #0f172a)'
 }
 
 function getAssetKey(tx) {
@@ -570,7 +569,7 @@ export default function PnLCenterPage() {
   )
 
   return (
-    <div>
+    <div style={styles.page}>
       <PageHeader
         title="P&L Center"
         subtitle="Track unrealized P&L, FIFO realized P&L, dividend income, total return, account breakdowns, and data quality warnings."
@@ -579,7 +578,7 @@ export default function PnLCenterPage() {
 
       {message ? <div style={styles.message}>{message}</div> : null}
 
-      <Card style={styles.filterCard}>
+      <Card style={{ ...styles.card, ...styles.filterCard }}>
         <div style={styles.filterGrid}>
           <label style={styles.field}>
             <span style={styles.label}>Account</span>
@@ -629,12 +628,12 @@ export default function PnLCenterPage() {
       </Card>
 
       <div style={styles.statGrid}>
-        <StatCard label="Market Value" value={formatMoney(summary.totalMarketValue)} sub={`${summary.totalPositions} open position${summary.totalPositions === 1 ? '' : 's'}`} tone="info" />
-        <StatCard label="Cost Basis" value={formatMoney(summary.totalCostBasis)} sub="Open positions only" />
-        <StatCard label="Unrealized P&L" value={formatMoney(summary.totalUnrealizedPL)} sub={formatPercent(summary.totalUnrealizedPLPercent)} tone={getPnlTone(summary.totalUnrealizedPL)} />
-        <StatCard label="Realized P&L" value={formatMoney(totalRealizedPL)} sub={`${realizedRows.length} closed sale${realizedRows.length === 1 ? '' : 's'} · ${formatMoney(totalRealizedProceeds)} proceeds`} tone={getPnlTone(totalRealizedPL)} />
-        <StatCard label="Dividend / Interest" value={formatMoney(totalDividendIncome)} sub={yearFilter === 'all' ? 'All selected income records' : `Income in ${yearFilter}`} tone="success" />
-        <StatCard label="Total Return" value={formatMoney(totalReturn)} sub={formatPercent(totalReturnPercent)} tone={getPnlTone(totalReturn)} />
+        <PnlMetricCard label="Market Value" value={formatMoney(summary.totalMarketValue)} sub={`${summary.totalPositions} open position${summary.totalPositions === 1 ? '' : 's'}`} tone="info" />
+        <PnlMetricCard label="Cost Basis" value={formatMoney(summary.totalCostBasis)} sub="Open positions only" />
+        <PnlMetricCard label="Unrealized P&L" value={formatMoney(summary.totalUnrealizedPL)} sub={formatPercent(summary.totalUnrealizedPLPercent)} tone={getPnlTone(summary.totalUnrealizedPL)} />
+        <PnlMetricCard label="Realized P&L" value={formatMoney(totalRealizedPL)} sub={`${realizedRows.length} closed sale${realizedRows.length === 1 ? '' : 's'} · ${formatMoney(totalRealizedProceeds)} proceeds`} tone={getPnlTone(totalRealizedPL)} />
+        <PnlMetricCard label="Dividend / Interest" value={formatMoney(totalDividendIncome)} sub={yearFilter === 'all' ? 'All selected income records' : `Income in ${yearFilter}`} tone="success" />
+        <PnlMetricCard label="Total Return" value={formatMoney(totalReturn)} sub={formatPercent(totalReturnPercent)} tone={getPnlTone(totalReturn)} />
       </div>
 
       <div style={styles.twoColumnGrid}>
@@ -642,7 +641,7 @@ export default function PnLCenterPage() {
         <RankCard title="Top Losers / Review" subtitle="Symbols with negative total return under the current filters." rows={topLosers} empty="No negative total return positions found under the current filters." />
       </div>
 
-      <Card>
+      <Card style={styles.card}>
         <div style={styles.sectionHeader}>
           <div>
             <h2 style={styles.cardTitle}>P&L by Symbol</h2>
@@ -691,7 +690,7 @@ export default function PnLCenterPage() {
       </Card>
 
       <div style={styles.twoColumnGrid}>
-        <Card>
+        <Card style={styles.card}>
           <div style={styles.sectionHeader}>
             <div><h2 style={styles.cardTitle}>P&L by Account</h2><p style={styles.cardSub}>Compare Robinhood, Kraken, brokerage, and retirement accounts.</p></div>
           </div>
@@ -727,7 +726,7 @@ export default function PnLCenterPage() {
           </div>
         </Card>
 
-        <Card>
+        <Card style={styles.card}>
           <div style={styles.sectionHeader}>
             <div><h2 style={styles.cardTitle}>Realized + Income Trend</h2><p style={styles.cardSub}>Recent FIFO realized P&L plus dividend and interest income by month.</p></div>
           </div>
@@ -746,7 +745,7 @@ export default function PnLCenterPage() {
         </Card>
       </div>
 
-      <Card>
+      <Card style={styles.card}>
         <div style={styles.sectionHeader}>
           <div>
             <h2 style={styles.cardTitle}>Realized P&L FIFO Ledger</h2>
@@ -778,7 +777,7 @@ export default function PnLCenterPage() {
                   <td style={styles.td}><div style={styles.symbol}>{row.symbol}</div><div style={styles.muted}>{row.displayName}</div></td>
                   <td style={styles.td}>{row.accountName}</td>
                   <td style={styles.tdRight}>{formatQuantity(row.quantity)}</td>
-                  <td style={styles.tdRight}>{formatQuantity(row.matchedQuantity)}{row.unmatchedQuantity > 0 ? <div style={{ ...styles.muted, color: '#f59e0b' }}>Unmatched {formatQuantity(row.unmatchedQuantity)}</div> : null}</td>
+                  <td style={styles.tdRight}>{formatQuantity(row.matchedQuantity)}{row.unmatchedQuantity > 0 ? <div style={{ ...styles.muted, color: 'var(--warning, #d97706)' }}>Unmatched {formatQuantity(row.unmatchedQuantity)}</div> : null}</td>
                   <td style={styles.tdRight}>{formatMoney(row.matchedProceeds)}</td>
                   <td style={styles.tdRight}>{formatMoney(row.costBasis)}</td>
                   <td style={{ ...styles.tdRight, color: getPnlColor(row.realizedPL) }}><strong>{formatMoney(row.realizedPL)}</strong></td>
@@ -790,7 +789,7 @@ export default function PnLCenterPage() {
         </div>
       </Card>
 
-      <Card>
+      <Card style={styles.card}>
         <div style={styles.sectionHeader}>
           <div><h2 style={styles.cardTitle}>Data Warnings</h2><p style={styles.cardSub}>These warnings do not change data. They show what can make P&L incomplete.</p></div>
         </div>
@@ -806,9 +805,27 @@ export default function PnLCenterPage() {
   )
 }
 
+function PnlMetricCard({ label, value, sub, tone = 'default' }) {
+  const valueColor = tone === 'success'
+    ? 'var(--success, #16a34a)'
+    : tone === 'danger'
+      ? 'var(--danger, #dc2626)'
+      : tone === 'info'
+        ? 'var(--accent-strong, #2563eb)'
+        : 'var(--text-main, #0f172a)'
+
+  return (
+    <div style={styles.metricCard}>
+      <div style={styles.metricLabel}>{label}</div>
+      <div style={{ ...styles.metricValue, color: valueColor }}>{value}</div>
+      {sub ? <div style={styles.metricSub}>{sub}</div> : null}
+    </div>
+  )
+}
+
 function RankCard({ title, subtitle, rows, empty }) {
   return (
-    <Card>
+    <Card style={styles.card}>
       <div style={styles.sectionHeader}>
         <div><h2 style={styles.cardTitle}>{title}</h2><p style={styles.cardSub}>{subtitle}</p></div>
       </div>
@@ -830,42 +847,80 @@ function MiniRankRow({ row, index }) {
 }
 
 function WarningItem({ title, detail, tone = 'default' }) {
-  const borderColor = tone === 'warning' ? '#f59e0b' : tone === 'success' ? '#22c55e' : '#334155'
+  const borderColor = tone === 'warning' ? 'var(--warning, #d97706)' : tone === 'success' ? 'var(--success, #16a34a)' : 'var(--border-main, rgba(148, 163, 184, 0.28))'
   return <div style={{ ...styles.warningItem, borderColor }}><div style={styles.symbol}>{title}</div><p style={styles.warningText}>{detail}</p></div>
 }
 
 const styles = {
-  message: { marginBottom: 16, padding: 14, borderRadius: 16, border: '1px solid rgba(56, 189, 248, 0.28)', background: 'rgba(14, 165, 233, 0.08)', color: '#dbeafe' },
+  page: { color: 'var(--text-main, #0f172a)' },
+  card: {
+    background: 'var(--bg-card, #ffffff)',
+    color: 'var(--text-main, #0f172a)',
+    border: '1px solid var(--border-main, rgba(148, 163, 184, 0.28))',
+    boxShadow: 'var(--shadow-card, 0 18px 40px rgba(15, 23, 42, 0.08))'
+  },
+  message: {
+    marginBottom: 16,
+    padding: 14,
+    borderRadius: 16,
+    border: '1px solid var(--accent-soft, rgba(56, 189, 248, 0.28))',
+    background: 'var(--bg-card-soft, rgba(14, 165, 233, 0.08))',
+    color: 'var(--text-main, #0f172a)'
+  },
   filterCard: { marginBottom: 18 },
   filterGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14, alignItems: 'end' },
   field: { display: 'grid', gap: 8 },
-  label: { color: '#9ca3af', fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' },
+  label: { color: 'var(--text-muted, #64748b)', fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' },
   statGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 16, marginBottom: 18 },
+  metricCard: {
+    background: 'var(--bg-card, #ffffff)',
+    color: 'var(--text-main, #0f172a)',
+    border: '1px solid var(--border-main, rgba(148, 163, 184, 0.28))',
+    borderRadius: 18,
+    padding: 18,
+    minHeight: 128,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    boxShadow: 'var(--shadow-card, 0 16px 34px rgba(15, 23, 42, 0.08))'
+  },
+  metricLabel: { color: 'var(--text-muted, #64748b)', fontSize: 13, fontWeight: 850, marginBottom: 10 },
+  metricValue: { fontSize: 26, fontWeight: 900, lineHeight: 1.1, letterSpacing: '-0.04em' },
+  metricSub: { color: 'var(--text-muted, #64748b)', fontSize: 13, lineHeight: 1.45, marginTop: 10 },
   twoColumnGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 18, marginBottom: 18 },
   sectionHeader: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 16 },
-  cardTitle: { margin: 0, color: '#f9fafb', fontSize: 22, fontWeight: 850, letterSpacing: '-0.03em' },
-  cardSub: { margin: '7px 0 0', color: '#9ca3af', fontSize: 13, lineHeight: 1.5 },
+  cardTitle: { margin: 0, color: 'var(--text-main, #0f172a)', fontSize: 22, fontWeight: 850, letterSpacing: '-0.03em' },
+  cardSub: { margin: '7px 0 0', color: 'var(--text-muted, #64748b)', fontSize: 13, lineHeight: 1.5 },
   stack: { display: 'grid', gap: 10 },
-  rankRow: { display: 'grid', gridTemplateColumns: '38px minmax(0, 1fr) auto', gap: 12, alignItems: 'center', padding: 12, borderRadius: 16, border: '1px solid rgba(148, 163, 184, 0.18)', background: 'rgba(15, 23, 42, 0.52)' },
-  rankNumber: { width: 32, height: 32, borderRadius: 999, display: 'grid', placeItems: 'center', background: 'rgba(37, 99, 235, 0.88)', color: '#fff', fontWeight: 900 },
+  rankRow: {
+    display: 'grid',
+    gridTemplateColumns: '38px minmax(0, 1fr) auto',
+    gap: 12,
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 16,
+    border: '1px solid var(--border-main, rgba(148, 163, 184, 0.28))',
+    background: 'var(--bg-card-soft, rgba(248, 250, 252, 0.85))'
+  },
+  rankNumber: { width: 32, height: 32, borderRadius: 999, display: 'grid', placeItems: 'center', background: 'var(--accent-strong, #2563eb)', color: '#fff', fontWeight: 900 },
   rankValue: { textAlign: 'right' },
-  symbol: { color: '#f9fafb', fontWeight: 850 },
-  muted: { color: '#9ca3af', fontSize: 12, marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  emptyState: { padding: 18, borderRadius: 16, border: '1px dashed rgba(148, 163, 184, 0.25)', color: '#9ca3af', background: 'rgba(15, 23, 42, 0.38)' },
-  symbolTableScroll: { maxHeight: 560, overflow: 'auto', borderRadius: 16, border: '1px solid rgba(148, 163, 184, 0.14)', background: 'rgba(15, 23, 42, 0.18)' },
+  symbol: { color: 'var(--text-main, #0f172a)', fontWeight: 850 },
+  muted: { color: 'var(--text-muted, #64748b)', fontSize: 12, marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  emptyState: { padding: 18, borderRadius: 16, border: '1px dashed var(--border-main, rgba(148, 163, 184, 0.35))', color: 'var(--text-muted, #64748b)', background: 'var(--bg-card-soft, rgba(248, 250, 252, 0.8))' },
+  symbolTableScroll: { maxHeight: 560, overflow: 'auto', borderRadius: 16, border: '1px solid var(--border-main, rgba(148, 163, 184, 0.28))', background: 'var(--bg-card, #ffffff)' },
   table: { width: '100%', minWidth: 1180, borderCollapse: 'separate', borderSpacing: 0 },
   accountTable: { width: '100%', minWidth: 900, borderCollapse: 'collapse' },
-  th: { padding: '12px 14px', textAlign: 'left', color: '#cbd5e1', fontSize: 12, fontWeight: 850, borderBottom: '1px solid rgba(148, 163, 184, 0.18)', whiteSpace: 'nowrap' },
-  thRight: { padding: '12px 14px', textAlign: 'right', color: '#cbd5e1', fontSize: 12, fontWeight: 850, borderBottom: '1px solid rgba(148, 163, 184, 0.18)', whiteSpace: 'nowrap' },
-  stickyTh: { padding: '12px 14px', textAlign: 'left', color: '#cbd5e1', fontSize: 12, fontWeight: 850, borderBottom: '1px solid rgba(148, 163, 184, 0.18)', whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 3, background: '#111827' },
-  stickyThRight: { padding: '12px 14px', textAlign: 'right', color: '#cbd5e1', fontSize: 12, fontWeight: 850, borderBottom: '1px solid rgba(148, 163, 184, 0.18)', whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 3, background: '#111827' },
-  stickyThFirst: { padding: '12px 14px', textAlign: 'left', color: '#cbd5e1', fontSize: 12, fontWeight: 850, borderBottom: '1px solid rgba(148, 163, 184, 0.18)', whiteSpace: 'nowrap', position: 'sticky', top: 0, left: 0, zIndex: 5, background: '#111827' },
-  td: { padding: '13px 14px', color: '#e5e7eb', borderBottom: '1px solid rgba(148, 163, 184, 0.11)', verticalAlign: 'top' },
-  tdFirst: { padding: '13px 14px', color: '#e5e7eb', borderBottom: '1px solid rgba(148, 163, 184, 0.11)', verticalAlign: 'top', position: 'sticky', left: 0, zIndex: 2, background: '#111827', minWidth: 210 },
-  tdRight: { padding: '13px 14px', color: '#e5e7eb', borderBottom: '1px solid rgba(148, 163, 184, 0.11)', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' },
-  emptyCell: { padding: 22, color: '#9ca3af', textAlign: 'center' },
-  monthRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, padding: 12, borderRadius: 16, border: '1px solid rgba(148, 163, 184, 0.16)', background: 'rgba(15, 23, 42, 0.46)' },
+  th: { padding: '12px 14px', textAlign: 'left', color: 'var(--text-muted, #64748b)', fontSize: 12, fontWeight: 850, borderBottom: '1px solid var(--border-main, rgba(148, 163, 184, 0.28))', whiteSpace: 'nowrap' },
+  thRight: { padding: '12px 14px', textAlign: 'right', color: 'var(--text-muted, #64748b)', fontSize: 12, fontWeight: 850, borderBottom: '1px solid var(--border-main, rgba(148, 163, 184, 0.28))', whiteSpace: 'nowrap' },
+  stickyTh: { padding: '12px 14px', textAlign: 'left', color: 'var(--text-muted, #64748b)', fontSize: 12, fontWeight: 850, borderBottom: '1px solid var(--border-main, rgba(148, 163, 184, 0.28))', whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 3, background: 'var(--bg-card, #ffffff)' },
+  stickyThRight: { padding: '12px 14px', textAlign: 'right', color: 'var(--text-muted, #64748b)', fontSize: 12, fontWeight: 850, borderBottom: '1px solid var(--border-main, rgba(148, 163, 184, 0.28))', whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 3, background: 'var(--bg-card, #ffffff)' },
+  stickyThFirst: { padding: '12px 14px', textAlign: 'left', color: 'var(--text-muted, #64748b)', fontSize: 12, fontWeight: 850, borderBottom: '1px solid var(--border-main, rgba(148, 163, 184, 0.28))', whiteSpace: 'nowrap', position: 'sticky', top: 0, left: 0, zIndex: 5, background: 'var(--bg-card, #ffffff)' },
+  td: { padding: '13px 14px', color: 'var(--text-main, #0f172a)', borderBottom: '1px solid var(--border-main, rgba(148, 163, 184, 0.2))', verticalAlign: 'top' },
+  tdFirst: { padding: '13px 14px', color: 'var(--text-main, #0f172a)', borderBottom: '1px solid var(--border-main, rgba(148, 163, 184, 0.2))', verticalAlign: 'top', position: 'sticky', left: 0, zIndex: 2, background: 'var(--bg-card, #ffffff)', minWidth: 210 },
+  tdRight: { padding: '13px 14px', color: 'var(--text-main, #0f172a)', borderBottom: '1px solid var(--border-main, rgba(148, 163, 184, 0.2))', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' },
+  emptyCell: { padding: 22, color: 'var(--text-muted, #64748b)', textAlign: 'center' },
+  monthRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, padding: 12, borderRadius: 16, border: '1px solid var(--border-main, rgba(148, 163, 184, 0.28))', background: 'var(--bg-card-soft, rgba(248, 250, 252, 0.85))' },
   warningGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 },
-  warningItem: { padding: 14, borderRadius: 16, border: '1px solid #334155', background: 'rgba(15, 23, 42, 0.42)' },
-  warningText: { margin: '7px 0 0', color: '#9ca3af', fontSize: 13, lineHeight: 1.5 }
+  warningItem: { padding: 14, borderRadius: 16, border: '1px solid var(--border-main, rgba(148, 163, 184, 0.28))', background: 'var(--bg-card-soft, rgba(248, 250, 252, 0.85))' },
+  warningText: { margin: '7px 0 0', color: 'var(--text-muted, #64748b)', fontSize: 13, lineHeight: 1.5 }
 }
