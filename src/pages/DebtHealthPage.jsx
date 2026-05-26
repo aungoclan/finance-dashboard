@@ -674,18 +674,20 @@ function PriorityList({ title, subtitle, rows }) {
 }
 
 const colors = {
-  bg: '#0b1120',
-  panel: '#111827',
-  panel2: '#1f2937',
-  border: '#334155',
-  borderSoft: 'rgba(148, 163, 184, 0.22)',
-  text: '#f8fafc',
-  muted: '#cbd5e1',
-  muted2: '#94a3b8',
-  blue: '#3b82f6',
-  green: '#22c55e',
-  amber: '#f59e0b',
-  red: '#ef4444'
+  bg: 'var(--bg-main, #f8fafc)',
+  panel: 'var(--bg-card, #ffffff)',
+  panel2: 'var(--bg-card-soft, #f1f5f9)',
+  border: 'var(--border-main, #dbe4f0)',
+  borderSoft: 'var(--border-main, rgba(148, 163, 184, 0.26))',
+  text: 'var(--text-main, #0f172a)',
+  muted: 'var(--text-muted, #64748b)',
+  muted2: 'var(--text-muted, #64748b)',
+  blue: 'var(--accent-strong, #2563eb)',
+  green: 'var(--success, #16a34a)',
+  amber: 'var(--warning, #d97706)',
+  red: 'var(--danger, #dc2626)',
+  cardShadow: 'var(--shadow-card, 0 18px 40px rgba(15, 23, 42, 0.08))',
+  softBlueBg: 'var(--accent-soft, rgba(37, 99, 235, 0.10))'
 }
 
 const toneColor = (tone) => {
@@ -696,10 +698,10 @@ const toneColor = (tone) => {
 }
 
 const toneBg = (tone) => {
-  if (tone === 'success') return 'rgba(34, 197, 94, 0.12)'
-  if (tone === 'warning') return 'rgba(245, 158, 11, 0.12)'
-  if (tone === 'danger') return 'rgba(239, 68, 68, 0.12)'
-  return 'rgba(59, 130, 246, 0.12)'
+  if (tone === 'success') return 'var(--success-soft, rgba(34, 197, 94, 0.12))'
+  if (tone === 'warning') return 'var(--warning-soft, rgba(245, 158, 11, 0.12))'
+  if (tone === 'danger') return 'var(--danger-soft, rgba(239, 68, 68, 0.12))'
+  return 'var(--accent-soft, rgba(59, 130, 246, 0.12))'
 }
 
 const styles = {
@@ -761,14 +763,14 @@ const styles = {
     borderRadius: '10px',
     padding: '11px 14px',
     background: colors.blue,
-    color: 'white',
+    color: '#ffffff',
     fontWeight: 800,
     cursor: 'pointer'
   },
   message: {
     background: 'rgba(239, 68, 68, 0.12)',
     border: '1px solid rgba(239, 68, 68, 0.35)',
-    color: '#fecaca',
+    color: colors.red,
     borderRadius: '14px',
     padding: '14px 16px'
   },
@@ -778,7 +780,7 @@ const styles = {
     gap: '16px',
     alignItems: 'center',
     flexWrap: 'wrap',
-    background: `linear-gradient(135deg, ${toneBg(tone)}, rgba(17, 24, 39, 0.96))`,
+    background: `linear-gradient(135deg, ${toneBg(tone)}, ${colors.panel})`,
     border: `1px solid ${toneColor(tone)}`,
     borderRadius: '24px',
     padding: '22px'
@@ -818,7 +820,7 @@ const styles = {
     border: `1px solid ${tone === 'neutral' ? colors.borderSoft : toneColor(tone)}`,
     borderRadius: '18px',
     padding: '18px',
-    boxShadow: '0 18px 40px rgba(0, 0, 0, 0.18)'
+    boxShadow: colors.cardShadow
   }),
   metricLabel: {
     color: colors.muted2,
@@ -848,10 +850,10 @@ const styles = {
     border: `1px solid ${colors.borderSoft}`,
     borderRadius: '22px',
     padding: '20px',
-    boxShadow: '0 18px 40px rgba(0, 0, 0, 0.18)'
+    boxShadow: colors.cardShadow
   },
   notesCard: {
-    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.10), rgba(17, 24, 39, 0.96))',
+    background: `linear-gradient(135deg, ${colors.softBlueBg}, ${colors.panel})`,
     border: `1px solid ${colors.borderSoft}`,
     borderRadius: '22px',
     padding: '20px'
@@ -944,8 +946,8 @@ const styles = {
     borderRadius: '10px',
     display: 'grid',
     placeItems: 'center',
-    background: 'rgba(59, 130, 246, 0.16)',
-    color: '#93c5fd',
+    background: colors.softBlueBg,
+    color: colors.blue,
     fontWeight: 900
   },
   priorityName: {

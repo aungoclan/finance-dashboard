@@ -75,7 +75,18 @@ export default function Sidebar({ onLogout, isMobileOpen = false, onCloseMobile 
       </div>
 
       <div className="sidebar-footer">
-        <div className="sidebar-footer-note">
+        <div
+          className="sidebar-footer-note"
+          style={{
+            background: 'var(--bg-card-soft, rgba(241, 245, 249, 0.9))',
+            color: 'var(--text-muted, #64748b)',
+            border: '1px solid var(--border-main, rgba(148, 163, 184, 0.28))',
+            borderRadius: '14px',
+            padding: '12px 14px',
+            lineHeight: 1.45,
+            boxShadow: 'none'
+          }}
+        >
           Local-first build
           <br />
           Production readiness mode
