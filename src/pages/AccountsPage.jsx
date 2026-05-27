@@ -268,6 +268,7 @@ function getAccountSeed(account) {
     allTimeInternalInvestmentCashIn: 0,
     allTimeInternalInvestmentCashOut: 0,
     allTimeInternalInvestmentCashNet: 0,
+    totalInvestmentAccountValue: 0,
 
     monthlyIncome: 0,
     monthlyExpense: 0,
@@ -1091,6 +1092,7 @@ export default function AccountsPage() {
       const allTimeNet = row.allTimeIncome - row.allTimeExpense
       row.monthlyInternalInvestmentCashNet = row.monthlyInvestmentOnlyIncome + row.monthlyInternalInvestmentCashIn - row.monthlyInternalInvestmentCashOut
       row.allTimeInternalInvestmentCashNet = row.allTimeInvestmentOnlyIncome + row.allTimeInternalInvestmentCashIn - row.allTimeInternalInvestmentCashOut
+      row.totalInvestmentAccountValue = row.investmentValue + row.allTimeInternalInvestmentCashNet
       const reviewReasons = []
 
       if (row.id === 'unassigned') {
@@ -2151,15 +2153,27 @@ function AccountCard({
                   tone={account.monthlyInvestmentCashflowIncome > 0 ? 'good' : 'neutral'}
                 />
                 <Metric
-                  label="Net Investment Cash"
+                  label="Available Investment Cash"
+                  value={money(account.allTimeInternalInvestmentCashNet)}
+                  sub="All-time investment-only income + sells - buys"
+                  tone={account.allTimeInternalInvestmentCashNet >= 0 ? 'good' : 'bad'}
+                />
+                <Metric
+                  label="Total Account Value"
+                  value={money(account.totalInvestmentAccountValue)}
+                  sub="Market value + available investment cash"
+                  tone={account.totalInvestmentAccountValue >= 0 ? 'good' : 'bad'}
+                />
+                <Metric
+                  label="This Month Cash Movement"
                   value={money(account.monthlyInternalInvestmentCashNet)}
-                  sub="Investment-only income + sells - buys"
+                  sub="Investment-only income + sells - buys this month"
                   tone={account.monthlyInternalInvestmentCashNet >= 0 ? 'good' : 'bad'}
                 />
                 <Metric
                   label="Investment Cash Detail"
-                  value={`${money(account.monthlyInvestmentOnlyIncome)} + ${money(account.monthlyInternalInvestmentCashIn)} / ${money(account.monthlyInternalInvestmentCashOut)}`}
-                  sub="Investment-only income + sell proceeds / buy cash used"
+                  value={`${money(account.monthlyInvestmentOnlyIncome)} + ${money(account.monthlyInternalInvestmentCashIn)} - ${money(account.monthlyInternalInvestmentCashOut)}`}
+                  sub="This month: income + sell proceeds - buy cash used"
                   tone="neutral"
                 />
               </>
