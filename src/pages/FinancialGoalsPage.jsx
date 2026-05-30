@@ -307,10 +307,10 @@ function buildFundingSuggestions(goalInsights, fundingPool) {
 }
 
 function getHealthStyle(tone) {
-  if (tone === 'good') return { background: 'rgba(34,197,94,0.16)', color: '#86efac', borderColor: 'rgba(34,197,94,0.35)' }
-  if (tone === 'danger') return { background: 'rgba(239,68,68,0.16)', color: '#fca5a5', borderColor: 'rgba(239,68,68,0.35)' }
-  if (tone === 'warn') return { background: 'rgba(245,158,11,0.16)', color: '#fcd34d', borderColor: 'rgba(245,158,11,0.35)' }
-  return { background: 'rgba(59,130,246,0.16)', color: '#93c5fd', borderColor: 'rgba(59,130,246,0.35)' }
+  if (tone === 'good') return { background: 'color-mix(in srgb, var(--success) 12%, transparent)', color: 'var(--success)', borderColor: 'var(--success)' }
+  if (tone === 'danger') return { background: 'color-mix(in srgb, var(--danger) 12%, transparent)', color: 'var(--danger)', borderColor: 'var(--danger)' }
+  if (tone === 'warn') return { background: 'color-mix(in srgb, var(--warning) 12%, transparent)', color: 'var(--warning)', borderColor: 'var(--warning)' }
+  return { background: 'color-mix(in srgb, var(--accent-strong) 12%, transparent)', color: 'var(--accent-strong)', borderColor: 'var(--accent-strong)' }
 }
 
 export default function FinancialGoalsPage() {
@@ -1018,7 +1018,7 @@ function MetricCard({ label, value, sub, positive }) {
   return (
     <div style={metricCardStyle}>
       <div style={metricLabelStyle}>{label}</div>
-      <div style={{ ...metricValueStyle, color: positive ? '#86efac' : 'white' }}>{value}</div>
+      <div style={{ ...metricValueStyle, color: positive ? 'var(--success)' : 'var(--text-main)' }}>{value}</div>
       <div style={metricSubStyle}>{sub}</div>
     </div>
   )
@@ -1103,85 +1103,85 @@ function MiniStat({ label, value, danger, positive }) {
   return (
     <div style={miniStatStyle}>
       <div style={smallMutedStyle}>{label}</div>
-      <strong style={{ color: danger ? '#fca5a5' : positive ? '#86efac' : 'white' }}>{value}</strong>
+      <strong style={{ color: danger ? 'var(--danger)' : positive ? 'var(--success)' : 'var(--text-main)' }}>{value}</strong>
     </div>
   )
 }
 
 function statusBadgeStyle(status, isLate) {
-  if (isLate) return { background: 'rgba(239,68,68,0.18)', color: '#fca5a5', borderColor: 'rgba(239,68,68,0.35)' }
-  if (status === 'completed') return { background: 'rgba(34,197,94,0.18)', color: '#86efac', borderColor: 'rgba(34,197,94,0.35)' }
-  if (status === 'paused') return { background: 'rgba(245,158,11,0.18)', color: '#fcd34d', borderColor: 'rgba(245,158,11,0.35)' }
-  return { background: 'rgba(59,130,246,0.18)', color: '#93c5fd', borderColor: 'rgba(59,130,246,0.35)' }
+  if (isLate) return { background: 'color-mix(in srgb, var(--danger) 12%, transparent)', color: 'var(--danger)', borderColor: 'var(--danger)' }
+  if (status === 'completed') return { background: 'color-mix(in srgb, var(--success) 12%, transparent)', color: 'var(--success)', borderColor: 'var(--success)' }
+  if (status === 'paused') return { background: 'color-mix(in srgb, var(--warning) 12%, transparent)', color: 'var(--warning)', borderColor: 'var(--warning)' }
+  return { background: 'color-mix(in srgb, var(--accent-strong) 12%, transparent)', color: 'var(--accent-strong)', borderColor: 'var(--accent-strong)' }
 }
 
-const pageStyle = { display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '1500px', margin: '0 auto' }
-const heroStyle = { border: '1px solid #334155', borderRadius: '18px', padding: '28px', background: 'linear-gradient(135deg, #111827, #1f2937)', display: 'flex', justifyContent: 'space-between', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }
+const pageStyle = { display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '1500px', margin: '0 auto', color: 'var(--text-main)' }
+const heroStyle = { border: '1px solid var(--border-main)', borderRadius: '18px', padding: '28px', background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-strong) 12%, transparent), var(--bg-card) 58%, color-mix(in srgb, var(--success) 10%, transparent))', display: 'flex', justifyContent: 'space-between', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }
 const heroButtonRowStyle = { display: 'flex', gap: '10px', flexWrap: 'wrap' }
-const eyebrowStyle = { color: '#93c5fd', letterSpacing: '0.14em', fontSize: '13px', fontWeight: 800, textTransform: 'uppercase', marginBottom: '8px' }
+const eyebrowStyle = { color: 'var(--accent-strong)', letterSpacing: '0.14em', fontSize: '13px', fontWeight: 800, textTransform: 'uppercase', marginBottom: '8px' }
 const titleStyle = { margin: 0, fontSize: '36px', lineHeight: 1.1, fontWeight: 900 }
-const subtitleStyle = { margin: '12px 0 0', color: '#bfdbfe', fontSize: '17px', lineHeight: 1.5, maxWidth: '850px' }
-const messageStyle = { border: '1px solid #2563eb', background: 'rgba(37,99,235,0.12)', color: '#bfdbfe', borderRadius: '14px', padding: '12px 16px' }
-const warningPanelStyle = { border: '1px solid #f59e0b', borderRadius: '16px', padding: '18px', background: 'rgba(245,158,11,0.1)' }
-const warningTitleStyle = { margin: '0 0 10px', color: '#fde68a', fontSize: '22px' }
-const codeBlockStyle = { background: '#020617', border: '1px solid #334155', borderRadius: '12px', padding: '12px', color: '#e2e8f0', overflowX: 'auto' }
-const localImportStyle = { border: '1px solid #22c55e', borderRadius: '16px', padding: '16px', background: 'rgba(34,197,94,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }
-const localImportTextStyle = { margin: '6px 0 0', color: '#bbf7d0' }
+const subtitleStyle = { margin: '12px 0 0', color: 'var(--text-muted)', fontSize: '17px', lineHeight: 1.5, maxWidth: '850px' }
+const messageStyle = { border: '1px solid var(--accent-strong)', background: 'color-mix(in srgb, var(--accent-strong) 12%, transparent)', color: 'var(--text-main)', borderRadius: '14px', padding: '12px 16px' }
+const warningPanelStyle = { border: '1px solid var(--warning)', borderRadius: '16px', padding: '18px', background: 'color-mix(in srgb, var(--warning) 12%, transparent)' }
+const warningTitleStyle = { margin: '0 0 10px', color: 'var(--warning)', fontSize: '22px' }
+const codeBlockStyle = { background: 'var(--bg-card-soft)', border: '1px solid var(--border-main)', borderRadius: '12px', padding: '12px', color: 'var(--text-main)', overflowX: 'auto' }
+const localImportStyle = { border: '1px solid var(--success)', borderRadius: '16px', padding: '16px', background: 'color-mix(in srgb, var(--success) 12%, transparent)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }
+const localImportTextStyle = { margin: '6px 0 0', color: 'var(--success)' }
 const summaryGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }
-const metricCardStyle = { border: '1px solid #334155', borderRadius: '16px', padding: '20px', background: '#111827', minWidth: 0 }
-const metricLabelStyle = { color: '#bfdbfe', fontSize: '14px', marginBottom: '12px' }
+const metricCardStyle = { border: '1px solid var(--border-main)', borderRadius: '16px', padding: '20px', background: 'var(--bg-card)', minWidth: 0 }
+const metricLabelStyle = { color: 'var(--text-muted)', fontSize: '14px', marginBottom: '12px' }
 const metricValueStyle = { fontSize: '30px', fontWeight: 900, lineHeight: 1.1, wordBreak: 'break-word' }
-const metricSubStyle = { color: '#94a3b8', fontSize: '14px', marginTop: '10px' }
-const fundingPanelStyle = { border: '1px solid #2563eb', borderRadius: '20px', padding: '24px', background: 'linear-gradient(135deg, rgba(30,64,175,0.28), rgba(15,23,42,0.96))', minWidth: 0 }
+const metricSubStyle = { color: 'var(--text-muted)', fontSize: '14px', marginTop: '10px' }
+const fundingPanelStyle = { border: '1px solid var(--accent-strong)', borderRadius: '20px', padding: '24px', background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-strong) 12%, transparent), var(--bg-card))', minWidth: 0 }
 const fundingControlsStyle = { display: 'grid', gridTemplateColumns: '1fr', gap: '8px', minWidth: '260px', maxWidth: '340px' }
 const fundingSummaryGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '14px', margin: '18px 0' }
 const fundingGridStyle = { display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) minmax(300px, 1fr)', gap: '16px', alignItems: 'start' }
-const subPanelStyle = { border: '1px solid #334155', borderRadius: '16px', padding: '18px', background: 'rgba(15,23,42,0.82)', minWidth: 0 }
+const subPanelStyle = { border: '1px solid var(--border-main)', borderRadius: '16px', padding: '18px', background: 'var(--bg-card-soft)', minWidth: 0 }
 const subPanelTitleStyle = { margin: '0 0 8px', fontSize: '21px', fontWeight: 900 }
 const suggestionListStyle = { display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '14px' }
-const suggestionRowStyle = { border: '1px solid #334155', borderRadius: '14px', padding: '12px', background: '#020617', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }
-const suggestionNameStyle = { color: 'white', fontSize: '16px', wordBreak: 'break-word' }
+const suggestionRowStyle = { border: '1px solid var(--border-main)', borderRadius: '14px', padding: '12px', background: 'var(--bg-card)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }
+const suggestionNameStyle = { color: 'var(--text-main)', fontSize: '16px', wordBreak: 'break-word' }
 const suggestionAmountBlockStyle = { display: 'flex', alignItems: 'center', gap: '10px', marginLeft: 'auto' }
-const suggestionAmountStyle = { color: '#86efac', fontSize: '18px', fontWeight: 900, whiteSpace: 'nowrap' }
-const infoStripStyle = { border: '1px solid rgba(147,197,253,0.35)', borderRadius: '14px', padding: '12px 14px', background: 'rgba(37,99,235,0.12)', color: '#bfdbfe', marginTop: '16px' }
-const selectedGoalBoxStyle = { border: '1px solid #334155', borderRadius: '14px', padding: '12px', background: '#020617' }
-const checkboxRowStyle = { display: 'flex', alignItems: 'center', gap: '8px', color: '#cbd5e1', fontSize: '14px' }
+const suggestionAmountStyle = { color: 'var(--success)', fontSize: '18px', fontWeight: 900, whiteSpace: 'nowrap' }
+const infoStripStyle = { border: '1px solid var(--accent-strong)', borderRadius: '14px', padding: '12px 14px', background: 'color-mix(in srgb, var(--accent-strong) 12%, transparent)', color: 'var(--text-main)', marginTop: '16px' }
+const selectedGoalBoxStyle = { border: '1px solid var(--border-main)', borderRadius: '14px', padding: '12px', background: 'var(--bg-card)' }
+const checkboxRowStyle = { display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)', fontSize: '14px' }
 const contentGridStyle = { display: 'grid', gridTemplateColumns: 'minmax(320px, 0.75fr) minmax(0, 1.5fr)', gap: '20px', alignItems: 'start' }
-const panelStyle = { border: '1px solid #334155', borderRadius: '18px', padding: '24px', background: '#111827', minWidth: 0 }
+const panelStyle = { border: '1px solid var(--border-main)', borderRadius: '18px', padding: '24px', background: 'var(--bg-card)', minWidth: 0 }
 const panelHeaderStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap', marginBottom: '16px' }
 const panelTitleStyle = { margin: '0 0 8px', fontSize: '26px', fontWeight: 900 }
-const mutedStyle = { color: '#bfdbfe', margin: '0 0 18px', fontSize: '16px', lineHeight: 1.45 }
-const smallMutedStyle = { color: '#94a3b8', fontSize: '13px' }
+const mutedStyle = { color: 'var(--text-muted)', margin: '0 0 18px', fontSize: '16px', lineHeight: 1.45 }
+const smallMutedStyle = { color: 'var(--text-muted)', fontSize: '13px' }
 const formStyle = { display: 'flex', flexDirection: 'column', gap: '12px' }
 const twoColumnFormStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px' }
-const labelStyle = { color: 'white', fontSize: '14px', fontWeight: 800 }
-const inputStyle = { width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: '12px', border: '1px solid #334155', background: '#020617', color: 'white', fontSize: '15px' }
+const labelStyle = { color: 'var(--text-main)', fontSize: '14px', fontWeight: 800 }
+const inputStyle = { width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: '12px', border: '1px solid var(--border-main)', background: 'var(--bg-card-soft)', color: 'var(--text-main)', fontSize: '15px' }
 const textareaStyle = { ...inputStyle, minHeight: '90px', resize: 'vertical', fontFamily: 'inherit' }
 const buttonRowStyle = { display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '8px' }
-const primaryButtonStyle = { border: 'none', borderRadius: '12px', padding: '12px 16px', background: '#2563eb', color: 'white', fontWeight: 900, cursor: 'pointer', flex: 1 }
-const primaryButtonSmallStyle = { border: 'none', borderRadius: '12px', padding: '12px 16px', background: '#16a34a', color: 'white', fontWeight: 900, cursor: 'pointer' }
-const secondaryButtonStyle = { border: '1px solid #3b82f6', borderRadius: '12px', padding: '12px 16px', background: 'rgba(37,99,235,0.2)', color: 'white', fontWeight: 900, cursor: 'pointer' }
+const primaryButtonStyle = { border: 'none', borderRadius: '12px', padding: '12px 16px', background: 'var(--accent-strong)', color: 'white', fontWeight: 900, cursor: 'pointer', flex: 1 }
+const primaryButtonSmallStyle = { border: 'none', borderRadius: '12px', padding: '12px 16px', background: 'var(--success)', color: 'white', fontWeight: 900, cursor: 'pointer' }
+const secondaryButtonStyle = { border: '1px solid var(--accent-strong)', borderRadius: '12px', padding: '12px 16px', background: 'color-mix(in srgb, var(--accent-strong) 12%, transparent)', color: 'var(--text-main)', fontWeight: 900, cursor: 'pointer' }
 const filterRowStyle = { display: 'flex', gap: '10px', flexWrap: 'wrap' }
 const smallSelectStyle = { ...inputStyle, width: '170px' }
 const goalsListStyle = { display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '780px', overflowY: 'auto', paddingRight: '4px' }
-const goalCardStyle = { border: '1px solid #334155', borderRadius: '16px', padding: '18px', background: '#0f172a' }
+const goalCardStyle = { border: '1px solid var(--border-main)', borderRadius: '16px', padding: '18px', background: 'var(--bg-card-soft)' }
 const goalHeaderStyle = { display: 'flex', justifyContent: 'space-between', gap: '14px', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '12px' }
 const goalTitleRowStyle = { display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }
 const goalNameStyle = { margin: 0, fontSize: '22px', fontWeight: 900, wordBreak: 'break-word' }
-const goalMetaStyle = { color: '#93c5fd', marginTop: '6px' }
+const goalMetaStyle = { color: 'var(--accent-strong)', marginTop: '6px' }
 const goalAmountStyle = { fontSize: '18px', fontWeight: 900, whiteSpace: 'nowrap' }
 const badgeStyle = { borderRadius: '999px', padding: '5px 10px', fontWeight: 900, fontSize: '12px', textTransform: 'capitalize', border: '1px solid transparent' }
 const miniBadgeStyle = { borderRadius: '999px', padding: '4px 8px', fontWeight: 900, fontSize: '11px', border: '1px solid transparent', whiteSpace: 'nowrap' }
-const progressTrackStyle = { height: '10px', background: '#1f2937', borderRadius: '999px', overflow: 'hidden', margin: '12px 0' }
-const progressFillStyle = { height: '100%', background: 'linear-gradient(90deg, #2563eb, #22c55e)', borderRadius: '999px' }
+const progressTrackStyle = { height: '10px', background: 'var(--bg-card)', borderRadius: '999px', overflow: 'hidden', margin: '12px 0' }
+const progressFillStyle = { height: '100%', background: 'linear-gradient(90deg, var(--accent-strong), var(--success))', borderRadius: '999px' }
 const goalStatsGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '10px', marginTop: '14px' }
-const miniStatStyle = { border: '1px solid #334155', borderRadius: '12px', padding: '10px', background: '#020617' }
-const noteStyle = { color: '#cbd5e1', lineHeight: 1.5, margin: '14px 0 0', whiteSpace: 'pre-wrap' }
-const insightNoteStyle = { border: '1px solid #334155', background: 'rgba(37,99,235,0.08)', borderRadius: '12px', padding: '10px 12px', color: '#bfdbfe', lineHeight: 1.45, margin: '14px 0 0' }
+const miniStatStyle = { border: '1px solid var(--border-main)', borderRadius: '12px', padding: '10px', background: 'var(--bg-card)' }
+const noteStyle = { color: 'var(--text-main)', lineHeight: 1.5, margin: '14px 0 0', whiteSpace: 'pre-wrap' }
+const insightNoteStyle = { border: '1px solid var(--border-main)', background: 'color-mix(in srgb, var(--accent-strong) 10%, transparent)', borderRadius: '12px', padding: '10px 12px', color: 'var(--text-main)', lineHeight: 1.45, margin: '14px 0 0' }
 const actionRowStyle = { display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '16px' }
-const tinyButtonStyle = { border: '1px solid #334155', borderRadius: '10px', padding: '8px 10px', background: '#1f2937', color: 'white', fontWeight: 800, cursor: 'pointer' }
-const dangerButtonStyle = { ...tinyButtonStyle, borderColor: '#7f1d1d', background: 'rgba(127,29,29,0.25)', color: '#fecaca' }
-const emptyStyle = { border: '1px dashed #475569', borderRadius: '14px', padding: '24px', color: '#bfdbfe', textAlign: 'center' }
+const tinyButtonStyle = { border: '1px solid var(--border-main)', borderRadius: '10px', padding: '8px 10px', background: 'var(--bg-card-soft)', color: 'var(--text-main)', fontWeight: 800, cursor: 'pointer' }
+const dangerButtonStyle = { ...tinyButtonStyle, borderColor: 'var(--danger)', background: 'color-mix(in srgb, var(--danger) 12%, transparent)', color: 'var(--danger)' }
+const emptyStyle = { border: '1px dashed var(--border-main)', borderRadius: '14px', padding: '24px', color: 'var(--text-muted)', textAlign: 'center' }
 const breakdownGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }
-const breakdownCardStyle = { border: '1px solid #334155', borderRadius: '14px', padding: '14px', background: '#0f172a' }
+const breakdownCardStyle = { border: '1px solid var(--border-main)', borderRadius: '14px', padding: '14px', background: 'var(--bg-card-soft)' }
 const rowBetweenStyle = { display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }

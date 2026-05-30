@@ -1376,7 +1376,7 @@ function StatCard({ label, value, note, tone = 'normal' }) {
   return (
     <div style={statCardStyle}>
       <div style={statLabelStyle}>{label}</div>
-      <div style={{ ...statValueStyle, color: tone === 'warning' ? '#facc15' : '#86efac' }}>{value}</div>
+      <div style={{ ...statValueStyle, color: tone === 'warning' ? 'var(--warning)' : 'var(--success)' }}>{value}</div>
       <div style={mutedSmallStyle}>{note}</div>
     </div>
   )
@@ -1405,7 +1405,7 @@ function QualityCard({ label, value, note, tone = 'normal' }) {
   return (
     <div style={qualityCardStyle}>
       <div style={mutedSmallStyle}>{label}</div>
-      <div style={{ ...qualityValueStyle, color: tone === 'warning' ? '#facc15' : 'white' }}>{value}</div>
+      <div style={{ ...qualityValueStyle, color: tone === 'warning' ? 'var(--warning)' : 'var(--text-main)' }}>{value}</div>
       <div style={mutedSmallStyle}>{note}</div>
     </div>
   )
@@ -1454,8 +1454,8 @@ const pageStyle = {
 }
 
 const heroStyle = {
-  border: '1px solid #334155',
-  background: 'linear-gradient(135deg, #111827 0%, #172033 100%)',
+  border: '1px solid var(--border-main)',
+  background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-strong) 12%, transparent), var(--bg-card) 58%, color-mix(in srgb, var(--success) 10%, transparent))',
   borderRadius: '18px',
   padding: '28px 32px',
   display: 'flex',
@@ -1466,7 +1466,7 @@ const heroStyle = {
 }
 
 const eyebrowStyle = {
-  color: '#93c5fd',
+  color: 'var(--accent-strong)',
   letterSpacing: '0.18em',
   fontSize: '13px',
   fontWeight: 800,
@@ -1481,15 +1481,15 @@ const titleStyle = {
 
 const subtitleStyle = {
   margin: '14px 0 0',
-  color: '#bfdbfe',
+  color: 'var(--text-muted)',
   fontSize: '17px',
   lineHeight: 1.5,
   maxWidth: '780px'
 }
 
 const refreshButtonStyle = {
-  border: '1px solid #2563eb',
-  background: '#1d4ed8',
+  border: '1px solid var(--accent-strong)',
+  background: 'var(--accent-strong)',
   color: 'white',
   borderRadius: '10px',
   padding: '11px 16px',
@@ -1498,9 +1498,9 @@ const refreshButtonStyle = {
 }
 
 const messageStyle = {
-  border: '1px solid #f59e0b',
-  color: '#fde68a',
-  background: 'rgba(245, 158, 11, 0.08)',
+  border: '1px solid var(--warning)',
+  color: 'var(--warning)',
+  background: 'color-mix(in srgb, var(--warning) 12%, transparent)',
   borderRadius: '14px',
   padding: '14px 16px'
 }
@@ -1512,14 +1512,14 @@ const summaryGridStyle = {
 }
 
 const statCardStyle = {
-  border: '1px solid #334155',
-  background: '#111827',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card)',
   borderRadius: '16px',
   padding: '20px'
 }
 
 const statLabelStyle = {
-  color: '#bfdbfe',
+  color: 'var(--text-muted)',
   fontSize: '14px',
   marginBottom: '12px'
 }
@@ -1531,8 +1531,8 @@ const statValueStyle = {
 }
 
 const formPanelStyle = {
-  border: '1px solid #334155',
-  background: 'linear-gradient(180deg, #111827 0%, #0b1220 100%)',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card)',
   borderRadius: '18px',
   padding: '24px'
 }
@@ -1556,16 +1556,16 @@ const fieldStyle = {
 }
 
 const fieldLabelStyle = {
-  color: '#cbd5e1',
+  color: 'var(--text-main)',
   fontSize: '13px',
   fontWeight: 800
 }
 
 const inputStyle = {
   width: '100%',
-  background: '#020617',
-  color: 'white',
-  border: '1px solid #334155',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)',
+  border: '1px solid var(--border-main)',
   borderRadius: '10px',
   padding: '12px 14px',
   fontSize: '15px',
@@ -1574,14 +1574,14 @@ const inputStyle = {
 
 const useModeWrapStyle = {
   gridColumn: '1 / -1',
-  border: '1px solid #26364f',
-  background: '#0b1220',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
   borderRadius: '16px',
   padding: '16px'
 }
 
 const useModeHeaderStyle = {
-  color: '#cbd5e1',
+  color: 'var(--text-main)',
   fontSize: '13px',
   fontWeight: 900,
   marginBottom: '12px'
@@ -1597,17 +1597,17 @@ const useModeCardStyle = {
   display: 'flex',
   gap: '10px',
   alignItems: 'flex-start',
-  border: '1px solid #334155',
-  background: '#020617',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card)',
   borderRadius: '14px',
   padding: '14px',
-  color: '#e5e7eb',
+  color: 'var(--text-main)',
   cursor: 'pointer'
 }
 
 const useModeCardActiveStyle = {
-  borderColor: '#60a5fa',
-  background: 'rgba(37, 99, 235, 0.16)'
+  borderColor: 'var(--accent-strong)',
+  background: 'color-mix(in srgb, var(--accent-strong) 12%, transparent)'
 }
 
 const useModeTextStyle = {
@@ -1618,7 +1618,7 @@ const useModeTextStyle = {
 }
 
 const useModeDescriptionStyle = {
-  color: '#93a4bd',
+  color: 'var(--text-muted)',
   fontSize: '12px',
   fontWeight: 600
 }
@@ -1626,17 +1626,17 @@ const useModeDescriptionStyle = {
 const useModeNoticeStyle = {
   gridColumn: '1 / -1',
   marginTop: '14px',
-  border: '1px solid rgba(96, 165, 250, 0.45)',
-  background: 'rgba(37, 99, 235, 0.1)',
+  border: '1px solid var(--accent-strong)',
+  background: 'color-mix(in srgb, var(--accent-strong) 10%, transparent)',
   borderRadius: '14px',
   padding: '14px 16px',
-  color: '#e5e7eb',
+  color: 'var(--text-main)',
   lineHeight: 1.45
 }
 
 const useModeMiniStepsStyle = {
   marginTop: '10px',
-  color: '#bfdbfe',
+  color: 'var(--accent-strong)',
   fontSize: '13px',
   fontWeight: 800
 }
@@ -1649,8 +1649,8 @@ const formActionsStyle = {
 }
 
 const primaryButtonStyle = {
-  border: '1px solid #16a34a',
-  background: '#15803d',
+  border: '1px solid var(--success)',
+  background: 'var(--success)',
   color: 'white',
   borderRadius: '10px',
   padding: '12px 16px',
@@ -1659,9 +1659,9 @@ const primaryButtonStyle = {
 }
 
 const secondaryButtonStyle = {
-  border: '1px solid #334155',
-  background: '#0f172a',
-  color: '#dbeafe',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)',
   borderRadius: '10px',
   padding: '12px 16px',
   fontWeight: 800,
@@ -1669,8 +1669,8 @@ const secondaryButtonStyle = {
 }
 
 const modeGuideStyle = {
-  border: '1px solid #334155',
-  background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(34, 197, 94, 0.08))',
+  border: '1px solid var(--border-main)',
+  background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-strong) 12%, transparent), color-mix(in srgb, var(--success) 8%, transparent))',
   borderRadius: '18px',
   padding: '24px'
 }
@@ -1682,17 +1682,17 @@ const guideGridStyle = {
 }
 
 const guideCardStyle = {
-  border: '1px solid #334155',
-  background: '#0b1220',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
   borderRadius: '14px',
   padding: '16px',
-  color: '#e5e7eb',
+  color: 'var(--text-main)',
   lineHeight: 1.45
 }
 
 const controlPanelStyle = {
-  border: '1px solid #334155',
-  background: '#111827',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card)',
   borderRadius: '16px',
   padding: '22px',
   display: 'flex',
@@ -1716,8 +1716,8 @@ const twoColumnGridStyle = {
 }
 
 const panelStyle = {
-  border: '1px solid #334155',
-  background: '#111827',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card)',
   borderRadius: '18px',
   padding: '24px',
   minWidth: 0
@@ -1731,12 +1731,12 @@ const sectionTitleStyle = {
 
 const mutedStyle = {
   margin: '10px 0 18px',
-  color: '#bfdbfe',
+  color: 'var(--text-muted)',
   lineHeight: 1.45
 }
 
 const mutedSmallStyle = {
-  color: '#93a4bd',
+  color: 'var(--text-muted)',
   fontSize: '13px',
   lineHeight: 1.35
 }
@@ -1755,21 +1755,21 @@ const trendRowStyle = {
 }
 
 const trendLabelStyle = {
-  color: '#e5e7eb',
+  color: 'var(--text-main)',
   fontWeight: 700,
   fontSize: '13px'
 }
 
 const trendBarWrapStyle = {
   height: '10px',
-  background: '#1f2937',
+  background: 'var(--bg-card-soft)',
   borderRadius: '999px',
   overflow: 'hidden'
 }
 
 const trendBarStyle = {
   height: '100%',
-  background: 'linear-gradient(90deg, #3b82f6, #22c55e)',
+  background: 'linear-gradient(90deg, var(--accent-strong), var(--success))',
   borderRadius: '999px'
 }
 
@@ -1785,10 +1785,10 @@ const qualityGridStyle = {
 }
 
 const qualityCardStyle = {
-  border: '1px solid #334155',
+  border: '1px solid var(--border-main)',
   borderRadius: '14px',
   padding: '16px',
-  background: '#0b1220'
+  background: 'var(--bg-card-soft)'
 }
 
 const qualityValueStyle = {
@@ -1798,8 +1798,8 @@ const qualityValueStyle = {
 }
 
 const miniSummaryStyle = {
-  border: '1px solid #334155',
-  background: '#0b1220',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
   borderRadius: '14px',
   padding: '14px 16px',
   minWidth: '170px',
@@ -1816,8 +1816,8 @@ const scrollListStyle = {
 }
 
 const breakdownRowStyle = {
-  border: '1px solid #26364f',
-  background: '#0b1220',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
   borderRadius: '14px',
   padding: '16px'
 }
@@ -1832,14 +1832,14 @@ const breakdownTopStyle = {
 
 const progressTrackStyle = {
   height: '9px',
-  background: '#1f2937',
+  background: 'var(--bg-card)',
   borderRadius: '999px',
   overflow: 'hidden'
 }
 
 const progressFillStyle = {
   height: '100%',
-  background: 'linear-gradient(90deg, #3b82f6, #22c55e)',
+  background: 'linear-gradient(90deg, var(--accent-strong), var(--success))',
   borderRadius: '999px'
 }
 
@@ -1853,8 +1853,8 @@ const reviewListStyle = {
 }
 
 const reviewRowStyle = {
-  border: '1px solid #7c2d12',
-  background: 'rgba(124, 45, 18, 0.16)',
+  border: '1px solid var(--warning)',
+  background: 'color-mix(in srgb, var(--warning) 12%, transparent)',
   borderRadius: '12px',
   padding: '14px 16px',
   display: 'flex',
@@ -1875,7 +1875,7 @@ const tableWrapStyle = {
   width: '100%',
   maxHeight: '560px',
   overflow: 'auto',
-  border: '1px solid #26364f',
+  border: '1px solid var(--border-main)',
   borderRadius: '14px'
 }
 
@@ -1883,15 +1883,15 @@ const tableStyle = {
   width: '100%',
   minWidth: '980px',
   borderCollapse: 'collapse',
-  background: '#0b1220'
+  background: 'var(--bg-card)'
 }
 
 const thStyle = {
   position: 'sticky',
   top: 0,
-  background: '#111827',
-  color: '#a8b5ca',
-  borderBottom: '1px solid #334155',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-muted)',
+  borderBottom: '1px solid var(--border-main)',
   padding: '14px 16px',
   fontSize: '13px',
   textTransform: 'uppercase',
@@ -1901,12 +1901,12 @@ const thStyle = {
 
 const tdStyle = {
   padding: '14px 16px',
-  borderBottom: '1px solid #1f2a3d',
+  borderBottom: '1px solid var(--border-main)',
   verticalAlign: 'top'
 }
 
 const tableRowStyle = {
-  color: '#e5e7eb'
+  color: 'var(--text-main)'
 }
 
 const statusPillStyle = {
@@ -1921,25 +1921,25 @@ const statusPillStyle = {
 
 const statusToneStyle = {
   good: {
-    color: '#bbf7d0',
-    background: 'rgba(34, 197, 94, 0.12)',
-    borderColor: 'rgba(34, 197, 94, 0.35)'
+    color: 'var(--success)',
+    background: 'color-mix(in srgb, var(--success) 12%, transparent)',
+    borderColor: 'var(--success)'
   },
   warning: {
-    color: '#fde68a',
-    background: 'rgba(245, 158, 11, 0.12)',
-    borderColor: 'rgba(245, 158, 11, 0.35)'
+    color: 'var(--warning)',
+    background: 'color-mix(in srgb, var(--warning) 12%, transparent)',
+    borderColor: 'var(--warning)'
   },
   muted: {
-    color: '#cbd5e1',
-    background: 'rgba(148, 163, 184, 0.12)',
-    borderColor: 'rgba(148, 163, 184, 0.24)'
+    color: 'var(--text-muted)',
+    background: 'var(--bg-card-soft)',
+    borderColor: 'var(--border-main)'
   }
 }
 
 const smallButtonStyle = {
-  border: '1px solid #2563eb',
-  background: '#1d4ed8',
+  border: '1px solid var(--accent-strong)',
+  background: 'var(--accent-strong)',
   color: 'white',
   borderRadius: '9px',
   padding: '8px 11px',
@@ -1948,9 +1948,9 @@ const smallButtonStyle = {
 }
 
 const emptyStyle = {
-  border: '1px dashed #334155',
+  border: '1px dashed var(--border-main)',
   borderRadius: '14px',
   padding: '24px',
-  color: '#bfdbfe',
+  color: 'var(--text-muted)',
   textAlign: 'center'
 }

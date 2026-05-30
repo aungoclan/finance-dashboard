@@ -45,10 +45,10 @@ function typeLabel(type) {
 }
 
 function getToneColor(tone) {
-  if (tone === 'green') return '#86efac'
-  if (tone === 'red') return '#fca5a5'
-  if (tone === 'yellow') return '#fde68a'
-  return '#93c5fd'
+  if (tone === 'green') return 'var(--success)'
+  if (tone === 'red') return 'var(--danger)'
+  if (tone === 'yellow') return 'var(--warning)'
+  return 'var(--accent-strong)'
 }
 
 function getRiskLevel(score) {
@@ -522,7 +522,7 @@ export default function PortfolioIntelligencePage() {
                     <Td align="right">{formatPercent(item.allocationPercent)}</Td>
                     <Td align="right">{money(item.cost_basis)}</Td>
                     <Td align="right">
-                      <span style={{ color: item.unrealized_pl >= 0 ? '#86efac' : '#fca5a5', fontWeight: 800 }}>
+                      <span style={{ color: item.unrealized_pl >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 800 }}>
                         {money(item.unrealized_pl)}
                       </span>
                       <div style={mutedSmallStyle}>{formatPercent(item.unrealized_pl_percent)}</div>
@@ -601,7 +601,7 @@ function MiniHoldingList({ rows, emptyText }) {
             <div style={mutedSmallStyle}>{typeLabel(item.asset_type)} · {money(item.market_value)}</div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ color: item.unrealized_pl >= 0 ? '#86efac' : '#fca5a5', fontWeight: 900 }}>
+            <div style={{ color: item.unrealized_pl >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 900 }}>
               {money(item.unrealized_pl)}
             </div>
             <div style={mutedSmallStyle}>{formatPercent(item.unrealized_pl_percent)}</div>
@@ -634,12 +634,12 @@ const pageStyle = {
   margin: '0 auto',
   display: 'grid',
   gap: '22px',
-  color: '#f8fafc'
+  color: 'var(--text-main)'
 }
 
 const heroStyle = {
-  background: 'linear-gradient(135deg, #111827, #172033)',
-  border: '1px solid #334155',
+  background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-strong) 12%, transparent), var(--bg-card) 58%, color-mix(in srgb, var(--success) 10%, transparent))',
+  border: '1px solid var(--border-main)',
   borderRadius: '22px',
   padding: '28px',
   display: 'flex',
@@ -649,7 +649,7 @@ const heroStyle = {
 }
 
 const eyebrowStyle = {
-  color: '#93c5fd',
+  color: 'var(--accent-strong)',
   letterSpacing: '0.16em',
   fontWeight: 900,
   fontSize: '13px',
@@ -665,15 +665,15 @@ const heroTitleStyle = {
 
 const heroSubtitleStyle = {
   margin: '14px 0 0 0',
-  color: '#bfdbfe',
+  color: 'var(--text-muted)',
   fontSize: '17px',
   lineHeight: 1.5,
   maxWidth: '850px'
 }
 
 const refreshButtonStyle = {
-  border: '1px solid #2563eb',
-  background: '#1e3a8a',
+  border: '1px solid var(--accent-strong)',
+  background: 'var(--accent-strong)',
   color: 'white',
   borderRadius: '12px',
   padding: '12px 18px',
@@ -685,9 +685,9 @@ const refreshButtonStyle = {
 const messageStyle = {
   padding: '14px 16px',
   borderRadius: '14px',
-  border: '1px solid #f59e0b',
-  background: 'rgba(245, 158, 11, 0.1)',
-  color: '#fde68a'
+  border: '1px solid var(--warning)',
+  background: 'color-mix(in srgb, var(--warning) 12%, transparent)',
+  color: 'var(--warning)'
 }
 
 const statGridStyle = {
@@ -697,14 +697,14 @@ const statGridStyle = {
 }
 
 const statCardStyle = {
-  background: '#111827',
-  border: '1px solid #334155',
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border-main)',
   borderRadius: '18px',
   padding: '20px'
 }
 
 const statTitleStyle = {
-  color: '#bfdbfe',
+  color: 'var(--text-muted)',
   fontSize: '14px',
   marginBottom: '12px'
 }
@@ -716,7 +716,7 @@ const statValueStyle = {
 }
 
 const statDetailStyle = {
-  color: '#93a4bd',
+  color: 'var(--text-muted)',
   marginTop: '10px',
   fontSize: '14px'
 }
@@ -729,8 +729,8 @@ const twoColumnStyle = {
 }
 
 const panelStyle = {
-  background: '#111827',
-  border: '1px solid #334155',
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border-main)',
   borderRadius: '20px',
   padding: '22px',
   minWidth: 0
@@ -753,7 +753,7 @@ const panelTitleStyle = {
 
 const panelSubtitleStyle = {
   margin: '8px 0 0 0',
-  color: '#a8c7ef',
+  color: 'var(--text-muted)',
   lineHeight: 1.45
 }
 
@@ -770,8 +770,8 @@ const scrollListStyle = {
 }
 
 const progressRowStyle = {
-  background: '#0f172a',
-  border: '1px solid #24344d',
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-main)',
   borderRadius: '14px',
   padding: '14px'
 }
@@ -786,18 +786,18 @@ const progressTopStyle = {
 
 const progressTitleStyle = {
   fontWeight: 900,
-  color: '#f8fafc'
+  color: 'var(--text-main)'
 }
 
 const progressValueStyle = {
-  color: '#e5e7eb',
+  color: 'var(--text-main)',
   fontWeight: 800,
   whiteSpace: 'nowrap',
   textAlign: 'right'
 }
 
 const mutedSmallStyle = {
-  color: '#94a3b8',
+  color: 'var(--text-muted)',
   fontSize: '13px',
   marginTop: '4px'
 }
@@ -805,31 +805,31 @@ const mutedSmallStyle = {
 const barTrackStyle = {
   height: '9px',
   borderRadius: '999px',
-  background: '#1f2937',
+  background: 'var(--bg-card)',
   overflow: 'hidden'
 }
 
 const barFillStyle = {
   height: '100%',
   borderRadius: '999px',
-  background: 'linear-gradient(90deg, #2563eb, #22c55e)'
+  background: 'linear-gradient(90deg, var(--accent-strong), var(--success))'
 }
 
 const warningCardStyle = (tone) => ({
-  background: tone === 'red' ? 'rgba(239,68,68,0.1)' : tone === 'yellow' ? 'rgba(245,158,11,0.1)' : 'rgba(34,197,94,0.1)',
-  border: `1px solid ${tone === 'red' ? 'rgba(239,68,68,0.35)' : tone === 'yellow' ? 'rgba(245,158,11,0.35)' : 'rgba(34,197,94,0.35)'}`,
+  background: tone === 'red' ? 'color-mix(in srgb, var(--danger) 12%, transparent)' : tone === 'yellow' ? 'color-mix(in srgb, var(--warning) 12%, transparent)' : 'color-mix(in srgb, var(--success) 12%, transparent)',
+  border: `1px solid ${tone === 'red' ? 'var(--danger)' : tone === 'yellow' ? 'var(--warning)' : 'var(--success)'}`,
   borderRadius: '14px',
   padding: '14px'
 })
 
 const warningTitleStyle = {
   fontWeight: 900,
-  color: '#f8fafc',
+  color: 'var(--text-main)',
   marginBottom: '6px'
 }
 
 const warningDetailStyle = {
-  color: '#cbd5e1',
+  color: 'var(--text-main)',
   lineHeight: 1.45
 }
 
@@ -837,8 +837,8 @@ const miniRowStyle = {
   display: 'flex',
   justifyContent: 'space-between',
   gap: '14px',
-  background: '#0f172a',
-  border: '1px solid #24344d',
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-main)',
   borderRadius: '14px',
   padding: '14px'
 }
@@ -850,9 +850,9 @@ const controlsStyle = {
 }
 
 const selectStyle = {
-  background: '#020617',
-  color: 'white',
-  border: '1px solid #334155',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)',
+  border: '1px solid var(--border-main)',
   borderRadius: '12px',
   padding: '11px 12px',
   minWidth: '170px',
@@ -861,7 +861,7 @@ const selectStyle = {
 
 const tableWrapStyle = {
   overflowX: 'auto',
-  border: '1px solid #24344d',
+  border: '1px solid var(--border-main)',
   borderRadius: '16px'
 }
 
@@ -873,28 +873,28 @@ const tableStyle = {
 
 const thStyle = {
   padding: '14px 14px',
-  background: '#0f172a',
-  color: '#a8b4c7',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-muted)',
   fontSize: '12px',
   textTransform: 'uppercase',
   letterSpacing: '0.08em',
-  borderBottom: '1px solid #24344d'
+  borderBottom: '1px solid var(--border-main)'
 }
 
 const tdStyle = {
   padding: '14px',
-  borderBottom: '1px solid #24344d',
-  color: '#e5e7eb',
+  borderBottom: '1px solid var(--border-main)',
+  color: 'var(--text-main)',
   verticalAlign: 'top'
 }
 
 const tableRowStyle = {
-  background: '#111827'
+  background: 'var(--bg-card)'
 }
 
 const symbolStyle = {
   fontWeight: 900,
-  color: '#f8fafc'
+  color: 'var(--text-main)'
 }
 
 const badgeStyle = (tone) => ({
@@ -904,15 +904,15 @@ const badgeStyle = (tone) => ({
   padding: '5px 10px',
   fontSize: '12px',
   fontWeight: 900,
-  color: tone === 'red' ? '#fecaca' : tone === 'yellow' ? '#fde68a' : '#bbf7d0',
-  background: tone === 'red' ? 'rgba(239,68,68,0.15)' : tone === 'yellow' ? 'rgba(245,158,11,0.15)' : 'rgba(34,197,94,0.15)',
-  border: `1px solid ${tone === 'red' ? 'rgba(239,68,68,0.35)' : tone === 'yellow' ? 'rgba(245,158,11,0.35)' : 'rgba(34,197,94,0.35)'}`
+  color: tone === 'red' ? 'var(--danger)' : tone === 'yellow' ? 'var(--warning)' : 'var(--success)',
+  background: tone === 'red' ? 'color-mix(in srgb, var(--danger) 12%, transparent)' : tone === 'yellow' ? 'color-mix(in srgb, var(--warning) 12%, transparent)' : 'color-mix(in srgb, var(--success) 12%, transparent)',
+  border: `1px solid ${tone === 'red' ? 'var(--danger)' : tone === 'yellow' ? 'var(--warning)' : 'var(--success)'}`
 })
 
 const emptyStyle = {
   padding: '24px',
-  border: '1px dashed #334155',
+  border: '1px dashed var(--border-main)',
   borderRadius: '14px',
-  color: '#94a3b8',
+  color: 'var(--text-muted)',
   textAlign: 'center'
 }

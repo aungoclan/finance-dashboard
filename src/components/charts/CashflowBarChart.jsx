@@ -26,9 +26,9 @@ export default function CashflowBarChart({ data }) {
       <div style={chartWrapStyle}>
         <ResponsiveContainer width="100%" height={280}>
           <BarChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-            <XAxis dataKey="label" stroke="#d1d5db" tick={{ fill: '#d1d5db' }} />
-            <YAxis stroke="#d1d5db" tick={{ fill: '#d1d5db' }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-main)" />
+            <XAxis dataKey="label" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)' }} />
+            <YAxis stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)' }} />
             <Tooltip
               cursor={{ fill: 'rgba(148, 163, 184, 0.08)' }}
               contentStyle={tooltipStyle}
@@ -36,8 +36,8 @@ export default function CashflowBarChart({ data }) {
               formatter={(value, name) => [`$${formatChartMoney(value)}`, name]}
             />
             <Legend wrapperStyle={legendStyle} />
-            <Bar dataKey="income" fill="#22c55e" radius={[6, 6, 0, 0]} />
-            <Bar dataKey="expense" fill="#ef4444" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="income" fill="var(--success)" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="expense" fill="var(--danger)" radius={[6, 6, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -53,9 +53,11 @@ function formatChartMoney(value) {
 }
 
 const cardStyle = {
-  background: '#1f2937',
+  background: 'var(--bg-card)',
+  color: 'var(--text-main)',
   padding: '20px',
   borderRadius: '12px',
+  border: '1px solid var(--border-main)',
   minHeight: '380px',
   display: 'flex',
   flexDirection: 'column'
@@ -72,22 +74,22 @@ const chartWrapStyle = {
 }
 
 const tooltipStyle = {
-  background: '#111827',
-  border: '1px solid #374151',
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border-main)',
   borderRadius: '10px',
-  color: '#f9fafb',
-  boxShadow: '0 12px 28px rgba(0, 0, 0, 0.28)'
+  color: 'var(--text-main)',
+  boxShadow: 'var(--shadow-soft)'
 }
 
 const tooltipLabelStyle = {
-  color: '#f9fafb',
+  color: 'var(--text-main)',
   fontWeight: 700
 }
 
 const legendStyle = {
-  color: '#d1d5db'
+  color: 'var(--text-muted)'
 }
 
 const emptyStyle = {
-  color: '#d1d5db'
+  color: 'var(--text-muted)'
 }

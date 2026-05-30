@@ -25,15 +25,16 @@ export default function NetWorthChart({ data }) {
       <div style={chartWrapStyle}>
         <ResponsiveContainer width="100%" height={280}>
           <LineChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-main)" />
             <XAxis
   dataKey="label"
-  stroke="#d1d5db"
+  stroke="var(--text-muted)"
+  tick={{ fill: 'var(--text-muted)' }}
   tickFormatter={(value) => value.slice(5)} // chỉ hiện MM-DD
 />
-            <YAxis stroke="#d1d5db" />
-            <Tooltip />
-            <Line type="monotone" dataKey="netWorth" stroke="#22c55e" strokeWidth={3} />
+            <YAxis stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)' }} />
+            <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
+            <Line type="monotone" dataKey="netWorth" stroke="var(--success)" strokeWidth={3} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -42,9 +43,11 @@ export default function NetWorthChart({ data }) {
 }
 
 const cardStyle = {
-  background: '#1f2937',
+  background: 'var(--bg-card)',
+  color: 'var(--text-main)',
   padding: '20px',
   borderRadius: '12px',
+  border: '1px solid var(--border-main)',
   minHeight: '380px',
   display: 'flex',
   flexDirection: 'column'
@@ -59,6 +62,20 @@ const chartWrapStyle = {
   height: '280px',
   width: '100%'
 }
+
+const tooltipStyle = {
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border-main)',
+  borderRadius: '10px',
+  color: 'var(--text-main)',
+  boxShadow: 'var(--shadow-soft)'
+}
+
+const tooltipLabelStyle = {
+  color: 'var(--text-main)',
+  fontWeight: 700
+}
+
 const emptyStyle = {
-  color: '#d1d5db'
+  color: 'var(--text-muted)'
 }

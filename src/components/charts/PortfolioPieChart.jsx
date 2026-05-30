@@ -39,8 +39,12 @@ export default function PortfolioPieChart({ data }) {
                 <Cell key={index} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
-            <Tooltip formatter={(value) => `$${Number(value || 0).toFixed(2)}`} />
-            <Legend />
+            <Tooltip
+              contentStyle={tooltipStyle}
+              labelStyle={tooltipLabelStyle}
+              formatter={(value) => `$${Number(value || 0).toFixed(2)}`}
+            />
+            <Legend wrapperStyle={legendStyle} />
           </PieChart>
         </ResponsiveContainer>
       </div>
@@ -49,9 +53,11 @@ export default function PortfolioPieChart({ data }) {
 }
 
 const cardStyle = {
-  background: '#1f2937',
+  background: 'var(--bg-card)',
+  color: 'var(--text-main)',
   padding: '20px',
   borderRadius: '12px',
+  border: '1px solid var(--border-main)',
   minHeight: '380px',
   display: 'flex',
   flexDirection: 'column'
@@ -66,6 +72,24 @@ const chartWrapStyle = {
   height: '280px',
   width: '100%'
 }
+
+const tooltipStyle = {
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border-main)',
+  borderRadius: '10px',
+  color: 'var(--text-main)',
+  boxShadow: 'var(--shadow-soft)'
+}
+
+const tooltipLabelStyle = {
+  color: 'var(--text-main)',
+  fontWeight: 700
+}
+
+const legendStyle = {
+  color: 'var(--text-muted)'
+}
+
 const emptyStyle = {
-  color: '#d1d5db'
+  color: 'var(--text-muted)'
 }
