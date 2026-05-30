@@ -197,9 +197,9 @@ export default function SettingsPage() {
                     onClick={() => updateSetting('uiTheme', theme.value)}
                     style={{
                       ...themeOptionStyle,
-                      borderColor: active ? 'var(--accent, #60a5fa)' : 'var(--border-main, #334155)',
-                      boxShadow: active ? '0 0 0 3px var(--accent-soft, rgba(37, 99, 235, 0.2))' : 'none',
-                      background: active ? 'var(--accent-soft, rgba(37, 99, 235, 0.18))' : 'var(--bg-elevated, #020617)'
+                      borderColor: active ? 'var(--accent-strong)' : 'var(--border-main)',
+                      boxShadow: active ? '0 0 0 3px color-mix(in srgb, var(--accent-strong) 18%, transparent)' : 'none',
+                      background: active ? 'color-mix(in srgb, var(--accent-strong) 12%, transparent)' : 'var(--bg-card-soft)'
                     }}
                   >
                     <span style={themeOptionTopStyle}>
@@ -381,15 +381,15 @@ function Toggle({ checked, onChange, label }) {
       onClick={() => onChange(!checked)}
       style={{
         ...toggleButtonStyle,
-        background: checked ? 'var(--success-soft, rgba(34, 197, 94, 0.16))' : 'var(--bg-elevated, #020617)',
-        borderColor: checked ? 'var(--success, #22c55e)' : 'var(--border-main, #334155)'
+        background: checked ? 'color-mix(in srgb, var(--success) 12%, transparent)' : 'var(--bg-card-soft)',
+        borderColor: checked ? 'var(--success)' : 'var(--border-main)'
       }}
     >
       <span
         style={{
           ...toggleDotStyle,
           transform: checked ? 'translateX(24px)' : 'translateX(0px)',
-          background: checked ? 'var(--success, #22c55e)' : 'var(--text-muted, #94a3b8)'
+          background: checked ? 'var(--success)' : 'var(--text-muted)'
         }}
       />
       <span style={toggleLabelStyle}>{label}</span>
@@ -423,7 +423,7 @@ const pageStyle = {
   maxWidth: '1500px',
   margin: '0 auto',
   paddingBottom: '48px',
-  color: 'var(--text-main, #f8fafc)'
+  color: 'var(--text-main)'
 }
 
 const heroStyle = {
@@ -432,15 +432,15 @@ const heroStyle = {
   alignItems: 'center',
   gap: '20px',
   padding: '28px',
-  border: '1px solid var(--border-main, #334155)',
+  border: '1px solid var(--border-main)',
   borderRadius: '22px',
-  background: 'linear-gradient(135deg, var(--accent-soft, rgba(37, 99, 235, 0.22)), var(--bg-card, #111827), var(--success-soft, rgba(20, 184, 166, 0.14)))',
+  background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-strong) 12%, transparent), var(--bg-card), color-mix(in srgb, var(--success) 8%, transparent))',
   boxShadow: 'var(--shadow-card, 0 18px 45px rgba(2, 6, 23, 0.28))',
   flexWrap: 'wrap'
 }
 
 const eyebrowStyle = {
-  color: 'var(--accent, #93c5fd)',
+  color: 'var(--accent-strong)',
   letterSpacing: '0.18em',
   fontSize: '13px',
   fontWeight: 900,
@@ -453,13 +453,13 @@ const titleStyle = {
   fontSize: '36px',
   lineHeight: 1.05,
   fontWeight: 900,
-  color: 'var(--text-main, #f8fafc)'
+  color: 'var(--text-main)'
 }
 
 const subtitleStyle = {
   margin: '12px 0 0',
   maxWidth: '880px',
-  color: 'var(--text-soft, #bfdbfe)',
+  color: 'var(--text-muted)',
   fontSize: '18px',
   lineHeight: 1.55
 }
@@ -478,15 +478,15 @@ const summaryGridStyle = {
 
 const cardStyle = {
   padding: '22px',
-  border: '1px solid var(--border-main, #334155)',
+  border: '1px solid var(--border-main)',
   borderRadius: '18px',
-  background: 'var(--bg-card, #111827)',
+  background: 'var(--bg-card)',
   boxShadow: 'var(--shadow-soft, none)',
-  color: 'var(--text-main, #f8fafc)'
+  color: 'var(--text-main)'
 }
 
 const cardLabelStyle = {
-  color: 'var(--text-soft, #bfdbfe)',
+  color: 'var(--text-muted)',
   fontSize: '15px',
   marginBottom: '12px'
 }
@@ -494,13 +494,13 @@ const cardLabelStyle = {
 const cardValueStyle = {
   fontSize: '28px',
   fontWeight: 900,
-  color: 'var(--text-main, #f8fafc)',
+  color: 'var(--text-main)',
   wordBreak: 'break-word'
 }
 
 const cardSubStyle = {
   marginTop: '8px',
-  color: 'var(--text-muted, #94a3b8)',
+  color: 'var(--text-muted)',
   fontSize: '14px'
 }
 
@@ -527,23 +527,23 @@ const rightColumnStyle = {
 
 const panelStyle = {
   padding: '24px',
-  border: '1px solid var(--border-main, #334155)',
+  border: '1px solid var(--border-main)',
   borderRadius: '20px',
-  background: 'var(--bg-card, #111827)',
+  background: 'var(--bg-card)',
   boxShadow: 'var(--shadow-soft, none)',
-  color: 'var(--text-main, #f8fafc)'
+  color: 'var(--text-main)'
 }
 
 const panelTitleStyle = {
   margin: 0,
   fontSize: '26px',
   fontWeight: 900,
-  color: 'var(--text-main, #f8fafc)'
+  color: 'var(--text-main)'
 }
 
 const panelSubtitleStyle = {
   margin: '8px 0 0',
-  color: 'var(--text-soft, #bfdbfe)',
+  color: 'var(--text-muted)',
   lineHeight: 1.5,
   fontSize: '16px'
 }
@@ -562,7 +562,7 @@ const fieldStyle = {
 }
 
 const labelStyle = {
-  color: 'var(--text-main, #e5e7eb)',
+  color: 'var(--text-main)',
   fontWeight: 800,
   fontSize: '15px'
 }
@@ -572,16 +572,16 @@ const inputStyle = {
   boxSizing: 'border-box',
   padding: '13px 14px',
   borderRadius: '12px',
-  border: '1px solid var(--border-main, #334155)',
-  background: 'var(--bg-elevated, #020617)',
-  color: 'var(--text-main, #f8fafc)',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)',
   fontSize: '16px',
   outline: 'none'
 }
 
 const fieldHintStyle = {
   margin: 0,
-  color: 'var(--text-muted, #94a3b8)',
+  color: 'var(--text-muted)',
   fontSize: '13px',
   lineHeight: 1.45
 }
@@ -597,9 +597,9 @@ const themeOptionStyle = {
   flexDirection: 'column',
   gap: '8px',
   padding: '14px',
-  border: '1px solid var(--border-main, #334155)',
+  border: '1px solid var(--border-main)',
   borderRadius: '14px',
-  color: 'var(--text-main, #f8fafc)',
+  color: 'var(--text-main)',
   cursor: 'pointer',
   textAlign: 'left'
 }
@@ -611,7 +611,7 @@ const themeOptionTopStyle = {
 }
 
 const themeDescriptionStyle = {
-  color: 'var(--text-muted, #94a3b8)',
+  color: 'var(--text-muted)',
   fontSize: '13px',
   lineHeight: 1.4
 }
@@ -628,7 +628,7 @@ const numberInputStyle = {
 }
 
 const suffixStyle = {
-  color: 'var(--text-soft, #bfdbfe)',
+  color: 'var(--text-muted)',
   fontWeight: 800
 }
 
@@ -639,8 +639,8 @@ const toggleButtonStyle = {
   width: '100%',
   padding: '12px 14px',
   borderRadius: '14px',
-  border: '1px solid var(--border-main, #334155)',
-  color: 'var(--text-main, #f8fafc)',
+  border: '1px solid var(--border-main)',
+  color: 'var(--text-main)',
   cursor: 'pointer',
   textAlign: 'left'
 }
@@ -655,7 +655,7 @@ const toggleDotStyle = {
 
 const toggleLabelStyle = {
   fontWeight: 800,
-  color: 'var(--text-main, #e5e7eb)'
+  color: 'var(--text-main)'
 }
 
 const buttonRowStyle = {
@@ -665,8 +665,8 @@ const buttonRowStyle = {
 }
 
 const primaryButtonStyle = {
-  border: '1px solid var(--accent, #60a5fa)',
-  background: 'var(--accent, #2563eb)',
+  border: '1px solid var(--accent-strong)',
+  background: 'var(--accent-strong)',
   color: 'white',
   borderRadius: '12px',
   padding: '12px 18px',
@@ -681,9 +681,9 @@ const smallPrimaryButtonStyle = {
 }
 
 const ghostButtonStyle = {
-  border: '1px solid var(--border-main, #334155)',
-  background: 'var(--bg-elevated, #0f172a)',
-  color: 'var(--text-soft, #bfdbfe)',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)',
   borderRadius: '12px',
   padding: '12px 18px',
   fontWeight: 900,
@@ -692,9 +692,9 @@ const ghostButtonStyle = {
 }
 
 const dangerOutlineButtonStyle = {
-  border: '1px solid var(--danger, rgba(248, 113, 113, 0.55))',
-  background: 'var(--danger-soft, rgba(127, 29, 29, 0.12))',
-  color: 'var(--danger, #fecaca)',
+  border: '1px solid var(--danger)',
+  background: 'color-mix(in srgb, var(--danger) 12%, transparent)',
+  color: 'var(--danger)',
   borderRadius: '12px',
   padding: '12px 18px',
   fontWeight: 900,
@@ -704,27 +704,27 @@ const dangerOutlineButtonStyle = {
 
 const successStyle = {
   padding: '14px 18px',
-  border: '1px solid var(--success, rgba(34, 197, 94, 0.5))',
-  background: 'var(--success-soft, rgba(22, 101, 52, 0.2))',
-  color: 'var(--success, #86efac)',
+  border: '1px solid var(--success)',
+  background: 'color-mix(in srgb, var(--success) 12%, transparent)',
+  color: 'var(--success)',
   borderRadius: '14px',
   fontWeight: 800
 }
 
 const errorStyle = {
   padding: '14px 18px',
-  border: '1px solid var(--danger, rgba(248, 113, 113, 0.5))',
-  background: 'var(--danger-soft, rgba(127, 29, 29, 0.2))',
-  color: 'var(--danger, #fecaca)',
+  border: '1px solid var(--danger)',
+  background: 'color-mix(in srgb, var(--danger) 12%, transparent)',
+  color: 'var(--danger)',
   borderRadius: '14px',
   fontWeight: 800
 }
 
 const warningStyle = {
   padding: '14px 18px',
-  border: '1px solid var(--warning, rgba(251, 191, 36, 0.5))',
-  background: 'var(--warning-soft, rgba(120, 53, 15, 0.24))',
-  color: 'var(--warning, #fde68a)',
+  border: '1px solid var(--warning)',
+  background: 'color-mix(in srgb, var(--warning) 12%, transparent)',
+  color: 'var(--warning)',
   borderRadius: '14px',
   fontWeight: 800
 }
@@ -742,9 +742,9 @@ const textareaStyle = {
   boxSizing: 'border-box',
   padding: '14px',
   borderRadius: '14px',
-  border: '1px solid var(--border-main, #334155)',
-  background: 'var(--bg-elevated, #020617)',
-  color: 'var(--text-main, #dbeafe)',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)',
   fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
   fontSize: '13px',
   lineHeight: 1.5,

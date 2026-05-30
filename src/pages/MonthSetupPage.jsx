@@ -837,18 +837,18 @@ function BillSummaryPill({ label, value, tone }) {
 function getBillSummaryPillStyle(tone) {
   const color =
     tone === 'good'
-      ? '#22c55e'
+      ? 'var(--success)'
       : tone === 'danger'
-        ? '#ef4444'
+        ? 'var(--danger)'
         : tone === 'warning'
-          ? '#f59e0b'
-          : '#38bdf8'
+          ? 'var(--warning)'
+          : 'var(--accent-strong)'
 
   return {
     padding: '12px',
     borderRadius: '13px',
-    background: `${color}18`,
-    border: `1px solid ${color}55`,
+    background: `color-mix(in srgb, ${color} 12%, transparent)`,
+    border: `1px solid ${color}`,
     color
   }
 }
@@ -867,10 +867,10 @@ function getTimingBadgeStyle(tone) {
   return neutralBadgeStyle
 }
 function getBillRowStyle(row) {
-  if (row.status === 'ready') return { ...billRowStyle, borderColor: 'rgba(34,197,94,0.34)' }
-  if (row.status === 'added') return { ...billRowStyle, borderColor: 'rgba(56,189,248,0.28)' }
-  if (row.status === 'review') return { ...billRowStyle, borderColor: 'rgba(245,158,11,0.34)' }
-  return { ...billRowStyle, borderColor: 'rgba(239,68,68,0.34)' }
+  if (row.status === 'ready') return { ...billRowStyle, borderColor: 'var(--success)' }
+  if (row.status === 'added') return { ...billRowStyle, borderColor: 'var(--accent-strong)' }
+  if (row.status === 'review') return { ...billRowStyle, borderColor: 'var(--warning)' }
+  return { ...billRowStyle, borderColor: 'var(--danger)' }
 }
 
 const headerStyle = {
@@ -883,7 +883,7 @@ const headerStyle = {
 }
 
 const eyebrowStyle = {
-  color: 'var(--accent, #38bdf8)',
+  color: 'var(--accent-strong)',
   fontSize: '12px',
   fontWeight: 800,
   letterSpacing: '0.12em',
@@ -956,8 +956,8 @@ const messageStyle = {
   marginBottom: '18px',
   padding: '13px 14px',
   borderRadius: '13px',
-  background: 'var(--accent-soft, rgba(56, 189, 248, 0.1))',
-  border: '1px solid color-mix(in srgb, var(--accent, #38bdf8) 28%, transparent)',
+  background: 'color-mix(in srgb, var(--accent-strong) 10%, transparent)',
+  border: '1px solid color-mix(in srgb, var(--accent-strong) 28%, transparent)',
   color: 'var(--text-main, #e0f2fe)'
 }
 
@@ -1069,7 +1069,7 @@ const checkIconDoneStyle = {
   width: '30px',
   height: '30px',
   borderRadius: '999px',
-  background: 'var(--success-soft, rgba(34, 197, 94, 0.14))',
+  background: 'color-mix(in srgb, var(--success) 14%, transparent)',
   color: 'var(--success, #86efac)',
   display: 'grid',
   placeItems: 'center',
@@ -1078,7 +1078,7 @@ const checkIconDoneStyle = {
 
 const checkIconWarningStyle = {
   ...checkIconDoneStyle,
-  background: 'var(--warning-soft, rgba(245, 158, 11, 0.14))',
+  background: 'color-mix(in srgb, var(--warning) 14%, transparent)',
   color: 'var(--warning, #fde68a)'
 }
 
@@ -1097,9 +1097,9 @@ const checkDetailStyle = {
 const scoreBadgeStyle = {
   padding: '8px 11px',
   borderRadius: '999px',
-  background: 'var(--accent-soft, rgba(56, 189, 248, 0.12))',
-  color: 'var(--accent, #7dd3fc)',
-  border: '1px solid color-mix(in srgb, var(--accent, #38bdf8) 30%, transparent)',
+  background: 'color-mix(in srgb, var(--accent-strong) 12%, transparent)',
+  color: 'var(--accent-strong)',
+  border: '1px solid color-mix(in srgb, var(--accent-strong) 30%, transparent)',
   fontWeight: 900
 }
 
@@ -1137,7 +1137,7 @@ const tagWrapStyle = {
 const categoryTagStyle = {
   padding: '6px 9px',
   borderRadius: '999px',
-  background: 'var(--warning-soft, rgba(245, 158, 11, 0.12))',
+  background: 'color-mix(in srgb, var(--warning) 12%, transparent)',
   color: 'var(--warning, #fde68a)',
   border: '1px solid color-mix(in srgb, var(--warning, #f59e0b) 28%, transparent)',
   fontSize: '12px',
@@ -1168,7 +1168,7 @@ const primaryButtonStyle = {
   padding: '10px 13px',
   border: 'none',
   borderRadius: '10px',
-  background: 'var(--accent, #2563eb)',
+  background: 'var(--accent-strong)',
   color: '#ffffff',
   cursor: 'pointer',
   fontWeight: 850,
@@ -1227,7 +1227,7 @@ const tdStyle = {
 const successBoxStyle = {
   padding: '16px',
   borderRadius: '14px',
-  background: 'var(--success-soft, rgba(34, 197, 94, 0.08))',
+  background: 'color-mix(in srgb, var(--success) 8%, transparent)',
   border: '1px solid color-mix(in srgb, var(--success, #22c55e) 24%, transparent)',
   color: 'var(--success, #86efac)',
   lineHeight: 1.5
@@ -1301,7 +1301,7 @@ const mutedTextStyle = {
 }
 
 const detailTextStyle = {
-  color: 'var(--accent, #93c5fd)',
+  color: 'var(--accent-strong)',
   fontSize: '12px',
   lineHeight: 1.45,
   marginTop: '4px',
@@ -1342,7 +1342,7 @@ const debtBillSectionStyle = {
   marginTop: '16px',
   padding: '14px',
   borderRadius: '16px',
-  background: 'var(--warning-soft, rgba(245, 158, 11, 0.08))',
+  background: 'color-mix(in srgb, var(--warning) 8%, transparent)',
   border: '1px solid color-mix(in srgb, var(--warning, #f59e0b) 26%, transparent)'
 }
 
@@ -1392,28 +1392,28 @@ const baseBadgeStyle = {
 
 const readyBadgeStyle = {
   ...baseBadgeStyle,
-  background: 'var(--success-soft, rgba(34, 197, 94, 0.14))',
+  background: 'color-mix(in srgb, var(--success) 14%, transparent)',
   color: 'var(--success, #86efac)',
   border: '1px solid color-mix(in srgb, var(--success, #22c55e) 28%, transparent)'
 }
 
 const successBadgeStyle = {
   ...baseBadgeStyle,
-  background: 'var(--accent-soft, rgba(56, 189, 248, 0.14))',
-  color: 'var(--accent, #7dd3fc)',
-  border: '1px solid color-mix(in srgb, var(--accent, #38bdf8) 28%, transparent)'
+  background: 'color-mix(in srgb, var(--accent-strong) 14%, transparent)',
+  color: 'var(--accent-strong)',
+  border: '1px solid color-mix(in srgb, var(--accent-strong) 28%, transparent)'
 }
 
 const warningBadgeStyle = {
   ...baseBadgeStyle,
-  background: 'var(--warning-soft, rgba(245, 158, 11, 0.14))',
+  background: 'color-mix(in srgb, var(--warning) 14%, transparent)',
   color: 'var(--warning, #fde68a)',
   border: '1px solid color-mix(in srgb, var(--warning, #f59e0b) 28%, transparent)'
 }
 
 const dangerBadgeStyle = {
   ...baseBadgeStyle,
-  background: 'var(--danger-soft, rgba(239, 68, 68, 0.14))',
+  background: 'color-mix(in srgb, var(--danger) 14%, transparent)',
   color: 'var(--danger, #fca5a5)',
   border: '1px solid color-mix(in srgb, var(--danger, #ef4444) 28%, transparent)'
 }

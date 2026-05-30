@@ -1256,7 +1256,7 @@ function StatBox({ label, value, sub, tone }) {
         ? 'var(--danger)'
         : tone === 'warning'
           ? 'var(--warning)'
-          : 'var(--accent)'
+          : 'var(--accent-strong)'
 
   return (
     <div style={styles.statCard}>
@@ -1275,7 +1275,7 @@ function MiniPanel({ label, value, sub, tone }) {
         ? 'var(--danger)'
         : tone === 'warning'
           ? 'var(--warning)'
-          : 'var(--accent)'
+          : 'var(--accent-strong)'
 
   return (
     <div style={styles.miniPanel}>
@@ -1339,7 +1339,7 @@ const styles = {
     marginBottom: 24
   },
   kicker: {
-    color: 'var(--accent)',
+    color: 'var(--accent-strong)',
     fontSize: 12,
     fontWeight: 900,
     letterSpacing: '0.12em',
@@ -1390,7 +1390,7 @@ const styles = {
   },
   message: {
     border: '1px solid var(--warning)',
-    background: 'var(--warning-soft)',
+    background: 'color-mix(in srgb, var(--warning) 12%, transparent)',
     color: 'var(--warning)',
     borderRadius: 14,
     padding: 14,
@@ -1584,7 +1584,7 @@ const styles = {
     fontWeight: 800
   },
   allocationPercent: {
-    color: 'var(--accent)',
+    color: 'var(--accent-strong)',
     fontWeight: 900,
     fontSize: 12
   },
@@ -1724,24 +1724,24 @@ const styles = {
     fontWeight: 900
   },
   successPill: {
-    background: 'var(--success-soft)',
+    background: 'color-mix(in srgb, var(--success) 12%, transparent)',
     color: 'var(--success)',
     border: '1px solid var(--success)'
   },
   dangerPill: {
-    background: 'var(--danger-soft)',
+    background: 'color-mix(in srgb, var(--danger) 12%, transparent)',
     color: 'var(--danger)',
     border: '1px solid var(--danger)'
   },
   warningPill: {
-    background: 'var(--warning-soft)',
+    background: 'color-mix(in srgb, var(--warning) 12%, transparent)',
     color: 'var(--warning)',
     border: '1px solid var(--warning)'
   },
   infoPill: {
-    background: 'var(--accent-soft)',
-    color: 'var(--accent)',
-    border: '1px solid var(--accent)'
+    background: 'color-mix(in srgb, var(--accent-strong) 12%, transparent)',
+    color: 'var(--accent-strong)',
+    border: '1px solid var(--accent-strong)'
   },
   neutralPill: {
     background: 'var(--bg-card-soft)',
@@ -1758,6 +1758,6 @@ const styles = {
     color: 'var(--warning)'
   },
   infoText: {
-    color: 'var(--accent)'
+    color: 'var(--accent-strong)'
   }
 }

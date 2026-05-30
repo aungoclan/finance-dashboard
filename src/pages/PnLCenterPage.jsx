@@ -863,8 +863,8 @@ const styles = {
     marginBottom: 16,
     padding: 14,
     borderRadius: 16,
-    border: '1px solid var(--accent-soft, rgba(56, 189, 248, 0.28))',
-    background: 'var(--bg-card-soft, rgba(14, 165, 233, 0.08))',
+    border: '1px solid color-mix(in srgb, var(--accent-strong) 28%, transparent)',
+    background: 'color-mix(in srgb, var(--accent-strong) 8%, var(--bg-card-soft))',
     color: 'var(--text-main, #0f172a)'
   },
   filterCard: { marginBottom: 18 },

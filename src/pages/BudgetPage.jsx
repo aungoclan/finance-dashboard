@@ -474,10 +474,10 @@ export default function BudgetPage() {
   }
 
   const getStatusColor = (status) => {
-    if (status === 'Over Budget') return '#ef4444'
-    if (status === 'At Limit') return '#f97316'
-    if (status === 'Near Limit') return '#f59e0b'
-    return '#22c55e'
+    if (status === 'Over Budget') return 'var(--danger)'
+    if (status === 'At Limit') return 'var(--warning)'
+    if (status === 'Near Limit') return 'var(--warning)'
+    return 'var(--success)'
   }
 
   const getStatusBadgeStyle = (status) => {
@@ -490,8 +490,8 @@ export default function BudgetPage() {
       fontSize: '12px',
       fontWeight: 800,
       color,
-      background: `${color}22`,
-      border: `1px solid ${color}55`
+      background: `color-mix(in srgb, ${color} 12%, transparent)`,
+      border: `1px solid ${color}`
     }
   }
 
@@ -748,7 +748,7 @@ export default function BudgetPage() {
                         <td
                           style={{
                             ...tdStyle,
-                            color: row.remaining >= 0 ? '#22c55e' : '#ef4444',
+                            color: row.remaining >= 0 ? 'var(--success)' : 'var(--danger)',
                             fontWeight: 800
                           }}
                         >
@@ -839,7 +839,7 @@ export default function BudgetPage() {
                       <div
                         style={{
                           fontWeight: 900,
-                          color: row.adjustment >= 0 ? '#22c55e' : '#ef4444'
+                          color: row.adjustment >= 0 ? 'var(--success)' : 'var(--danger)'
                         }}
                       >
                         {row.adjustment >= 0 ? '+' : '-'}${formatMoney(Math.abs(row.adjustment))}
@@ -860,11 +860,11 @@ export default function BudgetPage() {
 function SummaryCard({ label, value, note, tone = 'default' }) {
   const color =
     tone === 'good'
-      ? '#22c55e'
+      ? 'var(--success)'
       : tone === 'danger'
-        ? '#ef4444'
+        ? 'var(--danger)'
         : tone === 'warning'
-          ? '#f59e0b'
+          ? 'var(--warning)'
           : 'var(--text-main)'
 
   return (
@@ -879,12 +879,12 @@ function SummaryCard({ label, value, note, tone = 'default' }) {
 function CarryStat({ label, value, tone = 'default' }) {
   const color =
     tone === 'good'
-      ? '#22c55e'
+      ? 'var(--success)'
       : tone === 'danger'
-        ? '#ef4444'
+        ? 'var(--danger)'
         : tone === 'warning'
-          ? '#f59e0b'
-          : '#38bdf8'
+          ? 'var(--warning)'
+          : 'var(--accent-strong)'
 
   return (
     <div style={carryStatStyle}>
@@ -897,12 +897,12 @@ function CarryStat({ label, value, tone = 'default' }) {
 function getCarryBadgeStyle(tone) {
   const color =
     tone === 'good'
-      ? '#22c55e'
+      ? 'var(--success)'
       : tone === 'danger'
-        ? '#ef4444'
+        ? 'var(--danger)'
         : tone === 'warning'
-          ? '#f59e0b'
-          : '#94a3b8'
+          ? 'var(--warning)'
+          : 'var(--text-muted)'
 
   return {
     display: 'inline-block',
@@ -911,20 +911,20 @@ function getCarryBadgeStyle(tone) {
     fontSize: '11px',
     fontWeight: 900,
     color,
-    background: `${color}18`,
-    border: `1px solid ${color}55`
+    background: `color-mix(in srgb, ${color} 12%, transparent)`,
+    border: `1px solid ${color}`
   }
 }
 
 function getCarryRowStyle(row) {
   const color =
     row.tone === 'good'
-      ? 'rgba(34,197,94,0.34)'
+      ? 'var(--success)'
       : row.tone === 'danger'
-        ? 'rgba(239,68,68,0.34)'
+        ? 'var(--danger)'
         : row.tone === 'warning'
-          ? 'rgba(245,158,11,0.34)'
-          : 'rgba(55,65,81,0.78)'
+          ? 'var(--warning)'
+          : 'var(--border-main)'
 
   return {
     ...carryRowStyle,
@@ -946,7 +946,7 @@ const pageTitleStyle = {
 
 const pageDescriptionStyle = {
   marginTop: 0,
-  color: 'var(--text-soft)',
+  color: 'var(--text-muted)',
   maxWidth: '760px',
   lineHeight: 1.55
 }
@@ -967,7 +967,7 @@ const headerRowStyle = {
 }
 
 const eyebrowStyle = {
-  color: 'var(--accent)',
+  color: 'var(--accent-strong)',
   fontSize: '12px',
   fontWeight: 900,
   letterSpacing: '0.12em',
@@ -986,8 +986,8 @@ const monthControlStyle = {
 const monthInputStyle = {
   padding: '11px 12px',
   borderRadius: '10px',
-  border: '1px solid var(--border-soft)',
-  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
   color: 'var(--text-main)',
   colorScheme: 'inherit'
 }

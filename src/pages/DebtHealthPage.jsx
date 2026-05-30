@@ -687,7 +687,7 @@ const colors = {
   amber: 'var(--warning, #d97706)',
   red: 'var(--danger, #dc2626)',
   cardShadow: 'var(--shadow-card, 0 18px 40px rgba(15, 23, 42, 0.08))',
-  softBlueBg: 'var(--accent-soft, rgba(37, 99, 235, 0.10))'
+  softBlueBg: 'color-mix(in srgb, var(--accent-strong) 10%, transparent)'
 }
 
 const toneColor = (tone) => {
@@ -698,10 +698,10 @@ const toneColor = (tone) => {
 }
 
 const toneBg = (tone) => {
-  if (tone === 'success') return 'var(--success-soft, rgba(34, 197, 94, 0.12))'
-  if (tone === 'warning') return 'var(--warning-soft, rgba(245, 158, 11, 0.12))'
-  if (tone === 'danger') return 'var(--danger-soft, rgba(239, 68, 68, 0.12))'
-  return 'var(--accent-soft, rgba(59, 130, 246, 0.12))'
+  if (tone === 'success') return 'color-mix(in srgb, var(--success) 12%, transparent)'
+  if (tone === 'warning') return 'color-mix(in srgb, var(--warning) 12%, transparent)'
+  if (tone === 'danger') return 'color-mix(in srgb, var(--danger) 12%, transparent)'
+  return 'color-mix(in srgb, var(--accent-strong) 12%, transparent)'
 }
 
 const styles = {
@@ -768,8 +768,8 @@ const styles = {
     cursor: 'pointer'
   },
   message: {
-    background: 'rgba(239, 68, 68, 0.12)',
-    border: '1px solid rgba(239, 68, 68, 0.35)',
+    background: 'color-mix(in srgb, var(--danger) 12%, transparent)',
+    border: '1px solid var(--danger)',
     color: colors.red,
     borderRadius: '14px',
     padding: '14px 16px'

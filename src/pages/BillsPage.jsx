@@ -1526,19 +1526,19 @@ function getDueBadgeStyle(tone) {
 
 function getBillItemStyle(row) {
   if (row.status === BILL_STATUS.READY) {
-    return { ...billItemStyle, borderColor: 'rgba(34,197,94,0.36)' }
+    return { ...billItemStyle, borderColor: 'var(--success)' }
   }
 
   if (row.status === BILL_STATUS.ADDED) {
-    return { ...billItemStyle, borderColor: 'rgba(56,189,248,0.32)' }
+    return { ...billItemStyle, borderColor: 'var(--accent-strong)' }
   }
 
   if (row.status === BILL_STATUS.REVIEW) {
-    return { ...billItemStyle, borderColor: 'rgba(245,158,11,0.36)' }
+    return { ...billItemStyle, borderColor: 'var(--warning)' }
   }
 
   if (row.status === BILL_STATUS.BLOCKED) {
-    return { ...billItemStyle, borderColor: 'rgba(239,68,68,0.36)' }
+    return { ...billItemStyle, borderColor: 'var(--danger)' }
   }
 
   return { ...billItemStyle, opacity: 0.76 }
@@ -1596,7 +1596,7 @@ const pageHeaderStyle = {
 }
 
 const eyebrowStyle = {
-  color: 'var(--accent, #38bdf8)',
+  color: 'var(--accent-strong)',
   fontSize: '12px',
   fontWeight: 900,
   letterSpacing: '0.12em',
@@ -1642,7 +1642,7 @@ const refreshButtonStyle = {
   padding: '11px 14px',
   border: 'none',
   borderRadius: '10px',
-  background: 'var(--accent, #38bdf8)',
+  background: 'var(--accent-strong)',
   color: 'var(--button-text, white)',
   cursor: 'pointer',
   fontWeight: 800,
@@ -1851,7 +1851,7 @@ const buttonStyle = {
   padding: '13px',
   border: 'none',
   borderRadius: '10px',
-  background: 'var(--accent, #38bdf8)',
+  background: 'var(--accent-strong)',
   color: 'var(--button-text, white)',
   cursor: 'pointer',
   fontWeight: 800
@@ -1931,7 +1931,7 @@ const mutedTextStyle = {
 
 const detailTextStyle = {
   marginTop: '5px',
-  color: 'var(--accent, #38bdf8)',
+  color: 'var(--accent-strong)',
   fontSize: '13px',
   fontWeight: 750,
   lineHeight: 1.45
@@ -1958,7 +1958,7 @@ const amountStyle = {
 
 const daysStyle = {
   marginTop: '6px',
-  color: 'var(--accent, #38bdf8)',
+  color: 'var(--accent-strong)',
   fontSize: '13px'
 }
 
@@ -1972,37 +1972,37 @@ const baseBadgeStyle = {
 
 const readyBadgeStyle = {
   ...baseBadgeStyle,
-  background: 'rgba(34,197,94,0.14)',
-  color: 'var(--success, #22c55e)',
-  border: '1px solid color-mix(in srgb, var(--success, #22c55e) 32%, transparent)'
+  background: 'color-mix(in srgb, var(--success) 14%, transparent)',
+  color: 'var(--success)',
+  border: '1px solid color-mix(in srgb, var(--success) 32%, transparent)'
 }
 
 const addedBadgeStyle = {
   ...baseBadgeStyle,
-  background: 'rgba(59,130,246,0.14)',
-  color: 'var(--accent, #38bdf8)',
-  border: '1px solid rgba(59,130,246,0.28)'
+  background: 'color-mix(in srgb, var(--accent-strong) 14%, transparent)',
+  color: 'var(--accent-strong)',
+  border: '1px solid color-mix(in srgb, var(--accent-strong) 28%, transparent)'
 }
 
 const warningBadgeStyle = {
   ...baseBadgeStyle,
-  background: 'rgba(245,158,11,0.14)',
-  color: 'var(--warning, #f59e0b)',
-  border: '1px solid rgba(245,158,11,0.28)'
+  background: 'color-mix(in srgb, var(--warning) 14%, transparent)',
+  color: 'var(--warning)',
+  border: '1px solid color-mix(in srgb, var(--warning) 28%, transparent)'
 }
 
 const dangerBadgeStyle = {
   ...baseBadgeStyle,
-  background: 'rgba(239,68,68,0.14)',
-  color: 'var(--danger, #ef4444)',
-  border: '1px solid rgba(239,68,68,0.28)'
+  background: 'color-mix(in srgb, var(--danger) 14%, transparent)',
+  color: 'var(--danger)',
+  border: '1px solid color-mix(in srgb, var(--danger) 28%, transparent)'
 }
 
 const mutedBadgeStyle = {
   ...baseBadgeStyle,
-  background: 'rgba(148,163,184,0.14)',
-  color: 'var(--text-soft, #cbd5e1)',
-  border: '1px solid rgba(148,163,184,0.28)'
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-muted)',
+  border: '1px solid var(--border-main)'
 }
 
 const billCashflowRowStyle = {
@@ -2065,7 +2065,7 @@ const editButtonStyle = {
   padding: '8px 12px',
   border: 'none',
   borderRadius: '10px',
-  background: 'var(--accent, #38bdf8)',
+  background: 'var(--accent-strong)',
   color: 'var(--button-text, white)',
   cursor: 'pointer',
   fontWeight: 750
