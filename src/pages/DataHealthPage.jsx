@@ -29,27 +29,27 @@ const ASSET_TYPE_OPTIONS = [
 const ISSUE_SEVERITY = {
   error: {
     label: 'Needs Fix',
-    color: '#fca5a5',
-    bg: 'rgba(239, 68, 68, 0.12)',
-    border: 'rgba(239, 68, 68, 0.3)'
+    color: 'var(--danger)',
+    bg: 'color-mix(in srgb, var(--danger) 12%, transparent)',
+    border: 'var(--danger)'
   },
   warning: {
     label: 'Warning',
-    color: '#fde68a',
-    bg: 'rgba(245, 158, 11, 0.12)',
-    border: 'rgba(245, 158, 11, 0.3)'
+    color: 'var(--warning)',
+    bg: 'color-mix(in srgb, var(--warning) 12%, transparent)',
+    border: 'var(--warning)'
   },
   info: {
     label: 'Review',
-    color: '#bfdbfe',
-    bg: 'rgba(59, 130, 246, 0.12)',
-    border: 'rgba(59, 130, 246, 0.3)'
+    color: 'var(--accent-strong)',
+    bg: 'color-mix(in srgb, var(--accent-strong) 12%, transparent)',
+    border: 'var(--accent-strong)'
   },
   good: {
     label: 'Good',
-    color: '#86efac',
-    bg: 'rgba(34, 197, 94, 0.12)',
-    border: 'rgba(34, 197, 94, 0.3)'
+    color: 'var(--success)',
+    bg: 'color-mix(in srgb, var(--success) 12%, transparent)',
+    border: 'var(--success)'
   }
 }
 
@@ -937,10 +937,10 @@ export default function DataHealthPage() {
               ...scoreValueStyle,
               color:
                 analysis.score >= 85
-                  ? '#86efac'
+                  ? 'var(--success)'
                   : analysis.score >= 65
-                    ? '#fde68a'
-                    : '#fca5a5'
+                    ? 'var(--warning)'
+                    : 'var(--danger)'
             }}
           >
             {analysis.score}/100
@@ -1226,13 +1226,13 @@ const pageHeaderStyle = {
   gap: '18px',
   padding: '22px 24px',
   borderRadius: '18px',
-  background: '#111827',
-  border: '1px solid #334155',
+  background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-strong) 12%, transparent), var(--bg-card) 58%, color-mix(in srgb, var(--success) 8%, transparent))',
+  border: '1px solid var(--border-main)',
   marginBottom: '18px'
 }
 
 const eyebrowStyle = {
-  color: '#93c5fd',
+  color: 'var(--accent-strong)',
   fontWeight: 900,
   textTransform: 'uppercase',
   letterSpacing: '0.14em',
@@ -1248,7 +1248,7 @@ const titleStyle = {
 
 const subtitleStyle = {
   margin: '12px 0 0',
-  color: '#bfdbfe',
+  color: 'var(--text-muted)',
   lineHeight: 1.5,
   maxWidth: '820px'
 }
@@ -1264,7 +1264,7 @@ const primaryButtonStyle = {
   padding: '11px 14px',
   borderRadius: '10px',
   border: 'none',
-  background: '#2563eb',
+  background: 'var(--accent-strong)',
   color: 'white',
   fontWeight: 850,
   cursor: 'pointer',
@@ -1273,22 +1273,23 @@ const primaryButtonStyle = {
 
 const greenButtonStyle = {
   ...primaryButtonStyle,
-  background: '#16a34a'
+  background: 'var(--success)'
 }
 
 const refreshButtonStyle = {
   ...primaryButtonStyle,
-  background: 'rgba(37, 99, 235, 0.16)',
-  border: '1px solid #315b9e'
+  background: 'color-mix(in srgb, var(--accent-strong) 12%, transparent)',
+  border: '1px solid var(--accent-strong)',
+  color: 'var(--text-main)'
 }
 
 const messageStyle = {
   marginBottom: '16px',
   padding: '12px 14px',
   borderRadius: '12px',
-  background: '#111827',
-  border: '1px solid #60a5fa',
-  color: '#dbeafe'
+  background: 'color-mix(in srgb, var(--accent-strong) 10%, transparent)',
+  border: '1px solid var(--accent-strong)',
+  color: 'var(--text-main)'
 }
 
 const scoreCardStyle = {
@@ -1297,13 +1298,13 @@ const scoreCardStyle = {
   gap: '18px',
   padding: '22px',
   borderRadius: '18px',
-  background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.94))',
-  border: '1px solid #334155',
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border-main)',
   marginBottom: '18px'
 }
 
 const scoreLabelStyle = {
-  color: '#bfdbfe',
+  color: 'var(--text-muted)',
   fontSize: '14px',
   fontWeight: 800,
   textTransform: 'uppercase',
@@ -1319,7 +1320,7 @@ const scoreValueStyle = {
 
 const scoreNoteStyle = {
   marginTop: '10px',
-  color: '#cbd5e1',
+  color: 'var(--text-muted)',
   lineHeight: 1.5
 }
 
@@ -1343,7 +1344,7 @@ const healthStatValueStyle = {
 
 const healthStatLabelStyle = {
   marginTop: '5px',
-  color: '#d1d5db',
+  color: 'var(--text-muted)',
   fontSize: '12px',
   fontWeight: 800
 }
@@ -1358,27 +1359,27 @@ const summaryGridStyle = {
 const summaryCardStyle = {
   padding: '15px',
   borderRadius: '14px',
-  background: '#111827',
-  border: '1px solid #334155',
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border-main)',
   minWidth: 0
 }
 
 const summaryLabelStyle = {
-  color: '#9fb1cc',
+  color: 'var(--text-muted)',
   fontSize: '13px',
   fontWeight: 800
 }
 
 const summaryValueStyle = {
   marginTop: '8px',
-  color: 'white',
+  color: 'var(--text-main)',
   fontSize: '24px',
   fontWeight: 950
 }
 
 const summarySubStyle = {
   marginTop: '6px',
-  color: '#9ca3af',
+  color: 'var(--text-muted)',
   fontSize: '12px',
   lineHeight: 1.35
 }
@@ -1389,15 +1390,15 @@ const filterBarStyle = {
   flexWrap: 'wrap',
   padding: '14px',
   borderRadius: '14px',
-  background: '#111827',
-  border: '1px solid #334155',
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border-main)',
   marginBottom: '18px'
 }
 
 const labelStyle = {
   display: 'block',
   marginBottom: '7px',
-  color: '#d1d5db',
+  color: 'var(--text-main)',
   fontSize: '12px',
   fontWeight: 850
 }
@@ -1406,16 +1407,16 @@ const selectStyle = {
   minWidth: '180px',
   padding: '10px 11px',
   borderRadius: '10px',
-  border: '1px solid #4b5563',
-  background: '#0f172a',
-  color: 'white'
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)'
 }
 
 const cardStyle = {
   padding: '20px',
   borderRadius: '18px',
-  background: '#1f2937',
-  border: '1px solid #374151',
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border-main)',
   marginBottom: '18px'
 }
 
@@ -1435,7 +1436,7 @@ const sectionTitleStyle = {
 
 const sectionSubtitleStyle = {
   margin: '7px 0 0',
-  color: '#9ca3af',
+  color: 'var(--text-muted)',
   fontSize: '13px',
   lineHeight: 1.5
 }
@@ -1459,14 +1460,14 @@ const issueTopStyle = {
 }
 
 const issueTitleStyle = {
-  color: 'white',
+  color: 'var(--text-main)',
   fontWeight: 900,
   fontSize: '16px'
 }
 
 const issueSectionStyle = {
   marginTop: '4px',
-  color: '#9ca3af',
+  color: 'var(--text-muted)',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase',
@@ -1484,20 +1485,20 @@ const issueBadgeStyle = {
 
 const issueDetailStyle = {
   margin: '10px 0 0',
-  color: '#e5e7eb',
+  color: 'var(--text-main)',
   lineHeight: 1.5
 }
 
 const sampleStyle = {
   marginTop: '10px',
-  color: '#bfdbfe',
+  color: 'var(--accent-strong)',
   fontSize: '13px',
   lineHeight: 1.45
 }
 
 const actionStyle = {
   marginTop: '10px',
-  color: '#dcfce7',
+  color: 'var(--success)',
   fontSize: '13px',
   lineHeight: 1.45
 }
@@ -1505,17 +1506,17 @@ const actionStyle = {
 const successBoxStyle = {
   padding: '18px',
   borderRadius: '14px',
-  background: 'rgba(34, 197, 94, 0.08)',
-  border: '1px solid rgba(34, 197, 94, 0.25)',
-  color: '#86efac'
+  background: 'color-mix(in srgb, var(--success) 10%, transparent)',
+  border: '1px solid var(--success)',
+  color: 'var(--success)'
 }
 
 const emptyStyle = {
   padding: '18px',
   borderRadius: '14px',
-  background: '#111827',
-  border: '1px solid #374151',
-  color: '#d1d5db'
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-main)',
+  color: 'var(--text-muted)'
 }
 
 const twoColumnStyle = {
@@ -1538,16 +1539,16 @@ const inputStyle = {
   boxSizing: 'border-box',
   padding: '10px 11px',
   borderRadius: '10px',
-  border: '1px solid #4b5563',
-  background: '#111827',
-  color: 'white'
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)'
 }
 
 const checkboxStyle = {
   display: 'flex',
   alignItems: 'center',
   gap: '7px',
-  color: '#d1d5db',
+  color: 'var(--text-main)',
   whiteSpace: 'nowrap'
 }
 
@@ -1566,19 +1567,19 @@ const assetRowStyle = {
   alignItems: 'center',
   padding: '13px',
   borderRadius: '13px',
-  background: '#111827',
-  border: '1px solid #374151'
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-main)'
 }
 
 const assetTitleStyle = {
-  color: 'white',
+  color: 'var(--text-main)',
   fontWeight: 900,
   overflowWrap: 'anywhere'
 }
 
 const mutedTextStyle = {
   marginTop: '5px',
-  color: '#9ca3af',
+  color: 'var(--text-muted)',
   fontSize: '12px',
   lineHeight: 1.45
 }
@@ -1594,16 +1595,16 @@ const assetActionStyle = {
 const miniSelectStyle = {
   padding: '9px 10px',
   borderRadius: '9px',
-  border: '1px solid #4b5563',
-  background: '#0f172a',
-  color: 'white'
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)'
 }
 
 const smallButtonStyle = {
   padding: '9px 10px',
   borderRadius: '9px',
   border: 'none',
-  background: '#2563eb',
+  background: 'var(--accent-strong)',
   color: 'white',
   fontWeight: 800,
   cursor: 'pointer',
@@ -1612,7 +1613,7 @@ const smallButtonStyle = {
 
 const smallDangerButtonStyle = {
   ...smallButtonStyle,
-  background: '#dc2626'
+  background: 'var(--danger)'
 }
 
 const refreshDetailListStyle = {
@@ -1629,7 +1630,7 @@ const refreshDetailRowStyle = {
   gap: '12px',
   padding: '12px',
   borderRadius: '12px',
-  background: '#111827',
-  border: '1px solid #374151',
-  color: '#d1d5db'
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-main)',
+  color: 'var(--text-muted)'
 }

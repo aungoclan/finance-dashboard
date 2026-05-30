@@ -590,7 +590,7 @@ export default function ImportPage() {
       <div style={headerRowStyle}>
         <div>
           <h1 style={{ marginBottom: '8px' }}>CSV Imports</h1>
-          <p style={{ marginTop: 0, color: '#d1d5db' }}>
+          <p style={{ marginTop: 0, color: 'var(--text-muted)' }}>
             Import investment transactions from Robinhood or Kraken CSV files, review every row, then import clean data.
           </p>
         </div>
@@ -606,22 +606,22 @@ export default function ImportPage() {
 
         <div style={statCardStyle}>
           <div style={statLabelStyle}>New Rows</div>
-          <div style={{ ...statValueStyle, color: '#22c55e' }}>{stats.newRows}</div>
+          <div style={{ ...statValueStyle, color: 'var(--success)' }}>{stats.newRows}</div>
         </div>
 
         <div style={statCardStyle}>
           <div style={statLabelStyle}>Duplicates</div>
-          <div style={{ ...statValueStyle, color: '#f59e0b' }}>{stats.duplicates}</div>
+          <div style={{ ...statValueStyle, color: 'var(--warning)' }}>{stats.duplicates}</div>
         </div>
 
         <div style={statCardStyle}>
           <div style={statLabelStyle}>Needs Review</div>
-          <div style={{ ...statValueStyle, color: stats.review > 0 ? '#f97316' : '#22c55e' }}>{stats.review}</div>
+          <div style={{ ...statValueStyle, color: stats.review > 0 ? 'var(--warning)' : 'var(--success)' }}>{stats.review}</div>
         </div>
 
         <div style={statCardStyle}>
           <div style={statLabelStyle}>Skipped</div>
-          <div style={{ ...statValueStyle, color: '#ef4444' }}>{stats.skipped}</div>
+          <div style={{ ...statValueStyle, color: 'var(--danger)' }}>{stats.skipped}</div>
         </div>
       </div>
 
@@ -710,7 +710,7 @@ export default function ImportPage() {
               </button>
             </div>
 
-            <div style={{ marginTop: '16px', color: '#d1d5db', fontSize: '14px', lineHeight: 1.6 }}>
+            <div style={{ marginTop: '16px', color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.6 }}>
               <div><strong>Review first:</strong> edit symbol, asset type, transaction type, account, quantity, price, and fee before importing.</div>
               <div><strong>Duplicates:</strong> same account, asset, date, type, quantity, and unit price are skipped.</div>
               <div><strong>Tip:</strong> after editing rows, click <strong>Check Duplicates</strong> again before import.</div>
@@ -988,7 +988,7 @@ export default function ImportPage() {
                 {skippedRows.slice(0, 30).map((item, index) => (
                   <div key={`${item.rowNumber}-${index}`} style={skippedRowStyle}>
                     <div><strong>Row {item.rowNumber}</strong></div>
-                    <div style={{ color: '#fca5a5', marginTop: '6px' }}>{item.reason}</div>
+                    <div style={{ color: 'var(--danger)', marginTop: '6px' }}>{item.reason}</div>
                   </div>
                 ))}
                 {skippedRows.length > 30 && (
@@ -1029,14 +1029,15 @@ const mainGridStyle = {
 }
 
 const statCardStyle = {
-  background: '#1f2937',
+  background: 'var(--bg-card)',
   padding: '18px',
   borderRadius: '12px',
+  border: '1px solid var(--border-main)',
   minWidth: 0
 }
 
 const statLabelStyle = {
-  color: '#d1d5db',
+  color: 'var(--text-muted)',
   fontSize: '14px',
   marginBottom: '10px'
 }
@@ -1044,7 +1045,7 @@ const statLabelStyle = {
 const statValueStyle = {
   fontSize: '28px',
   fontWeight: 700,
-  color: 'white'
+  color: 'var(--text-main)'
 }
 
 const previewHeaderStyle = {
@@ -1065,16 +1066,17 @@ const filterRowStyle = {
 const filterButtonStyle = {
   padding: '8px 12px',
   borderRadius: '8px',
-  border: '1px solid #4b5563',
-  background: '#111827',
-  color: 'white',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)',
   cursor: 'pointer'
 }
 
 const activeFilterButtonStyle = {
   ...filterButtonStyle,
-  background: '#2563eb',
-  border: '1px solid #2563eb'
+  background: 'var(--accent-strong)',
+  border: '1px solid var(--accent-strong)',
+  color: 'white'
 }
 
 
@@ -1097,18 +1099,18 @@ const paginationControlsStyle = {
 const pageSizeSelectStyle = {
   padding: '8px 10px',
   borderRadius: '8px',
-  border: '1px solid #4b5563',
-  background: '#111827',
-  color: 'white',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)',
   fontSize: '13px'
 }
 
 const smallButtonStyle = {
   padding: '8px 10px',
   borderRadius: '8px',
-  border: '1px solid #4b5563',
-  background: '#111827',
-  color: 'white',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)',
   cursor: 'pointer',
   fontSize: '13px',
   fontWeight: 700
@@ -1121,7 +1123,7 @@ const disabledSmallButtonStyle = {
 }
 
 const pageTextStyle = {
-  color: '#d1d5db',
+  color: 'var(--text-muted)',
   fontSize: '13px',
   minWidth: '84px',
   textAlign: 'center'
@@ -1130,7 +1132,7 @@ const pageTextStyle = {
 const previewTableShellStyle = {
   overflow: 'auto',
   maxHeight: '620px',
-  border: '1px solid #374151',
+  border: '1px solid var(--border-main)',
   borderRadius: '12px'
 }
 
@@ -1138,15 +1140,16 @@ const messageStyle = {
   marginTop: '16px',
   padding: '12px',
   borderRadius: '10px',
-  background: '#1f2937',
-  border: '1px solid #374151',
-  color: '#f3f4f6'
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-main)',
+  color: 'var(--text-main)'
 }
 
 const cardStyle = {
-  background: '#1f2937',
+  background: 'var(--bg-card)',
   padding: '20px',
   borderRadius: '12px',
+  border: '1px solid var(--border-main)',
   minWidth: 0
 }
 
@@ -1163,19 +1166,19 @@ const inputStyle = {
   width: '100%',
   padding: '10px 12px',
   borderRadius: '8px',
-  border: '1px solid #4b5563',
-  background: '#111827',
-  color: 'white'
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)'
 }
 
 const fileInputStyle = {
   width: '100%',
   padding: '10px 0',
-  color: 'white'
+  color: 'var(--text-main)'
 }
 
 const helperTextStyle = {
-  color: '#d1d5db',
+  color: 'var(--text-muted)',
   fontSize: '14px',
   lineHeight: 1.45,
   marginTop: '6px'
@@ -1186,7 +1189,7 @@ const buttonStyle = {
   padding: '12px',
   border: 'none',
   borderRadius: '8px',
-  background: '#2563eb',
+  background: 'var(--accent-strong)',
   color: 'white',
   cursor: 'pointer',
   fontWeight: 700
@@ -1194,8 +1197,9 @@ const buttonStyle = {
 
 const secondaryButtonStyle = {
   ...buttonStyle,
-  background: '#111827',
-  border: '1px solid #4b5563'
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-main)',
+  color: 'var(--text-main)'
 }
 
 const disabledButtonStyle = {
@@ -1207,9 +1211,9 @@ const disabledButtonStyle = {
 const dangerButtonStyle = {
   padding: '7px 10px',
   borderRadius: '8px',
-  border: '1px solid rgba(239, 68, 68, 0.45)',
-  background: 'rgba(239, 68, 68, 0.12)',
-  color: '#fca5a5',
+  border: '1px solid var(--danger)',
+  background: 'color-mix(in srgb, var(--danger) 12%, transparent)',
+  color: 'var(--danger)',
   cursor: 'pointer',
   fontSize: '12px',
   fontWeight: 700
@@ -1225,21 +1229,21 @@ const tableStyle = {
 const thStyle = {
   textAlign: 'left',
   padding: '12px',
-  borderBottom: '1px solid #374151',
-  color: '#d1d5db',
+  borderBottom: '1px solid var(--border-main)',
+  color: 'var(--text-muted)',
   fontWeight: 600,
   fontSize: '14px',
   whiteSpace: 'nowrap',
   position: 'sticky',
   top: 0,
   zIndex: 2,
-  background: '#1f2937'
+  background: 'var(--bg-card-soft)'
 }
 
 const tdStyle = {
   padding: '10px',
-  borderBottom: '1px solid #374151',
-  color: 'white',
+  borderBottom: '1px solid var(--border-main)',
+  color: 'var(--text-main)',
   fontSize: '14px',
   whiteSpace: 'nowrap',
   verticalAlign: 'top'
@@ -1249,9 +1253,9 @@ const smallInputStyle = {
   width: '130px',
   padding: '8px 10px',
   borderRadius: '8px',
-  border: '1px solid #4b5563',
-  background: '#111827',
-  color: 'white',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)',
   fontSize: '13px'
 }
 
@@ -1263,15 +1267,15 @@ const smallSelectStyle = {
 const skippedRowStyle = {
   padding: '12px',
   borderRadius: '10px',
-  background: '#111827',
-  border: '1px solid #374151'
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-main)'
 }
 
 const historyItemStyle = {
   padding: '12px',
   borderRadius: '10px',
-  background: '#111827',
-  border: '1px solid #374151'
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-main)'
 }
 
 const recentImportsShellStyle = {
@@ -1290,7 +1294,7 @@ const historyFileNameStyle = {
 }
 
 const historySubText = {
-  color: '#d1d5db',
+  color: 'var(--text-muted)',
   fontSize: '13px',
   marginTop: '4px'
 }
@@ -1301,9 +1305,9 @@ const newBadgeStyle = {
   borderRadius: '999px',
   fontSize: '12px',
   fontWeight: 700,
-  color: '#22c55e',
-  background: 'rgba(34, 197, 94, 0.12)',
-  border: '1px solid rgba(34, 197, 94, 0.35)'
+  color: 'var(--success)',
+  background: 'color-mix(in srgb, var(--success) 12%, transparent)',
+  border: '1px solid var(--success)'
 }
 
 const duplicateBadgeStyle = {
@@ -1312,9 +1316,9 @@ const duplicateBadgeStyle = {
   borderRadius: '999px',
   fontSize: '12px',
   fontWeight: 700,
-  color: '#f59e0b',
-  background: 'rgba(245, 158, 11, 0.12)',
-  border: '1px solid rgba(245, 158, 11, 0.35)'
+  color: 'var(--warning)',
+  background: 'color-mix(in srgb, var(--warning) 12%, transparent)',
+  border: '1px solid var(--warning)'
 }
 
 const reviewBadgeStyle = {
@@ -1323,9 +1327,9 @@ const reviewBadgeStyle = {
   borderRadius: '999px',
   fontSize: '12px',
   fontWeight: 700,
-  color: '#fb923c',
-  background: 'rgba(249, 115, 22, 0.12)',
-  border: '1px solid rgba(249, 115, 22, 0.35)'
+  color: 'var(--warning)',
+  background: 'color-mix(in srgb, var(--warning) 12%, transparent)',
+  border: '1px solid var(--warning)'
 }
 
 const checkBadgeStyle = {
@@ -1334,13 +1338,13 @@ const checkBadgeStyle = {
   borderRadius: '999px',
   fontSize: '12px',
   fontWeight: 700,
-  color: '#93c5fd',
-  background: 'rgba(59, 130, 246, 0.12)',
-  border: '1px solid rgba(59, 130, 246, 0.35)'
+  color: 'var(--accent-strong)',
+  background: 'color-mix(in srgb, var(--accent-strong) 12%, transparent)',
+  border: '1px solid var(--accent-strong)'
 }
 
 const errorTextStyle = {
-  color: '#fca5a5',
+  color: 'var(--danger)',
   fontSize: '11px',
   marginTop: '6px',
   whiteSpace: 'normal',

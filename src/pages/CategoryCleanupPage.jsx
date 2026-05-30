@@ -703,7 +703,7 @@ function SummaryCard({ label, value, tone = 'default' }) {
       <div
         style={{
           ...summaryValueStyle,
-          color: tone === 'good' ? '#22c55e' : tone === 'warn' ? '#f59e0b' : '#f9fafb'
+          color: tone === 'good' ? 'var(--success)' : tone === 'warn' ? 'var(--warning)' : 'var(--text-main)'
         }}
       >
         {value}
@@ -733,7 +733,7 @@ const pageHeaderStyle = {
 }
 
 const eyebrowStyle = {
-  color: '#38bdf8',
+  color: 'var(--accent-strong)',
   fontSize: '12px',
   fontWeight: 900,
   letterSpacing: '0.12em',
@@ -750,7 +750,7 @@ const titleStyle = {
 const subtitleStyle = {
   margin: '10px 0 0',
   maxWidth: '820px',
-  color: '#cbd5e1',
+  color: 'var(--text-muted)',
   lineHeight: 1.6
 }
 
@@ -758,7 +758,7 @@ const refreshButtonStyle = {
   padding: '11px 15px',
   border: 'none',
   borderRadius: '11px',
-  background: '#2563eb',
+  background: 'var(--accent-strong)',
   color: 'white',
   cursor: 'pointer',
   fontWeight: 850,
@@ -769,9 +769,9 @@ const messageStyle = {
   marginBottom: '18px',
   padding: '13px 14px',
   borderRadius: '13px',
-  background: 'rgba(56, 189, 248, 0.1)',
-  border: '1px solid rgba(56, 189, 248, 0.28)',
-  color: '#e0f2fe'
+  background: 'color-mix(in srgb, var(--accent-strong) 10%, transparent)',
+  border: '1px solid var(--accent-strong)',
+  color: 'var(--text-main)'
 }
 
 const summaryGridStyle = {
@@ -784,12 +784,12 @@ const summaryGridStyle = {
 const summaryCardStyle = {
   padding: '18px',
   borderRadius: '16px',
-  background: 'linear-gradient(180deg, rgba(31, 41, 55, 0.92), rgba(17, 24, 39, 0.92))',
-  border: '1px solid rgba(55, 65, 81, 0.85)'
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border-main)'
 }
 
 const summaryLabelStyle = {
-  color: '#9ca3af',
+  color: 'var(--text-muted)',
   fontSize: '13px',
   marginBottom: '8px',
   fontWeight: 850
@@ -807,9 +807,9 @@ const guideCardStyle = {
   gap: '8px',
   padding: '14px 16px',
   borderRadius: '15px',
-  background: 'rgba(34, 197, 94, 0.08)',
-  border: '1px solid rgba(34, 197, 94, 0.25)',
-  color: '#dcfce7',
+  background: 'color-mix(in srgb, var(--success) 10%, transparent)',
+  border: '1px solid var(--success)',
+  color: 'var(--success)',
   marginBottom: '18px',
   lineHeight: 1.55
 }
@@ -824,25 +824,25 @@ const tabRowStyle = {
 const tabButtonStyle = {
   padding: '11px 14px',
   borderRadius: '999px',
-  border: '1px solid #374151',
-  background: '#111827',
-  color: '#d1d5db',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)',
   cursor: 'pointer',
   fontWeight: 850
 }
 
 const activeTabButtonStyle = {
   ...tabButtonStyle,
-  background: '#1d4ed8',
-  border: '1px solid #60a5fa',
+  background: 'var(--accent-strong)',
+  border: '1px solid var(--accent-strong)',
   color: 'white'
 }
 
 const cardStyle = {
   padding: '20px',
   borderRadius: '18px',
-  background: 'rgba(31, 41, 55, 0.86)',
-  border: '1px solid rgba(55, 65, 81, 0.85)',
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border-main)',
   boxShadow: '0 18px 40px rgba(0, 0, 0, 0.16)'
 }
 
@@ -863,7 +863,7 @@ const sectionTitleStyle = {
 
 const sectionSubtitleStyle = {
   margin: '7px 0 0',
-  color: '#9ca3af',
+  color: 'var(--text-muted)',
   fontSize: '13px',
   lineHeight: 1.5
 }
@@ -879,8 +879,8 @@ const cleanupRowStyle = {
   gap: '16px',
   padding: '15px',
   borderRadius: '15px',
-  background: 'rgba(17, 24, 39, 0.76)',
-  border: '1px solid rgba(55, 65, 81, 0.78)'
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-main)'
 }
 
 const recordInfoStyle = {
@@ -888,26 +888,26 @@ const recordInfoStyle = {
 }
 
 const recordTitleStyle = {
-  color: '#f9fafb',
+  color: 'var(--text-main)',
   fontWeight: 900,
   marginBottom: '8px'
 }
 
 const legacyTextStyle = {
-  color: '#fde68a',
+  color: 'var(--warning)',
   fontSize: '13px',
   lineHeight: 1.5
 }
 
 const detailTextStyle = {
-  color: '#93c5fd',
+  color: 'var(--accent-strong)',
   fontSize: '13px',
   lineHeight: 1.5,
   marginTop: '4px'
 }
 
 const mutedTextStyle = {
-  color: '#9ca3af',
+  color: 'var(--text-muted)',
   fontSize: '12px',
   lineHeight: 1.5,
   marginTop: '4px'
@@ -930,7 +930,7 @@ const budgetFixGridStyle = {
 const labelStyle = {
   display: 'block',
   marginBottom: '7px',
-  color: '#d1d5db',
+  color: 'var(--text-main)',
   fontSize: '12px',
   fontWeight: 850
 }
@@ -940,9 +940,9 @@ const inputStyle = {
   boxSizing: 'border-box',
   padding: '10px 11px',
   borderRadius: '10px',
-  border: '1px solid #4b5563',
-  background: '#111827',
-  color: 'white',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)',
   outline: 'none'
 }
 
@@ -950,7 +950,7 @@ const primaryButtonStyle = {
   padding: '10px 13px',
   border: 'none',
   borderRadius: '10px',
-  background: '#2563eb',
+  background: 'var(--accent-strong)',
   color: 'white',
   cursor: 'pointer',
   fontWeight: 850,
@@ -959,27 +959,27 @@ const primaryButtonStyle = {
 
 const greenButtonStyle = {
   ...primaryButtonStyle,
-  background: '#16a34a'
+  background: 'var(--success)'
 }
 
 const disabledButtonStyle = {
   ...primaryButtonStyle,
-  background: '#374151',
-  color: '#9ca3af',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-muted)',
   cursor: 'not-allowed'
 }
 
 const emptyStyle = {
   padding: '20px',
   borderRadius: '15px',
-  background: 'rgba(17, 24, 39, 0.72)',
-  border: '1px solid rgba(55, 65, 81, 0.78)',
-  color: '#d1d5db'
+  background: 'var(--bg-card-soft)',
+  border: '1px solid var(--border-main)',
+  color: 'var(--text-muted)'
 }
 
 const successBoxStyle = {
   ...emptyStyle,
-  color: '#86efac',
-  background: 'rgba(34, 197, 94, 0.08)',
-  border: '1px solid rgba(34, 197, 94, 0.24)'
+  color: 'var(--success)',
+  background: 'color-mix(in srgb, var(--success) 10%, transparent)',
+  border: '1px solid var(--success)'
 }

@@ -48,27 +48,27 @@ const ROUTE_CHECKS = [
 const CHECK_STYLE = {
   good: {
     label: 'Good',
-    color: '#86efac',
-    bg: 'rgba(34, 197, 94, 0.12)',
-    border: 'rgba(34, 197, 94, 0.3)'
+    color: 'var(--success)',
+    bg: 'color-mix(in srgb, var(--success) 12%, transparent)',
+    border: 'var(--success)'
   },
   review: {
     label: 'Review',
-    color: '#bfdbfe',
-    bg: 'rgba(59, 130, 246, 0.12)',
-    border: 'rgba(59, 130, 246, 0.3)'
+    color: 'var(--accent-strong)',
+    bg: 'color-mix(in srgb, var(--accent-strong) 12%, transparent)',
+    border: 'var(--accent-strong)'
   },
   warning: {
     label: 'Warning',
-    color: '#fde68a',
-    bg: 'rgba(245, 158, 11, 0.12)',
-    border: 'rgba(245, 158, 11, 0.3)'
+    color: 'var(--warning)',
+    bg: 'color-mix(in srgb, var(--warning) 12%, transparent)',
+    border: 'var(--warning)'
   },
   danger: {
     label: 'Needs Fix',
-    color: '#fca5a5',
-    bg: 'rgba(239, 68, 68, 0.12)',
-    border: 'rgba(239, 68, 68, 0.35)'
+    color: 'var(--danger)',
+    bg: 'color-mix(in srgb, var(--danger) 12%, transparent)',
+    border: 'var(--danger)'
   }
 }
 
@@ -862,7 +862,7 @@ const pageStyle = {
   display: 'flex',
   flexDirection: 'column',
   gap: '22px',
-  color: '#e5e7eb'
+  color: 'var(--text-main)'
 }
 
 const heroStyle = {
@@ -873,8 +873,8 @@ const heroStyle = {
   padding: '24px',
   borderRadius: '24px',
   background:
-    'radial-gradient(circle at top left, rgba(59, 130, 246, 0.22), transparent 34%), linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(17, 24, 39, 0.92))',
-  border: '1px solid rgba(148, 163, 184, 0.2)',
+    'linear-gradient(135deg, color-mix(in srgb, var(--accent-strong) 12%, transparent), var(--bg-card) 58%, color-mix(in srgb, var(--success) 8%, transparent))',
+  border: '1px solid var(--border-main)',
   boxShadow: '0 22px 60px rgba(0, 0, 0, 0.28)'
 }
 
@@ -882,7 +882,7 @@ const eyebrowStyle = {
   fontSize: '12px',
   letterSpacing: '0.16em',
   textTransform: 'uppercase',
-  color: '#93c5fd',
+  color: 'var(--accent-strong)',
   fontWeight: 800,
   marginBottom: '10px'
 }
@@ -896,7 +896,7 @@ const titleStyle = {
 
 const subtitleStyle = {
   margin: '12px 0 0',
-  color: '#cbd5e1',
+  color: 'var(--text-muted)',
   maxWidth: '760px',
   lineHeight: 1.65
 }
@@ -912,7 +912,7 @@ const fieldLabelStyle = {
   display: 'flex',
   flexDirection: 'column',
   gap: '7px',
-  color: '#cbd5e1',
+  color: 'var(--text-main)',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase',
@@ -923,19 +923,19 @@ const inputStyle = {
   minHeight: '42px',
   minWidth: '170px',
   borderRadius: '14px',
-  border: '1px solid rgba(148, 163, 184, 0.28)',
-  background: 'rgba(15, 23, 42, 0.9)',
-  color: '#e5e7eb',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)',
   padding: '0 12px',
   outline: 'none'
 }
 
 const primaryButtonStyle = {
   minHeight: '42px',
-  border: '1px solid rgba(147, 197, 253, 0.45)',
+  border: '1px solid var(--accent-strong)',
   borderRadius: '14px',
-  background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(14, 165, 233, 0.78))',
-  color: '#eff6ff',
+  background: 'var(--accent-strong)',
+  color: 'white',
   fontWeight: 900,
   padding: '0 16px',
   cursor: 'pointer'
@@ -953,8 +953,8 @@ const scoreCardStyle = {
   alignItems: 'center',
   padding: '18px',
   borderRadius: '22px',
-  background: 'rgba(15, 23, 42, 0.82)',
-  border: '1px solid rgba(148, 163, 184, 0.18)'
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border-main)'
 }
 
 const scoreCircleStyle = {
@@ -965,15 +965,15 @@ const scoreCircleStyle = {
   placeItems: 'center',
   fontSize: '28px',
   fontWeight: 950,
-  color: '#dbeafe',
-  border: '1px solid rgba(147, 197, 253, 0.35)',
-  background: 'rgba(30, 64, 175, 0.24)'
+  color: 'var(--accent-strong)',
+  border: '1px solid var(--accent-strong)',
+  background: 'color-mix(in srgb, var(--accent-strong) 12%, transparent)'
 }
 
 const statPillStyle = {
   padding: '18px',
   borderRadius: '20px',
-  border: '1px solid rgba(148, 163, 184, 0.18)'
+  border: '1px solid var(--border-main)'
 }
 
 const statValueStyle = {
@@ -983,7 +983,7 @@ const statValueStyle = {
 }
 
 const mutedLabelStyle = {
-  color: '#94a3b8',
+  color: 'var(--text-muted)',
   fontSize: '12px',
   textTransform: 'uppercase',
   letterSpacing: '0.08em',
@@ -992,7 +992,7 @@ const mutedLabelStyle = {
 
 const smallTextStyle = {
   margin: 0,
-  color: '#94a3b8',
+  color: 'var(--text-muted)',
   fontSize: '13px',
   lineHeight: 1.5
 }
@@ -1000,8 +1000,8 @@ const smallTextStyle = {
 const panelStyle = {
   padding: '20px',
   borderRadius: '24px',
-  background: 'rgba(15, 23, 42, 0.82)',
-  border: '1px solid rgba(148, 163, 184, 0.16)',
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border-main)',
   boxShadow: '0 18px 50px rgba(0, 0, 0, 0.18)'
 }
 
@@ -1022,7 +1022,7 @@ const sectionTitleStyle = {
 
 const sectionSubtitleStyle = {
   margin: '6px 0 0',
-  color: '#94a3b8',
+  color: 'var(--text-muted)',
   lineHeight: 1.5
 }
 
@@ -1034,7 +1034,7 @@ const stackStyle = {
 const checkRowStyle = {
   padding: '16px',
   borderRadius: '18px',
-  border: '1px solid rgba(148, 163, 184, 0.18)'
+  border: '1px solid var(--border-main)'
 }
 
 const checkHeaderStyle = {
@@ -1046,12 +1046,12 @@ const checkHeaderStyle = {
 
 const checkTitleStyle = {
   fontWeight: 900,
-  color: '#f8fafc',
+  color: 'var(--text-main)',
   marginBottom: '3px'
 }
 
 const checkSourceStyle = {
-  color: '#94a3b8',
+  color: 'var(--text-muted)',
   fontSize: '12px',
   textTransform: 'uppercase',
   letterSpacing: '0.08em',
@@ -1060,7 +1060,7 @@ const checkSourceStyle = {
 
 const badgeStyle = {
   flexShrink: 0,
-  border: '1px solid rgba(148, 163, 184, 0.22)',
+  border: '1px solid var(--border-main)',
   borderRadius: '999px',
   padding: '6px 10px',
   fontSize: '12px',
@@ -1069,19 +1069,19 @@ const badgeStyle = {
 
 const checkDetailStyle = {
   margin: '12px 0 0',
-  color: '#e2e8f0',
+  color: 'var(--text-main)',
   lineHeight: 1.55
 }
 
 const compactDetailStyle = {
   margin: '10px 0 0',
-  color: '#e2e8f0',
+  color: 'var(--text-main)',
   lineHeight: 1.45
 }
 
 const checkActionStyle = {
   margin: '8px 0 0',
-  color: '#cbd5e1',
+  color: 'var(--text-muted)',
   fontSize: '13px',
   lineHeight: 1.5
 }
@@ -1093,9 +1093,9 @@ const filterRowStyle = {
 }
 
 const filterButtonStyle = {
-  border: '1px solid rgba(148, 163, 184, 0.22)',
-  background: 'rgba(15, 23, 42, 0.7)',
-  color: '#cbd5e1',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)',
   borderRadius: '999px',
   padding: '8px 11px',
   cursor: 'pointer',
@@ -1104,9 +1104,9 @@ const filterButtonStyle = {
 
 const activeFilterButtonStyle = {
   ...filterButtonStyle,
-  background: 'rgba(59, 130, 246, 0.22)',
-  color: '#dbeafe',
-  borderColor: 'rgba(147, 197, 253, 0.45)'
+  background: 'color-mix(in srgb, var(--accent-strong) 12%, transparent)',
+  color: 'var(--accent-strong)',
+  borderColor: 'var(--accent-strong)'
 }
 
 const routeGridStyle = {
@@ -1121,9 +1121,9 @@ const routeLinkStyle = {
   gap: '6px',
   padding: '14px',
   borderRadius: '16px',
-  border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'rgba(2, 6, 23, 0.34)',
-  color: '#e5e7eb',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)',
   textDecoration: 'none'
 }
 
@@ -1139,9 +1139,9 @@ const manualItemStyle = {
   alignItems: 'flex-start',
   padding: '15px',
   borderRadius: '18px',
-  border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'rgba(2, 6, 23, 0.32)',
-  color: '#cbd5e1',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)',
   lineHeight: 1.5
 }
 
@@ -1152,25 +1152,25 @@ const manualIndexStyle = {
   borderRadius: '999px',
   display: 'grid',
   placeItems: 'center',
-  background: 'rgba(59, 130, 246, 0.2)',
-  color: '#bfdbfe',
+  background: 'color-mix(in srgb, var(--accent-strong) 12%, transparent)',
+  color: 'var(--accent-strong)',
   fontWeight: 950
 }
 
 const emptyStateStyle = {
   padding: '18px',
   borderRadius: '18px',
-  border: '1px solid rgba(34, 197, 94, 0.26)',
-  background: 'rgba(34, 197, 94, 0.1)',
-  color: '#bbf7d0',
+  border: '1px solid var(--success)',
+  background: 'color-mix(in srgb, var(--success) 10%, transparent)',
+  color: 'var(--success)',
   fontWeight: 800
 }
 
 const errorBoxStyle = {
   padding: '15px 16px',
   borderRadius: '18px',
-  border: '1px solid rgba(248, 113, 113, 0.35)',
-  background: 'rgba(127, 29, 29, 0.24)',
-  color: '#fecaca',
+  border: '1px solid var(--danger)',
+  background: 'color-mix(in srgb, var(--danger) 12%, transparent)',
+  color: 'var(--danger)',
   fontWeight: 800
 }
