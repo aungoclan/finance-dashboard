@@ -1140,26 +1140,26 @@ function getTypeBadgeStyle(type) {
   if (type === 'buy') {
     return {
       ...base,
-      background: 'rgba(34,197,94,0.14)',
+      background: 'color-mix(in srgb, var(--success) 14%, transparent)',
       color: 'var(--success)',
-      border: '1px solid rgba(34,197,94,0.28)'
+      border: '1px solid color-mix(in srgb, var(--success) 28%, transparent)'
     }
   }
 
   if (type === 'sell') {
     return {
       ...base,
-      background: 'rgba(239,68,68,0.14)',
+      background: 'color-mix(in srgb, var(--danger) 14%, transparent)',
       color: 'var(--danger)',
-      border: '1px solid rgba(239,68,68,0.28)'
+      border: '1px solid color-mix(in srgb, var(--danger) 28%, transparent)'
     }
   }
 
   return {
     ...base,
-    background: 'rgba(96,165,250,0.14)',
-    color: '#93c5fd',
-    border: '1px solid rgba(96,165,250,0.28)'
+    background: 'color-mix(in srgb, var(--accent-strong) 14%, transparent)',
+    color: 'var(--accent-strong)',
+    border: '1px solid color-mix(in srgb, var(--accent-strong) 28%, transparent)'
   }
 }
 
@@ -1196,12 +1196,12 @@ const fundingGuardStyle = {
   marginBottom: '20px',
   padding: '16px',
   borderRadius: '18px',
-  background: 'linear-gradient(135deg, var(--info-soft), var(--bg-card))',
-  border: '1px solid var(--border-accent)'
+  background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-strong) 10%, transparent), var(--bg-card))',
+  border: '1px solid color-mix(in srgb, var(--accent-strong) 28%, var(--border-main))'
 }
 
 const guardTitleStyle = {
-  color: 'var(--accent)',
+  color: 'var(--accent-strong)',
   fontWeight: 900,
   marginBottom: '6px'
 }
@@ -1217,9 +1217,9 @@ const guardTextStyle = {
 const guardPillStyle = {
   padding: '7px 10px',
   borderRadius: '999px',
-  background: 'var(--success-soft)',
+  background: 'color-mix(in srgb, var(--success) 12%, transparent)',
   border: '1px solid color-mix(in srgb, var(--success) 30%, transparent)',
-  color: '#bbf7d0',
+  color: 'var(--success)',
   fontSize: '12px',
   fontWeight: 900,
   whiteSpace: 'nowrap'
@@ -1342,8 +1342,8 @@ const inputStyle = {
   width: '100%',
   padding: '11px 12px',
   borderRadius: '10px',
-  border: '1px solid var(--border-input)',
-  background: 'var(--bg-input)',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
   color: 'var(--text-main)',
   outline: 'none'
 }
@@ -1353,8 +1353,8 @@ const buttonStyle = {
   padding: '13px',
   border: 'none',
   borderRadius: '10px',
-  background: 'var(--button-bg)',
-  color: 'var(--button-text)',
+  background: 'var(--accent-strong)',
+  color: 'white',
   cursor: 'pointer',
   fontWeight: 800
 }
@@ -1363,8 +1363,8 @@ const refreshButtonStyle = {
   padding: '11px 14px',
   border: 'none',
   borderRadius: '10px',
-  background: 'var(--button-bg)',
-  color: 'var(--button-text)',
+  background: 'var(--accent-strong)',
+  color: 'white',
   cursor: 'pointer',
   fontWeight: 800
 }
@@ -1374,7 +1374,7 @@ const secondaryButtonStyle = {
   border: 'none',
   borderRadius: '10px',
   background: 'var(--bg-card-soft)',
-  color: 'var(--button-text)',
+  color: 'var(--text-main)',
   cursor: 'pointer',
   fontWeight: 700
 }
@@ -1413,7 +1413,7 @@ const cashPreviewStyle = {
   padding: '12px',
   borderRadius: '14px',
   background: 'var(--bg-card-soft)',
-  border: '1px solid var(--border-accent)'
+  border: '1px solid color-mix(in srgb, var(--accent-strong) 28%, var(--border-main))'
 }
 
 const cashPreviewAmountStyle = {
@@ -1437,9 +1437,9 @@ const filterGridStyle = {
 const summaryPillStyle = {
   padding: '10px 12px',
   borderRadius: '999px',
-  background: 'var(--info-soft)',
-  border: '1px solid var(--border-accent)',
-  color: 'var(--accent)',
+  background: 'color-mix(in srgb, var(--accent-strong) 12%, transparent)',
+  border: '1px solid color-mix(in srgb, var(--accent-strong) 28%, transparent)',
+  color: 'var(--accent-strong)',
   fontWeight: 800,
   whiteSpace: 'nowrap'
 }
@@ -1484,14 +1484,14 @@ const cashSyncedBadgeStyle = {
   borderRadius: '999px',
   fontSize: '12px',
   fontWeight: 900,
-  background: 'var(--info-soft)',
-  color: 'var(--accent)',
-  border: '1px solid var(--border-accent)'
+  background: 'color-mix(in srgb, var(--accent-strong) 12%, transparent)',
+  color: 'var(--accent-strong)',
+  border: '1px solid color-mix(in srgb, var(--accent-strong) 28%, transparent)'
 }
 
 const fundingLineStyle = {
   marginTop: '7px',
-  color: 'var(--accent)',
+  color: 'var(--accent-strong)',
   fontSize: '13px',
   lineHeight: 1.35
 }
@@ -1528,8 +1528,8 @@ const editButtonStyle = {
   padding: '8px 12px',
   border: 'none',
   borderRadius: '10px',
-  background: 'var(--button-bg)',
-  color: 'var(--button-text)',
+  background: 'var(--accent-strong)',
+  color: 'white',
   cursor: 'pointer',
   fontWeight: 700
 }
@@ -1539,7 +1539,7 @@ const deleteButtonStyle = {
   border: 'none',
   borderRadius: '10px',
   background: 'var(--danger)',
-  color: 'var(--button-text)',
+  color: 'white',
   cursor: 'pointer',
   fontWeight: 700
 }

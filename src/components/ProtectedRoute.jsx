@@ -38,7 +38,7 @@ export default function ProtectedRoute({ children }) {
   }, [])
 
   if (loading) {
-    return <div style={{ color: 'white', padding: '24px' }}>Loading...</div>
+    return <div style={{ color: 'var(--text-main)', padding: '24px' }}>Loading...</div>
   }
 
   if (!session) {

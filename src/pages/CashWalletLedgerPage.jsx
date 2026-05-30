@@ -1021,7 +1021,7 @@ export default function CashWalletLedgerPage() {
 
 function StatCard({ label, value, sub, tone }) {
   const color =
-    tone === 'good' ? 'var(--success)' : tone === 'bad' ? 'var(--danger)' : tone === 'warn' ? 'var(--warning-text)' : 'var(--text-main)'
+    tone === 'good' ? 'var(--success)' : tone === 'bad' ? 'var(--danger)' : tone === 'warn' ? 'var(--warning)' : 'var(--text-main)'
 
   return (
     <div style={statCardStyle}>
@@ -1100,7 +1100,7 @@ const selectStyle = {
   minHeight: '42px',
   borderRadius: '12px',
   border: '1px solid var(--border-main)',
-  background: 'var(--bg-input)',
+  background: 'var(--bg-card-soft)',
   color: 'var(--text-main)',
   padding: '10px 12px',
   outline: 'none'
@@ -1113,18 +1113,18 @@ const monthInputStyle = {
 
 const refreshButtonStyle = {
   minHeight: '42px',
-  border: '1px solid var(--button-primary-border)',
-  background: 'var(--button-primary-bg)',
-  color: 'var(--button-text)',
+  border: '1px solid var(--accent-strong)',
+  background: 'var(--accent-strong)',
+  color: 'white',
   borderRadius: '12px',
   padding: '10px 14px',
   fontWeight: 850
 }
 
 const messageStyle = {
-  border: '1px solid var(--info-border)',
-  background: 'var(--info-bg)',
-  color: 'var(--info-text)',
+  border: '1px solid color-mix(in srgb, var(--accent-strong) 28%, transparent)',
+  background: 'color-mix(in srgb, var(--accent-strong) 10%, transparent)',
+  color: 'var(--text-main)',
   borderRadius: '16px',
   padding: '13px 15px',
   marginBottom: '18px',
@@ -1132,9 +1132,9 @@ const messageStyle = {
 }
 
 const warningStyle = {
-  border: '1px solid var(--warning-border)',
-  background: 'var(--warning-bg)',
-  color: 'var(--warning-text)',
+  border: '1px solid color-mix(in srgb, var(--warning) 34%, transparent)',
+  background: 'color-mix(in srgb, var(--warning) 12%, transparent)',
+  color: 'var(--warning)',
   borderRadius: '16px',
   padding: '13px 15px',
   marginBottom: '18px',
@@ -1142,9 +1142,9 @@ const warningStyle = {
 }
 
 const lockedNoticeStyle = {
-  border: '1px solid var(--success-border)',
-  background: 'var(--success-bg)',
-  color: 'var(--success-text)',
+  border: '1px solid color-mix(in srgb, var(--success) 34%, transparent)',
+  background: 'color-mix(in srgb, var(--success) 12%, transparent)',
+  color: 'var(--success)',
   borderRadius: '16px',
   padding: '13px 15px',
   marginBottom: '18px',
@@ -1152,18 +1152,18 @@ const lockedNoticeStyle = {
 }
 
 const successNoticeStyle = {
-  border: '1px solid var(--success-border)',
-  background: 'var(--success-bg)',
-  color: 'var(--success-text)',
+  border: '1px solid color-mix(in srgb, var(--success) 34%, transparent)',
+  background: 'color-mix(in srgb, var(--success) 12%, transparent)',
+  color: 'var(--success)',
   borderRadius: '14px',
   padding: '12px 13px',
   lineHeight: 1.55
 }
 
 const warningMiniStyle = {
-  border: '1px solid var(--warning-border)',
-  background: 'var(--warning-bg)',
-  color: 'var(--warning-text)',
+  border: '1px solid color-mix(in srgb, var(--warning) 34%, transparent)',
+  background: 'color-mix(in srgb, var(--warning) 12%, transparent)',
+  color: 'var(--warning)',
   borderRadius: '14px',
   padding: '11px 12px',
   fontSize: '12px',
@@ -1266,7 +1266,7 @@ const inputStyle = {
   minHeight: '42px',
   borderRadius: '12px',
   border: '1px solid var(--border-main)',
-  background: 'var(--bg-input)',
+  background: 'var(--bg-card-soft)',
   color: 'var(--text-main)',
   padding: '10px 12px',
   outline: 'none'
@@ -1289,8 +1289,8 @@ const formulaBoxStyle = {
   justifyContent: 'space-between',
   gap: '14px',
   alignItems: 'center',
-  border: '1px solid var(--info-border)',
-  background: 'var(--info-bg)',
+  border: '1px solid color-mix(in srgb, var(--accent-strong) 28%, transparent)',
+  background: 'color-mix(in srgb, var(--accent-strong) 10%, transparent)',
   borderRadius: '16px',
   padding: '14px',
   margin: '16px 0',
@@ -1298,8 +1298,8 @@ const formulaBoxStyle = {
 }
 
 const adjustmentBoxStyle = {
-  border: '1px solid var(--warning-border)',
-  background: 'var(--warning-bg)',
+  border: '1px solid color-mix(in srgb, var(--warning) 34%, transparent)',
+  background: 'color-mix(in srgb, var(--warning) 12%, transparent)',
   borderRadius: '18px',
   padding: '15px',
   margin: '16px 0',
@@ -1331,37 +1331,37 @@ const baseButtonStyle = {
   borderRadius: '12px',
   padding: '10px 14px',
   fontWeight: 850,
-  color: 'var(--button-text)'
+  color: 'white'
 }
 
 const primaryButtonStyle = {
   ...baseButtonStyle,
-  border: '1px solid var(--button-primary-border)',
-  background: 'var(--button-primary-bg)'
+  border: '1px solid var(--accent-strong)',
+  background: 'var(--accent-strong)'
 }
 
 const successButtonStyle = {
   ...baseButtonStyle,
-  border: '1px solid var(--success-border)',
-  background: 'var(--button-success-bg)'
+  border: '1px solid var(--success)',
+  background: 'var(--success)'
 }
 
 const warnButtonStyle = {
   ...baseButtonStyle,
-  border: '1px solid var(--warning-border)',
-  background: 'var(--button-warning-bg)'
+  border: '1px solid var(--warning)',
+  background: 'var(--warning)'
 }
 
 const dangerButtonStyle = {
   ...baseButtonStyle,
-  border: '1px solid var(--danger-border)',
-  background: 'var(--button-danger-bg)'
+  border: '1px solid var(--danger)',
+  background: 'var(--danger)'
 }
 
 const disabledButtonStyle = {
   ...baseButtonStyle,
   border: '1px solid var(--border-main)',
-  background: 'var(--bg-disabled)',
+  background: 'var(--bg-card-soft)',
   color: 'var(--text-muted)',
   cursor: 'not-allowed'
 }
@@ -1457,23 +1457,23 @@ const badgeBaseStyle = {
 
 const goodBadgeStyle = {
   ...badgeBaseStyle,
-  color: 'var(--success-text)',
-  background: 'var(--success-bg)',
-  border: '1px solid var(--success-border)'
+  color: 'var(--success)',
+  background: 'color-mix(in srgb, var(--success) 12%, transparent)',
+  border: '1px solid color-mix(in srgb, var(--success) 34%, transparent)'
 }
 
 const badBadgeStyle = {
   ...badgeBaseStyle,
-  color: 'var(--danger-text)',
-  background: 'var(--danger-bg)',
-  border: '1px solid var(--danger-border)'
+  color: 'var(--danger)',
+  background: 'color-mix(in srgb, var(--danger) 12%, transparent)',
+  border: '1px solid color-mix(in srgb, var(--danger) 34%, transparent)'
 }
 
 const warnBadgeStyle = {
   ...badgeBaseStyle,
-  color: 'var(--warning-text)',
-  background: 'var(--warning-bg)',
-  border: '1px solid var(--warning-border)'
+  color: 'var(--warning)',
+  background: 'color-mix(in srgb, var(--warning) 12%, transparent)',
+  border: '1px solid color-mix(in srgb, var(--warning) 34%, transparent)'
 }
 
 const neutralBadgeStyle = {

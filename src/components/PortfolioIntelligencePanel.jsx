@@ -299,10 +299,10 @@ const allocationValueStyle = {
 
 const barTrackStyle = {
   height: '10px',
-  background: 'var(--bg-input)',
+  background: 'var(--bg-card-soft)',
   borderRadius: '999px',
   overflow: 'hidden',
-  border: '1px solid var(--border-faint)'
+  border: '1px solid var(--border-main)'
 }
 
 const barFillStyle = {

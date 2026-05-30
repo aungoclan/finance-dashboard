@@ -138,8 +138,8 @@ export default function LoginPage() {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        background: '#111827',
-        color: 'white',
+        background: 'var(--bg-main)',
+        color: 'var(--text-main)',
         padding: '24px'
       }}
     >
@@ -147,17 +147,18 @@ export default function LoginPage() {
         style={{
           width: '100%',
           maxWidth: '400px',
-          background: '#1f2937',
+          background: 'var(--bg-card)',
           padding: '28px',
           borderRadius: '16px',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.25)'
+          border: '1px solid var(--border-main)',
+          boxShadow: 'var(--shadow-card)'
         }}
       >
         <h1 style={{ marginTop: 0, marginBottom: '8px' }}>
           {mode === 'login' ? 'Login' : 'Sign Up'}
         </h1>
 
-        <p style={{ marginTop: 0, marginBottom: '20px', color: '#d1d5db' }}>
+        <p style={{ marginTop: 0, marginBottom: '20px', color: 'var(--text-muted)' }}>
           {mode === 'login'
             ? 'Sign in to access your financial dashboard.'
             : 'Create your account to get started.'}
@@ -210,8 +211,9 @@ export default function LoginPage() {
               padding: '12px',
               border: 'none',
               borderRadius: '10px',
-              background: loading ? '#6b7280' : '#2563eb',
+              background: loading ? 'var(--bg-card-soft)' : 'var(--accent-strong)',
               color: 'white',
+              border: loading ? '1px solid var(--border-main)' : 'none',
               cursor: loading ? 'not-allowed' : 'pointer',
               fontSize: '15px',
               fontWeight: 600,
@@ -232,9 +234,9 @@ export default function LoginPage() {
               marginTop: '16px',
               padding: '12px',
               borderRadius: '10px',
-              background: '#111827',
-              color: '#e5e7eb',
-              border: '1px solid #374151',
+              background: 'var(--bg-card-soft)',
+              color: 'var(--text-main)',
+              border: '1px solid var(--border-main)',
               fontSize: '14px'
             }}
           >
@@ -244,7 +246,7 @@ export default function LoginPage() {
 
         <div style={{ marginTop: '18px', textAlign: 'center' }}>
           {mode === 'login' ? (
-            <p style={{ margin: 0, color: '#d1d5db' }}>
+            <p style={{ margin: 0, color: 'var(--text-muted)' }}>
               Don&apos;t have an account?{' '}
               <button
                 type="button"
@@ -260,7 +262,7 @@ export default function LoginPage() {
               </button>
             </p>
           ) : (
-            <p style={{ margin: 0, color: '#d1d5db' }}>
+            <p style={{ margin: 0, color: 'var(--text-muted)' }}>
               Already have an account?{' '}
               <button
                 type="button"
@@ -286,23 +288,23 @@ const labelStyle = {
   display: 'block',
   marginBottom: '8px',
   fontSize: '14px',
-  color: '#e5e7eb'
+  color: 'var(--text-main)'
 }
 
 const inputStyle = {
   width: '100%',
   padding: '12px',
   borderRadius: '10px',
-  border: '1px solid #4b5563',
-  background: '#111827',
-  color: 'white',
+  border: '1px solid var(--border-main)',
+  background: 'var(--bg-card-soft)',
+  color: 'var(--text-main)',
   outline: 'none'
 }
 
 const switchButtonStyle = {
   background: 'transparent',
   border: 'none',
-  color: '#60a5fa',
+  color: 'var(--accent-strong)',
   cursor: 'pointer',
   padding: 0,
   fontSize: '14px',

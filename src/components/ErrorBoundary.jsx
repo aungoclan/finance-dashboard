@@ -127,23 +127,23 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: '32px',
-    color: '#f8fafc'
+    color: 'var(--text-main)'
   },
   card: {
     width: '100%',
     maxWidth: '760px',
-    background: '#111827',
-    border: '1px solid rgba(148, 163, 184, 0.28)',
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border-main)',
     borderRadius: '22px',
-    boxShadow: '0 24px 70px rgba(0, 0, 0, 0.35)',
+    boxShadow: 'var(--shadow-card)',
     padding: '28px'
   },
   kicker: {
     display: 'inline-flex',
     padding: '6px 10px',
     borderRadius: '999px',
-    background: 'rgba(56, 189, 248, 0.12)',
-    color: '#7dd3fc',
+    background: 'color-mix(in srgb, var(--accent-strong) 12%, transparent)',
+    color: 'var(--accent-strong)',
     fontSize: '12px',
     fontWeight: 900,
     letterSpacing: '0.08em',
@@ -158,23 +158,23 @@ const styles = {
   },
   description: {
     margin: '0 0 18px',
-    color: '#cbd5e1',
+    color: 'var(--text-muted)',
     lineHeight: 1.65
   },
   alertBox: {
     padding: '14px',
     borderRadius: '16px',
-    background: 'rgba(239, 68, 68, 0.10)',
-    border: '1px solid rgba(248, 113, 113, 0.25)',
+    background: 'color-mix(in srgb, var(--danger) 10%, transparent)',
+    border: '1px solid color-mix(in srgb, var(--danger) 28%, transparent)',
     marginBottom: '14px'
   },
   alertTitle: {
-    color: '#fecaca',
+    color: 'var(--danger)',
     fontWeight: 850,
     marginBottom: '6px'
   },
   errorText: {
-    color: '#fca5a5',
+    color: 'var(--danger)',
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
     fontSize: '13px',
     lineHeight: 1.5,
@@ -184,19 +184,19 @@ const styles = {
     marginTop: '12px',
     marginBottom: '16px',
     borderRadius: '14px',
-    background: '#0f172a',
-    border: '1px solid rgba(148, 163, 184, 0.22)',
+    background: 'var(--bg-card-soft)',
+    border: '1px solid var(--border-main)',
     padding: '12px'
   },
   summary: {
     cursor: 'pointer',
-    color: '#e2e8f0',
+    color: 'var(--text-main)',
     fontWeight: 800
   },
   pre: {
     margin: '12px 0 0',
     whiteSpace: 'pre-wrap',
-    color: '#cbd5e1',
+    color: 'var(--text-muted)',
     fontSize: '12px',
     lineHeight: 1.45
   },
@@ -210,32 +210,32 @@ const styles = {
     border: 'none',
     borderRadius: '12px',
     padding: '11px 14px',
-    background: '#2563eb',
+    background: 'var(--accent-strong)',
     color: 'white',
     cursor: 'pointer',
     fontWeight: 850
   },
   secondaryButton: {
-    border: 'none',
+    border: '1px solid var(--border-main)',
     borderRadius: '12px',
     padding: '11px 14px',
-    background: '#374151',
-    color: 'white',
+    background: 'var(--bg-card-soft)',
+    color: 'var(--text-main)',
     cursor: 'pointer',
     fontWeight: 850
   },
   ghostButton: {
-    border: '1px solid rgba(148, 163, 184, 0.35)',
+    border: '1px solid var(--border-main)',
     borderRadius: '12px',
     padding: '11px 14px',
     background: 'transparent',
-    color: '#e5e7eb',
+    color: 'var(--text-main)',
     cursor: 'pointer',
     fontWeight: 850
   },
   note: {
     marginTop: '16px',
-    color: '#94a3b8',
+    color: 'var(--text-muted)',
     fontSize: '12px',
     lineHeight: 1.5
   }

@@ -689,15 +689,15 @@ const refreshButtonStyle = {
   border: 'none',
   borderRadius: '10px',
   background: 'var(--success)',
-  color: 'var(--text-main)'
+  color: 'white'
 }
 
 const secondaryButtonStyle = {
   padding: '10px 14px',
   border: 'none',
   borderRadius: '10px',
-  background: 'var(--accent)',
-  color: 'var(--text-main)',
+  background: 'var(--accent-strong)',
+  color: 'white',
   cursor: 'pointer'
 }
 
@@ -783,7 +783,7 @@ const inputStyle = {
   padding: '10px 12px',
   borderRadius: '8px',
   border: '1px solid var(--border-main)',
-  background: 'var(--bg-input)',
+  background: 'var(--bg-card-soft)',
   color: 'var(--text-main)',
   boxSizing: 'border-box'
 }
@@ -793,8 +793,8 @@ const primaryButtonStyle = {
   padding: '12px',
   border: 'none',
   borderRadius: '8px',
-  background: 'var(--accent)',
-  color: 'var(--text-main)'
+  background: 'var(--accent-strong)',
+  color: 'white'
 }
 
 const unlockButtonStyle = {
@@ -804,7 +804,7 @@ const unlockButtonStyle = {
   border: 'none',
   borderRadius: '8px',
   background: 'var(--warning)',
-  color: 'var(--warning-contrast, #111827)',
+  color: '#111827',
   fontWeight: 800
 }
 
@@ -812,7 +812,7 @@ const lockBoxStyle = {
   marginBottom: '16px',
   padding: '12px',
   borderRadius: '10px',
-  background: 'var(--bg-input)',
+  background: 'var(--bg-card-soft)',
   border: '1px solid var(--border-main)'
 }
 
@@ -913,7 +913,7 @@ const thStyle = {
 
 const tdStyle = {
   padding: '12px',
-  borderBottom: '1px solid #374151',
+  borderBottom: '1px solid var(--border-main)',
   color: 'var(--text-main)',
   fontSize: '14px',
   whiteSpace: 'nowrap'

@@ -1631,7 +1631,7 @@ const monthInputStyle = {
   padding: '11px 12px',
   borderRadius: '10px',
   border: '1px solid var(--border-soft, #4b5563)',
-  background: 'var(--bg-input, var(--bg-card, #111827))',
+  background: 'var(--bg-card-soft)',
   color: 'var(--text-main, #f9fafb)',
   WebkitTextFillColor: 'var(--text-main, #f9fafb)',
   opacity: 1,
@@ -1643,7 +1643,7 @@ const refreshButtonStyle = {
   border: 'none',
   borderRadius: '10px',
   background: 'var(--accent-strong)',
-  color: 'var(--button-text, white)',
+  color: 'white',
   cursor: 'pointer',
   fontWeight: 800,
   whiteSpace: 'nowrap'
@@ -1654,7 +1654,7 @@ const greenButtonStyle = {
   border: 'none',
   borderRadius: '10px',
   background: 'var(--success, #22c55e)',
-  color: 'var(--button-text, white)',
+  color: 'white',
   cursor: 'pointer',
   fontWeight: 800,
   whiteSpace: 'nowrap'
@@ -1833,7 +1833,7 @@ const inputStyle = {
   padding: '11px 12px',
   borderRadius: '10px',
   border: '1px solid var(--border-soft, #4b5563)',
-  background: 'var(--bg-input, var(--bg-card, #111827))',
+  background: 'var(--bg-card-soft)',
   color: 'var(--text-main, #f9fafb)',
   WebkitTextFillColor: 'var(--text-main, #f9fafb)',
   outline: 'none',
@@ -1852,17 +1852,17 @@ const buttonStyle = {
   border: 'none',
   borderRadius: '10px',
   background: 'var(--accent-strong)',
-  color: 'var(--button-text, white)',
+  color: 'white',
   cursor: 'pointer',
   fontWeight: 800
 }
 
 const secondaryButtonStyle = {
   padding: '9px 12px',
-  border: 'none',
+  border: '1px solid var(--border-main)',
   borderRadius: '10px',
   background: 'var(--bg-card-soft, #0f172a)',
-  color: 'var(--button-text, white)',
+  color: 'var(--text-main)',
   cursor: 'pointer',
   fontWeight: 750,
   whiteSpace: 'nowrap'
@@ -2021,7 +2021,7 @@ const miniSelectStyle = {
   padding: '9px 10px',
   borderRadius: '10px',
   border: '1px solid var(--border-soft, #4b5563)',
-  background: 'var(--bg-input, var(--bg-card-soft, #0f172a))',
+  background: 'var(--bg-card-soft)',
   color: 'var(--text-main, #f9fafb)',
   WebkitTextFillColor: 'var(--text-main, #f9fafb)',
   outline: 'none',
@@ -2039,7 +2039,7 @@ const addCashflowButtonStyle = {
   border: 'none',
   borderRadius: '10px',
   background: 'var(--success, #22c55e)',
-  color: 'var(--button-text, white)',
+  color: 'white',
   cursor: 'pointer',
   fontWeight: 800,
   whiteSpace: 'nowrap'
@@ -2066,7 +2066,7 @@ const editButtonStyle = {
   border: 'none',
   borderRadius: '10px',
   background: 'var(--accent-strong)',
-  color: 'var(--button-text, white)',
+  color: 'white',
   cursor: 'pointer',
   fontWeight: 750
 }
@@ -2076,7 +2076,7 @@ const deleteButtonStyle = {
   border: 'none',
   borderRadius: '10px',
   background: 'var(--danger, #ef4444)',
-  color: 'var(--button-text, white)',
+  color: 'white',
   cursor: 'pointer',
   fontWeight: 750
 }
