@@ -24,6 +24,7 @@ import {
   formatMoney as formatNetWorthMoney
 } from '../lib/networth'
 import { getCategoryDisplayName, normalizeCategoryName } from '../lib/cashflowCategories'
+import { buildMoneyPlanSummary } from '../lib/moneyPlanCalculations'
 import {
   buildPortfolioAllocationData,
   buildCashflowChartData,
@@ -35,7 +36,6 @@ import PortfolioPieChart from '../components/charts/PortfolioPieChart'
 import CashflowBarChart from '../components/charts/CashflowBarChart'
 import BudgetChart from '../components/charts/BudgetChart'
 
-const CASH_ACCOUNT_TYPES = ['cash', 'checking', 'savings', 'business']
 const STANDARD_ACCOUNT_TYPES = [
   'cash',
   'checking',
@@ -81,10 +81,6 @@ function getTodayKey() {
   return new Date().toISOString().slice(0, 10)
 }
 
-function getCurrentMonthKey() {
-  return getTodayKey().slice(0, 7)
-}
-
 function parseMonthKey(monthKey) {
   const [yearText, monthText] = String(monthKey || '').split('-')
   const year = Number(yearText)
@@ -105,162 +101,6 @@ function addMonthsToMonthKey(monthKey, offset) {
   const { year, month } = parseMonthKey(monthKey)
   const date = new Date(year, month - 1 + offset, 1)
   return formatMonthKey(date.getFullYear(), date.getMonth() + 1)
-}
-
-function getMonthDateRangeFromKey(monthKey) {
-  const { year, month } = parseMonthKey(monthKey)
-  const next = new Date(year, month, 1)
-
-  return {
-    startDate: `${year}-${pad2(month)}-01`,
-    endDate: `${next.getFullYear()}-${pad2(next.getMonth() + 1)}-01`
-  }
-}
-
-function getSafeDueDate(monthKey, dueDay) {
-  const { year, month } = parseMonthKey(monthKey)
-  const requestedDay = Number(dueDay || 1)
-  const safeRequestedDay = Math.min(
-    Math.max(Number.isFinite(requestedDay) ? requestedDay : 1, 1),
-    31
-  )
-  const lastDay = new Date(year, month, 0).getDate()
-  const safeDay = Math.min(safeRequestedDay, lastDay)
-
-  return `${year}-${pad2(month)}-${pad2(safeDay)}`
-}
-
-function getDateFromMonthDayAfterDate(baseDate, dueDay) {
-  const n = Number(dueDay)
-  if (!baseDate || !Number.isFinite(n) || n < 1 || n > 31) return ''
-
-  const base = new Date(`${baseDate}T00:00:00`)
-  if (Number.isNaN(base.getTime())) return ''
-
-  let candidateMonthKey = formatMonthKey(base.getFullYear(), base.getMonth() + 1)
-  let candidate = getSafeDueDate(candidateMonthKey, n)
-
-  if (new Date(`${candidate}T00:00:00`).getTime() <= base.getTime()) {
-    candidateMonthKey = addMonthsToMonthKey(candidateMonthKey, 1)
-    candidate = getSafeDueDate(candidateMonthKey, n)
-  }
-
-  return candidate
-}
-
-function getLiabilityStatementDate(liability, statementMonthKey) {
-  if (!liability?.statement_day) return ''
-  return getSafeDueDate(statementMonthKey, liability.statement_day)
-}
-
-function getLiabilityDueDateForStatementMonth(liability, statementMonthKey) {
-  const statementDate = getLiabilityStatementDate(liability, statementMonthKey)
-  if (!statementDate) return getSafeDueDate(statementMonthKey, liability?.due_day)
-  return getDateFromMonthDayAfterDate(statementDate, liability?.due_day)
-}
-
-function dateKeyToDate(value) {
-  const date = new Date(`${value}T00:00:00`)
-  return Number.isNaN(date.getTime()) ? null : date
-}
-
-function formatDateForInput(date) {
-  return date.toISOString().slice(0, 10)
-}
-
-function formatShortDate(date) {
-  return date.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric'
-  })
-}
-
-function getBillDescription(bill) {
-  const name = String(bill?.name || '').trim()
-  return name ? `Bill: ${name}` : 'Bill'
-}
-
-function getLinkedLiabilityIdFromBill(bill) {
-  const note = String(bill?.note || '')
-  const match = note.match(/linked_liability_id:([0-9a-fA-F-]{20,})/)
-  return match?.[1] || null
-}
-
-function getLinkedLiabilityForBill(bill, liabilities = []) {
-  const linkedId = getLinkedLiabilityIdFromBill(bill)
-  if (!linkedId) return null
-
-  return liabilities.find((item) => item.id === linkedId) || null
-}
-
-function getLinkedLiabilityPaymentDescription(liability) {
-  const name = String(liability?.name || '').trim()
-  return name ? `Debt Payment: ${name}` : 'Debt Payment:'
-}
-
-function getDashboardBillSchedule({ bill, liabilities = [], targetMonthKey }) {
-  const linkedLiability = getLinkedLiabilityForBill(bill, liabilities)
-  const isDebtLinkedBill = Boolean(linkedLiability)
-  const statementDateKey = isDebtLinkedBill
-    ? getLiabilityStatementDate(linkedLiability, targetMonthKey)
-    : ''
-  const dueDateKey = isDebtLinkedBill
-    ? getLiabilityDueDateForStatementMonth(linkedLiability, targetMonthKey)
-    : getSafeDueDate(targetMonthKey, bill.due_day)
-
-  return {
-    linkedLiability,
-    isDebtLinkedBill,
-    statementDateKey,
-    dueDateKey,
-    dueDate: dateKeyToDate(dueDateKey) || new Date(`${getTodayKey()}T00:00:00`)
-  }
-}
-
-function isDateInRangeInclusive(value, start, end) {
-  if (!value || !start || !end) return false
-  return value >= start && value <= end
-}
-
-function isDebtPaymentPostedForBill({ bill, liabilities = [], allCashflowEntries = [], targetMonthKey }) {
-  const schedule = getDashboardBillSchedule({ bill, liabilities, targetMonthKey })
-  if (!schedule.isDebtLinkedBill || !schedule.linkedLiability) return false
-
-  const paymentDescription = normalize(getLinkedLiabilityPaymentDescription(schedule.linkedLiability))
-  const monthRange = getMonthDateRangeFromKey(targetMonthKey)
-  const windowStart = schedule.statementDateKey || monthRange.startDate
-  const windowEnd = schedule.dueDateKey || getMonthDateRangeFromKey(addMonthsToMonthKey(targetMonthKey, 1)).startDate
-
-  return allCashflowEntries.some((entry) => {
-    const isDebtPayment =
-      normalize(entry.type) === 'expense' &&
-      toNumber(entry.amount) > 0 &&
-      normalize(entry.description).includes(paymentDescription)
-
-    if (!isDebtPayment) return false
-    return isDateInRangeInclusive(entry.entry_date, windowStart, windowEnd)
-  })
-}
-
-function isBillAddedToCashflow({ cashflowEntries, allCashflowEntries, bill, liabilities, targetMonthKey }) {
-  const schedule = getDashboardBillSchedule({ bill, liabilities, targetMonthKey })
-
-  if (schedule.isDebtLinkedBill) {
-    return isDebtPaymentPostedForBill({ bill, liabilities, allCashflowEntries, targetMonthKey })
-  }
-
-  const dueDateKey = schedule.dueDateKey
-  const description = normalize(getBillDescription(bill))
-  const amount = toNumber(bill.amount)
-
-  return cashflowEntries.some((entry) => {
-    const sameDate = entry.entry_date === dueDateKey
-    const sameType = normalize(entry.type) === 'expense'
-    const sameAmount = Math.abs(toNumber(entry.amount) - amount) < 0.005
-    const sameDescription = normalize(entry.description) === description
-
-    return sameDate && sameType && sameAmount && sameDescription
-  })
 }
 
 function isBillLikeCategory(category) {
@@ -326,217 +166,6 @@ function buildCategoryCoverage({ budgets = [], cashflowEntries = [] }) {
       .filter((key) => !expenseKeys.has(key))
       .map((key) => budgetNames.get(key))
       .filter(Boolean)
-  }
-}
-
-function getMonthsUntil(dateString) {
-  if (!dateString) return null
-
-  const today = new Date(`${getTodayKey()}T00:00:00`)
-  const target = new Date(`${dateString}T00:00:00`)
-
-  if (Number.isNaN(target.getTime())) return null
-
-  const days = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-  if (days <= 0) return 1
-
-  return Math.max(days / 30.4375, 1)
-}
-
-function getGoalMonthlyNeed(goal) {
-  const target = toNumber(goal.target_amount)
-  const current = toNumber(goal.current_amount)
-  const remaining = Math.max(target - current, 0)
-  const months = getMonthsUntil(goal.target_date)
-
-  if (!remaining || !months) return 0
-  return remaining / months
-}
-
-function isDebtPaymentEntry(entry) {
-  const text = normalize(
-    `${entry.category || ''} ${entry.description || ''} ${getCategoryDisplayName(entry)}`
-  )
-
-  return (
-    text.includes('debt payment') ||
-    text.includes('loan') ||
-    text.includes('credit card') ||
-    text.includes('minimum payment') ||
-    text.includes('car payment')
-  )
-}
-
-function isDebtLikeBill(bill) {
-  const text = normalize(`${bill.name || ''} ${bill.category || ''} ${getCategoryDisplayName(bill)}`)
-
-  return (
-    text.includes('debt') ||
-    text.includes('loan') ||
-    text.includes('credit card') ||
-    text.includes('minimum') ||
-    text.includes('car payment')
-  )
-}
-
-function getAccountCashNet(accounts, allCashflowEntries) {
-  const cashAccountIds = new Set(
-    accounts
-      .filter((account) => !isArchivedAccount(account))
-      .filter((account) => CASH_ACCOUNT_TYPES.includes(account.account_type))
-      .map((account) => account.id)
-  )
-
-  let income = 0
-  let expense = 0
-
-  for (const entry of allCashflowEntries) {
-    if (!cashAccountIds.has(entry.account_id)) continue
-
-    if (entry.type === 'income') income += toNumber(entry.amount)
-    if (entry.type === 'expense') expense += toNumber(entry.amount)
-  }
-
-  return income - expense
-}
-
-function getAccountCashNetForAccount(accountId, allCashflowEntries) {
-  let income = 0
-  let expense = 0
-
-  for (const entry of allCashflowEntries || []) {
-    if (entry.account_id !== accountId) continue
-
-    if (entry.type === 'income') income += toNumber(entry.amount)
-    if (entry.type === 'expense') expense += toNumber(entry.amount)
-  }
-
-  return income - expense
-}
-
-function getLedgerFinalBalance(ledger) {
-  if (!ledger) return 0
-
-  const actual = ledger.actual_cash_count
-  const expected = ledger.expected_closing_balance
-
-  return actual === null || actual === undefined ? toNumber(expected) : toNumber(actual)
-}
-
-function getCashflowNetForAccountInMonth(accountId, allCashflowEntries, monthKey) {
-  const { startDate, endDate } = getMonthDateRangeFromKey(monthKey)
-  let income = 0
-  let expense = 0
-
-  for (const entry of allCashflowEntries || []) {
-    if (entry.account_id !== accountId) continue
-
-    const entryDate = String(entry.entry_date || '')
-    if (entryDate < startDate || entryDate >= endDate) continue
-
-    if (entry.type === 'income') income += toNumber(entry.amount)
-    if (entry.type === 'expense') expense += toNumber(entry.amount)
-  }
-
-  return income - expense
-}
-
-function getCashBalanceInfo({ accounts = [], allCashflowEntries = [], cashWalletLedgers = [], targetMonthKey }) {
-  const activeCashAccounts = accounts
-    .filter((account) => !isArchivedAccount(account))
-    .filter((account) => CASH_ACCOUNT_TYPES.includes(account.account_type))
-
-  const currentLedgerByCashAccount = new Map()
-  const previousLedgerByCashAccount = new Map()
-  const previousMonthKey = addMonthsToMonthKey(targetMonthKey, -1)
-
-  for (const ledger of cashWalletLedgers || []) {
-    if (!ledger.cash_account_id) continue
-
-    if (ledger.month_key === targetMonthKey) {
-      currentLedgerByCashAccount.set(ledger.cash_account_id, ledger)
-    }
-
-    if (ledger.month_key === previousMonthKey) {
-      previousLedgerByCashAccount.set(ledger.cash_account_id, ledger)
-    }
-  }
-
-  let spendableBalance = 0
-  let reserveBalance = 0
-  let businessBalance = 0
-  let totalLiquidCash = 0
-  let ledgerFinalTotal = 0
-  let fallbackCashflowTotal = 0
-  let ledgerCount = 0
-  let carryoverCount = 0
-
-  for (const account of activeCashAccounts) {
-    const accountType = account.account_type
-    const fallbackNet = getAccountCashNetForAccount(account.id, allCashflowEntries)
-    let accountBalance = fallbackNet
-
-    if (accountType === 'cash') {
-      const currentLedger = currentLedgerByCashAccount.get(account.id)
-      const previousLedger = previousLedgerByCashAccount.get(account.id)
-
-      if (currentLedger) {
-        accountBalance = getLedgerFinalBalance(currentLedger)
-        ledgerFinalTotal += accountBalance
-        ledgerCount += 1
-      } else if (previousLedger) {
-        const previousFinal = getLedgerFinalBalance(previousLedger)
-        const currentMonthMovement = getCashflowNetForAccountInMonth(
-          account.id,
-          allCashflowEntries,
-          targetMonthKey
-        )
-
-        accountBalance = previousFinal + currentMonthMovement
-        ledgerFinalTotal += accountBalance
-        carryoverCount += 1
-      } else {
-        fallbackCashflowTotal += accountBalance
-      }
-    } else {
-      fallbackCashflowTotal += accountBalance
-    }
-
-    totalLiquidCash += accountBalance
-
-    if (accountType === 'cash' || accountType === 'checking') {
-      spendableBalance += accountBalance
-      continue
-    }
-
-    if (accountType === 'savings') {
-      reserveBalance += accountBalance
-      continue
-    }
-
-    if (accountType === 'business') {
-      businessBalance += accountBalance
-    }
-  }
-
-  const hasLedger = ledgerCount > 0 || carryoverCount > 0
-
-  return {
-    finalBalance: spendableBalance,
-    spendableBalance,
-    reserveBalance,
-    businessBalance,
-    totalLiquidCash,
-    ledgerFinalTotal,
-    fallbackCashflowTotal,
-    ledgerCount,
-    carryoverCount,
-    hasLedger,
-    sourceLabel: ledgerCount > 0
-      ? 'Spendable cash uses current Cash Wallet Ledger + checking cashflow. Savings is reserve, not default Safe-to-Spend.'
-      : carryoverCount > 0
-        ? 'Spendable cash uses previous Cash Wallet Ledger carryover + current month movement. Savings is reserve, not default Safe-to-Spend.'
-        : 'Spendable cash uses Cash Wallet/checking cashflow fallback. Savings is reserve, not default Safe-to-Spend.'
   }
 }
 
@@ -624,138 +253,6 @@ function calculateDashboardHealth({
   }
 }
 
-function calculateMoneyPlanSnapshot({
-  accounts,
-  cashflowEntries,
-  allCashflowEntries,
-  cashWalletLedgers = [],
-  budgets,
-  bills,
-  goals,
-  liabilities,
-  budgetRows,
-  targetMonthKey = getCurrentMonthKey()
-}) {
-  const income = cashflowEntries
-    .filter((entry) => entry.type === 'income')
-    .reduce((sum, entry) => sum + toNumber(entry.amount), 0)
-
-  const expense = cashflowEntries
-    .filter((entry) => entry.type === 'expense')
-    .reduce((sum, entry) => sum + toNumber(entry.amount), 0)
-
-  const postedNet = income - expense
-
-  const activeBills = bills.filter(
-    (bill) => normalize(bill.status || 'active') === 'active' && normalize(bill.frequency || 'monthly') === 'monthly'
-  )
-
-  const unpostedBills = activeBills
-    .map((bill) => {
-      const schedule = getDashboardBillSchedule({ bill, liabilities, targetMonthKey })
-      const alreadyPosted = isBillAddedToCashflow({
-        cashflowEntries,
-        allCashflowEntries,
-        bill,
-        liabilities,
-        targetMonthKey
-      })
-
-      return {
-        ...bill,
-        amountNumber: toNumber(bill.amount),
-        dueDate: schedule.dueDate,
-        dueDateKey: schedule.dueDateKey,
-        dueDateLabel: formatShortDate(schedule.dueDate),
-        statementDateKey: schedule.statementDateKey,
-        categoryLabel: getCategoryDisplayName(bill),
-        isDebtLinkedBill: schedule.isDebtLinkedBill,
-        linkedLiability: schedule.linkedLiability,
-        alreadyPosted,
-        isPastDue: schedule.dueDate < new Date(`${getTodayKey()}T00:00:00`)
-      }
-    })
-    .filter((bill) => !bill.alreadyPosted)
-    .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime())
-
-  const unpostedBillReserve = unpostedBills.reduce((sum, bill) => sum + toNumber(bill.amount), 0)
-
-  const debtMinimumTotal = liabilities.reduce((sum, item) => sum + toNumber(item.minimum_payment), 0)
-
-  const debtPosted = cashflowEntries
-    .filter(isDebtPaymentEntry)
-    .reduce((sum, entry) => sum + toNumber(entry.amount), 0)
-
-  const debtLikeUnpostedBillTotal = unpostedBills
-    .filter(isDebtLikeBill)
-    .reduce((sum, bill) => sum + toNumber(bill.amount), 0)
-
-  const debtMinimumRemaining = Math.max(debtMinimumTotal - debtPosted - debtLikeUnpostedBillTotal, 0)
-
-  const essentialReserve = unpostedBillReserve + debtMinimumRemaining
-  const cashBalanceInfo = getCashBalanceInfo({
-    accounts,
-    allCashflowEntries,
-    cashWalletLedgers,
-    targetMonthKey
-  })
-  const cashBufferCurrent = cashBalanceInfo.finalBalance
-  const safeToSpend = cashBufferCurrent - essentialReserve
-
-  const totalBudgetPlanned = budgetRows.reduce((sum, row) => sum + toNumber(row.planned), 0)
-  const totalBudgetActual = budgetRows.reduce((sum, row) => sum + toNumber(row.actual), 0)
-  const budgetRemaining = totalBudgetPlanned - totalBudgetActual
-
-  const activeGoals = goals.filter((goal) => normalize(goal.status || 'active') === 'active')
-  const goalMonthlyNeed = activeGoals.reduce((sum, goal) => sum + getGoalMonthlyNeed(goal), 0)
-
-  const cashBufferTarget = Math.max(unpostedBillReserve + debtMinimumTotal + expense, 1000)
-  const cashBufferPercent =
-    cashBufferTarget > 0 ? Math.max(0, Math.min(100, (cashBufferCurrent / cashBufferTarget) * 100)) : 0
-
-  let label = 'Needs Data'
-  let tone = 'yellow'
-
-  if (income > 0 && safeToSpend >= 0) {
-    label = 'Flexible'
-    tone = 'green'
-  }
-
-  if (income > 0 && safeToSpend < 0) {
-    label = 'Tight'
-    tone = 'yellow'
-  }
-
-  if (income > 0 && safeToSpend < -500) {
-    label = 'Defensive'
-    tone = 'red'
-  }
-
-  return {
-    label,
-    tone,
-    income,
-    expense,
-    postedNet,
-    safeToSpend,
-    essentialReserve,
-    unpostedBillReserve,
-    debtMinimumRemaining,
-    unpostedBills,
-    budgetRemaining,
-    goalMonthlyNeed,
-    cashBufferCurrent,
-    cashBufferSourceLabel: cashBalanceInfo.sourceLabel,
-    cashBufferHasLedger: cashBalanceInfo.hasLedger,
-    cashBufferLedgerCount: cashBalanceInfo.ledgerCount,
-    reserveCash: cashBalanceInfo.reserveBalance,
-    businessCash: cashBalanceInfo.businessBalance,
-    totalLiquidCash: cashBalanceInfo.totalLiquidCash,
-    cashBufferTarget,
-    cashBufferPercent
-  }
-}
-
 export default function DashboardPage() {
   const [summary, setSummary] = useState({
     totalPositions: 0,
@@ -825,6 +322,7 @@ export default function DashboardPage() {
         liabilityResult,
         billResult,
         goalResult,
+        liabilityStatementResult,
         cashLedgerResult
       ] = await Promise.all([
         supabase
@@ -965,6 +463,13 @@ export default function DashboardPage() {
           .order('priority', { ascending: true }),
 
         supabase
+          .from('liability_monthly_statements')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('month_key', targetMonthKey)
+          .order('created_at', { ascending: false }),
+
+        supabase
           .from('cash_wallet_monthly_ledger')
           .select(`
             id,
@@ -993,6 +498,7 @@ export default function DashboardPage() {
       if (liabilityResult.error) throw liabilityResult.error
       if (billResult.error) throw billResult.error
       if (goalResult.error) throw goalResult.error
+      if (liabilityStatementResult.error) throw liabilityStatementResult.error
       if (cashLedgerResult.error) {
         console.warn('Cash Wallet Ledger unavailable in Dashboard:', cashLedgerResult.error.message)
       }
@@ -1007,14 +513,8 @@ export default function DashboardPage() {
       const liabilityData = liabilityResult.data || []
       const billData = billResult.data || []
       const goalData = goalResult.data || []
+      const liabilityStatementData = liabilityStatementResult.data || []
       const cashLedgerData = cashLedgerResult.error ? [] : cashLedgerResult.data || []
-
-      const cashBalanceInfo = getCashBalanceInfo({
-        accounts: accountData,
-        allCashflowEntries: allCashflowData,
-        cashWalletLedgers: cashLedgerData,
-        targetMonthKey
-      })
 
       const holdingsData = calculateHoldings(txData, pricesData)
       const portfolioSummary = calculatePortfolioSummary(holdingsData)
@@ -1026,30 +526,41 @@ export default function DashboardPage() {
         portfolioSummary.totalMarketValue || 0
       )
 
+      const monthInfo = { year, month, monthIndex: month - 1 }
+      const moneyPlanSummary = buildMoneyPlanSummary({
+        accounts: accountData,
+        cashflowEntries: cashflowData,
+        allCashflowEntries: allCashflowData,
+        cashWalletLedgers: cashLedgerData,
+        bills: billData,
+        goals: goalData,
+        liabilities: liabilityData,
+        liabilityStatements: liabilityStatementData,
+        budgetRows: budgetSummary.rows || [],
+        monthInfo,
+        today: new Date(`${getTodayKey()}T00:00:00`)
+      })
+
+      const nextMoneyPlan = {
+        ...moneyPlanSummary,
+        label: moneyPlanSummary.planStatus,
+        tone: getDashboardMoneyPlanTone(moneyPlanSummary.planTone),
+        income: moneyPlanSummary.actualIncome,
+        expense: moneyPlanSummary.actualExpenses,
+        goalMonthlyNeed: moneyPlanSummary.goalMonthlyNeedTotal
+      }
+
       const nextSummary = {
         ...portfolioSummary,
         ...cashflowSummary,
         ...budgetSummary,
         ...netWorthSummary,
-        cashBalance: cashBalanceInfo.spendableBalance,
-        reserveCash: cashBalanceInfo.reserveBalance,
-        totalLiquidCash: cashBalanceInfo.totalLiquidCash,
-        cashBalanceHasLedger: cashBalanceInfo.hasLedger,
-        cashBalanceSourceLabel: cashBalanceInfo.sourceLabel
+        cashBalance: moneyPlanSummary.cashBufferCurrent,
+        reserveCash: moneyPlanSummary.reserveCash,
+        totalLiquidCash: moneyPlanSummary.totalLiquidCash,
+        cashBalanceHasLedger: moneyPlanSummary.cashBufferHasLedger,
+        cashBalanceSourceLabel: moneyPlanSummary.cashBufferSourceLabel
       }
-
-      const nextMoneyPlan = calculateMoneyPlanSnapshot({
-        accounts: accountData,
-        cashflowEntries: cashflowData,
-        allCashflowEntries: allCashflowData,
-        cashWalletLedgers: cashLedgerData,
-        budgets: budgetData,
-        bills: billData,
-        goals: goalData,
-        liabilities: liabilityData,
-        budgetRows: budgetSummary.rows || [],
-        targetMonthKey
-      })
 
       const nextHealth = calculateDashboardHealth({
         accounts: accountData,
@@ -1068,8 +579,6 @@ export default function DashboardPage() {
       const nextCommandCenter = buildCommandCenter({
         holdingsData,
         budgetRows: budgetSummary.rows || [],
-        bills: billData,
-        cashflowEntries: cashflowData,
         goals: goalData,
         moneyPlan: nextMoneyPlan,
         dataHealth: nextHealth,
@@ -1519,11 +1028,15 @@ function createEmptyCommandCenter() {
   }
 }
 
+function getDashboardMoneyPlanTone(planTone) {
+  if (planTone === 'success') return 'green'
+  if (planTone === 'danger') return 'red'
+  return 'yellow'
+}
+
 function buildCommandCenter({
   holdingsData,
   budgetRows,
-  bills,
-  cashflowEntries,
   goals,
   moneyPlan,
   dataHealth,
