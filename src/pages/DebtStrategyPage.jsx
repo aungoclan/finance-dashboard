@@ -341,15 +341,15 @@ const debtStrategyCss = `
   }
 
   .ds-primary-btn {
-    border: 1px solid rgba(59, 130, 246, 0.45);
+    border: 1px solid var(--accent-strong);
     border-radius: 14px;
     padding: 11px 15px;
-    background: var(--button-bg, linear-gradient(135deg, #2563eb, #1d4ed8));
-    color: var(--button-text, white);
+    background: var(--accent-strong);
+    color: white;
     font-weight: 800;
     cursor: pointer;
     white-space: nowrap;
-    box-shadow: var(--shadow-button, 0 14px 35px rgba(37, 99, 235, 0.22));
+    box-shadow: 0 14px 35px color-mix(in srgb, var(--accent-strong) 22%, transparent);
   }
 
   .ds-message,
@@ -400,7 +400,7 @@ const debtStrategyCss = `
     border: 1px solid var(--border-main, rgba(148, 163, 184, 0.24));
     border-radius: 14px;
     padding: 12px 13px;
-    background: var(--bg-input, rgba(2, 6, 23, 0.55));
+    background: var(--bg-card-soft);
     color: var(--text-main, #f8fafc);
     outline: none;
   }
@@ -584,8 +584,8 @@ const debtStrategyCss = `
     border-radius: 999px;
     display: grid;
     place-items: center;
-    background: var(--accent, #2563eb);
-    color: var(--text-main, #f8fafc);
+    background: var(--accent-strong);
+    color: white;
     font-weight: 900;
   }
 

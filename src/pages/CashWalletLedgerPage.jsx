@@ -1408,7 +1408,7 @@ const thStyle = {
   fontSize: '12px',
   textTransform: 'uppercase',
   letterSpacing: '0.07em',
-  background: 'var(--bg-table-head)'
+  background: 'var(--bg-card-soft)'
 }
 
 const thRightStyle = {

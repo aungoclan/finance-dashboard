@@ -342,8 +342,8 @@ const refreshButtonStyle = {
   padding: '10px 14px',
   border: 'none',
   borderRadius: '10px',
-  background: 'var(--button-bg, #2563eb)',
-  color: 'var(--button-text, white)',
+  background: 'var(--accent-strong)',
+  color: 'white',
   cursor: 'pointer'
 }
 
@@ -377,7 +377,7 @@ const inputStyle = {
   padding: '10px 12px',
   borderRadius: '8px',
   border: '1px solid var(--border-main, #4b5563)',
-  background: 'var(--bg-input, var(--bg-card-soft, #111827))',
+  background: 'var(--bg-card-soft)',
   color: 'var(--text-main, white)'
 }
 
