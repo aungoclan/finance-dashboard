@@ -190,12 +190,7 @@ export default function CashflowPage() {
     [categories, formData.type]
   )
 
-  useEffect(() => {
-    loadCashflowData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode])
-
-  const loadCashflowData = async () => {
+  async function loadCashflowData() {
     setLoading(true)
     setMessage('')
 
@@ -316,6 +311,12 @@ export default function CashflowPage() {
 
     setLoading(false)
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadCashflowData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode])
 
   const resetForm = () => {
     setFormData({
@@ -625,9 +626,9 @@ export default function CashflowPage() {
 
       {message && <div style={messageStyle}>{message}</div>}
 
-      <div style={entriesFullWidthSectionStyle}>
-          <div style={entriesCardStyle}>
-            <div style={entriesHeaderStyle}>
+      <div className="cashflow-entries-section" style={entriesFullWidthSectionStyle}>
+          <div className="cashflow-entries-card" style={entriesCardStyle}>
+            <div className="cashflow-entries-header" style={entriesHeaderStyle}>
               <div>
                 <h2 style={{ marginTop: 0, marginBottom: '6px' }}>{viewTitle}</h2>
                 <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
@@ -641,70 +642,129 @@ export default function CashflowPage() {
             ) : entries.length === 0 ? (
               <p>No cashflow entries found for this view.</p>
             ) : (
-              <div style={entriesScrollStyle}>
-                <table style={tableStyle}>
-                  <thead>
-                    <tr>
-                      <th style={thStyle}>Date</th>
-                      <th style={thStyle}>Type</th>
-                      <th style={thStyle}>Amount</th>
-                      <th style={thStyle}>Category / Detail</th>
-                      <th style={thStyle}>Account</th>
-                      <th style={thStyle}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {entries.map((entry) => (
-                      <tr key={entry.id}>
-                        <td style={tdStyle}>{entry.entry_date}</td>
-                        <td
-                          style={{
-                            ...tdStyle,
-                            color: entry.type === 'income' ? 'var(--success)' : 'var(--danger)'
-                          }}
-                        >
-                          {entry.type}
-                        </td>
-                        <td style={tdStyle}>${formatMoney(entry.amount)}</td>
-                        <td style={tdStyle}>
-                          <div style={categoryCellStyle}>
-                            <span>{getCategoryDisplayName(entry)}</span>
-                            {!entry.category_id && (
-                              <span style={legacyBadgeStyle}>legacy text</span>
+              <>
+                <div className="cashflow-entries-tableWrap" style={entriesScrollStyle}>
+                  <table style={tableStyle}>
+                    <thead>
+                      <tr>
+                        <th style={thStyle}>Date</th>
+                        <th style={thStyle}>Type</th>
+                        <th style={thStyle}>Amount</th>
+                        <th style={thStyle}>Category / Detail</th>
+                        <th style={thStyle}>Account</th>
+                        <th style={thStyle}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {entries.map((entry) => (
+                        <tr key={entry.id}>
+                          <td style={tdStyle}>{entry.entry_date}</td>
+                          <td
+                            style={{
+                              ...tdStyle,
+                              color: entry.type === 'income' ? 'var(--success)' : 'var(--danger)'
+                            }}
+                          >
+                            {entry.type}
+                          </td>
+                          <td style={tdStyle}>${formatMoney(entry.amount)}</td>
+                          <td style={tdStyle}>
+                            <div style={categoryCellStyle}>
+                              <span>{getCategoryDisplayName(entry)}</span>
+                              {!entry.category_id && (
+                                <span style={legacyBadgeStyle}>legacy text</span>
+                              )}
+                            </div>
+                            {entry.description && (
+                              <div style={descriptionTextStyle}>{entry.description}</div>
                             )}
+                          </td>
+                          <td style={tdStyle}>
+                            {entry.accounts?.name || (
+                              <span style={unassignedTextStyle}>Unassigned</span>
+                            )}
+                          </td>
+                          <td style={tdStyle}>
+                            <div style={actionRowStyle}>
+                              <button
+                                type="button"
+                                onClick={() => handleEdit(entry)}
+                                style={editButtonStyle}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(entry.id)}
+                                style={deleteButtonStyle}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="cashflow-entries-mobileList">
+                  {entries.map((entry) => (
+                    <article className="cashflow-entry-mobileCard" key={entry.id}>
+                      <div className="cashflow-entry-mobileTop">
+                        <div className="cashflow-entry-mobileMeta">
+                          <div className="cashflow-entry-date">{entry.entry_date}</div>
+                          <div className="cashflow-entry-title">
+                            {entry.description || getCategoryDisplayName(entry)}
                           </div>
-                          {entry.description && (
-                            <div style={descriptionTextStyle}>{entry.description}</div>
-                          )}
-                        </td>
-                        <td style={tdStyle}>
+                        </div>
+                        <div className="cashflow-entry-mobileAmount">
+                          <div
+                            className={
+                              entry.type === 'income'
+                                ? 'cashflow-entry-type cashflow-entry-type-income'
+                                : 'cashflow-entry-type cashflow-entry-type-expense'
+                            }
+                          >
+                            {entry.type}
+                          </div>
+                          <div>${formatMoney(entry.amount)}</div>
+                        </div>
+                      </div>
+
+                      <div className="cashflow-entry-mobileDetail">
+                        <span>{getCategoryDisplayName(entry)}</span>
+                        <span>
                           {entry.accounts?.name || (
                             <span style={unassignedTextStyle}>Unassigned</span>
                           )}
-                        </td>
-                        <td style={tdStyle}>
-                          <div style={actionRowStyle}>
-                            <button
-                              type="button"
-                              onClick={() => handleEdit(entry)}
-                              style={editButtonStyle}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(entry.id)}
-                              style={deleteButtonStyle}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        </span>
+                      </div>
+
+                      {!entry.category_id && (
+                        <div className="cashflow-entry-mobileBadge">legacy text</div>
+                      )}
+
+                      <div className="cashflow-entry-mobileActions">
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(entry)}
+                          style={editButtonStyle}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(entry.id)}
+                          style={deleteButtonStyle}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </>
             )}
           </div>
 
