@@ -24,7 +24,7 @@ export default function BudgetChart({ data }) {
       <h3 style={titleStyle}>Budget Usage</h3>
 
       <div style={chartWrapStyle}>
-        <ResponsiveContainer width="100%" height={280}>
+        <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border-main)" />
             <XAxis
@@ -63,9 +63,10 @@ const cardStyle = {
   padding: '20px',
   borderRadius: '12px',
   border: '1px solid var(--border-main)',
-  minHeight: '380px',
+  minHeight: '340px',
   display: 'flex',
-  flexDirection: 'column'
+  flexDirection: 'column',
+  minWidth: 0
 }
 
 const titleStyle = {
@@ -74,8 +75,10 @@ const titleStyle = {
 }
 
 const chartWrapStyle = {
-  height: '280px',
-  width: '100%'
+  height: 'clamp(220px, 56vw, 280px)',
+  minHeight: '220px',
+  width: '100%',
+  minWidth: 0
 }
 
 const tooltipStyle = {

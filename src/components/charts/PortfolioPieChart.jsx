@@ -15,7 +15,7 @@ export default function PortfolioPieChart({ data }) {
     return (
       <div style={cardStyle}>
         <h3 style={titleStyle}>Portfolio Allocation</h3>
-        <p style={emptyStyle}>No holdings yet.</p>
+        <p style={emptyStyle}>No portfolio data yet</p>
       </div>
     )
   }
@@ -25,7 +25,7 @@ export default function PortfolioPieChart({ data }) {
       <h3 style={titleStyle}>Portfolio Allocation</h3>
 
       <div style={chartWrapStyle}>
-       <ResponsiveContainer width="100%" height={280}>
+       <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={data}
@@ -58,9 +58,10 @@ const cardStyle = {
   padding: '20px',
   borderRadius: '12px',
   border: '1px solid var(--border-main)',
-  minHeight: '380px',
+  minHeight: '340px',
   display: 'flex',
-  flexDirection: 'column'
+  flexDirection: 'column',
+  minWidth: 0
 }
 
 const titleStyle = {
@@ -69,8 +70,10 @@ const titleStyle = {
 }
 
 const chartWrapStyle = {
-  height: '280px',
-  width: '100%'
+  height: 'clamp(220px, 56vw, 280px)',
+  minHeight: '220px',
+  width: '100%',
+  minWidth: 0
 }
 
 const tooltipStyle = {

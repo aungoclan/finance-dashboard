@@ -1488,6 +1488,7 @@ const styles = {
     padding: 12,
     border: '1px solid var(--border-main)',
     minHeight: 320,
+    minWidth: 0,
     overflow: 'hidden',
     boxShadow: 'var(--shadow-card)',
     color: 'var(--text-main)'

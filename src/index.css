@@ -1068,6 +1068,18 @@ code {
     max-width: 100% !important;
   }
 
+  .app-main .recharts-responsive-container,
+  .app-main .recharts-wrapper,
+  .app-main .recharts-surface {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .app-main .recharts-responsive-container > div {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
   .app-main .recharts-wrapper {
     overflow: hidden;
   }
