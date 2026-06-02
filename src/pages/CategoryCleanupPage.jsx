@@ -65,7 +65,7 @@ export default function CategoryCleanupPage() {
             description,
             account_id,
             created_at,
-            accounts (
+            account:accounts!cashflow_entries_account_id_fkey (
               id,
               name,
               account_type
@@ -508,7 +508,7 @@ export default function CategoryCleanupPage() {
                             <div style={detailTextStyle}>Current detail: {entry.description}</div>
                           )}
                           <div style={mutedTextStyle}>
-                            Account: {entry.accounts?.name || 'Unassigned'}
+                            Account: {entry.account?.name || 'Unassigned'}
                           </div>
                         </div>
 

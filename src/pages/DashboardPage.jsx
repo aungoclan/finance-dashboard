@@ -366,8 +366,11 @@ export default function DashboardPage() {
             category,
             category_id,
             description,
+            source_account_id,
+            target_account_id,
+            transfer_group_id,
             created_at,
-            accounts (
+            account:accounts!cashflow_entries_account_id_fkey (
               id,
               name,
               account_type
@@ -389,7 +392,7 @@ export default function DashboardPage() {
 
         supabase
           .from('cashflow_entries')
-          .select('id, account_id, entry_date, type, amount, category, category_id, description, created_at')
+          .select('id, account_id, entry_date, type, amount, category, category_id, description, source_account_id, target_account_id, transfer_group_id, created_at')
           .eq('user_id', user.id)
           .order('entry_date', { ascending: false })
           .order('created_at', { ascending: false }),

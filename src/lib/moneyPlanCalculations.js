@@ -1,4 +1,5 @@
 import { getCategoryDisplayName, normalizeCategoryName } from './cashflowCategories'
+import { getCashflowBalanceAmountForAccount } from './cashflowTransfers'
 
 const CASH_ACCOUNT_TYPES = ['cash', 'checking', 'savings', 'business']
 const DEFAULT_ALLOCATION_MODES = {
@@ -427,17 +428,13 @@ export function getAccountRole(account) {
 }
 
 function getAccountCashNetForAccount(accountId, cashflowEntries) {
-  let income = 0
-  let expense = 0
+  let net = 0
 
   for (const entry of cashflowEntries) {
-    if (entry.account_id !== accountId) continue
-
-    if (entry.type === 'income') income += toNumber(entry.amount)
-    if (entry.type === 'expense') expense += toNumber(entry.amount)
+    net += getCashflowBalanceAmountForAccount(entry, accountId)
   }
 
-  return income - expense
+  return net
 }
 
 function getLedgerFinalBalance(ledger) {
@@ -461,20 +458,16 @@ function getMonthDateRangeFromKey(monthKey) {
 
 function getCashflowNetForAccountInMonth(accountId, allCashflowEntries, monthKey) {
   const { startDate, endDate } = getMonthDateRangeFromKey(monthKey)
-  let income = 0
-  let expense = 0
+  let net = 0
 
   for (const entry of allCashflowEntries || []) {
-    if (entry.account_id !== accountId) continue
-
     const entryDate = String(entry.entry_date || '')
     if (entryDate < startDate || entryDate >= endDate) continue
 
-    if (entry.type === 'income') income += toNumber(entry.amount)
-    if (entry.type === 'expense') expense += toNumber(entry.amount)
+    net += getCashflowBalanceAmountForAccount(entry, accountId)
   }
 
-  return income - expense
+  return net
 }
 
 export function calculateSpendableCash({

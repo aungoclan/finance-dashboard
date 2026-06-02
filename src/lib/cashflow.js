@@ -1,4 +1,5 @@
 import { getCategoryDisplayName } from './cashflowCategories'
+import { isTransferEntry } from './cashflowTransfers'
 
 export function getCurrentMonthDateRange() {
   const now = new Date()
@@ -29,11 +30,16 @@ export function calculateCashflowSummary(entries = []) {
     .filter((item) => item.type === 'expense')
     .reduce((sum, item) => sum + Number(item.amount || 0), 0)
 
+  const totalTransfers = entries
+    .filter(isTransferEntry)
+    .reduce((sum, item) => sum + Math.abs(Number(item.amount || 0)), 0)
+
   const netCashflow = totalIncome - totalExpenses
 
   return {
     totalIncome,
     totalExpenses,
+    totalTransfers,
     netCashflow
   }
 }

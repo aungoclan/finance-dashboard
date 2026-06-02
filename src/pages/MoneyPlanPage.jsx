@@ -226,8 +226,11 @@ if (
             category,
             category_id,
             description,
+            source_account_id,
+            target_account_id,
+            transfer_group_id,
             created_at,
-            accounts (
+            account:accounts!cashflow_entries_account_id_fkey (
               id,
               name,
               account_type
@@ -259,6 +262,9 @@ if (
             category,
             category_id,
             description,
+            source_account_id,
+            target_account_id,
+            transfer_group_id,
             created_at
           `)
           .eq('user_id', user.id)

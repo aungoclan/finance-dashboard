@@ -311,7 +311,7 @@ export default function DividendIncomePage() {
             category_id,
             description,
             created_at,
-            accounts (
+            account:accounts!cashflow_entries_account_id_fkey (
               id,
               name,
               account_type

@@ -6,6 +6,7 @@ import {
   formatMoney,
   getCurrentMonthDateRange
 } from '../lib/cashflow'
+import { getCashflowBalanceAmountForAccount } from '../lib/cashflowTransfers'
 import {
   buildCategoryPayload,
   ensureDefaultCashflowCategories,
@@ -65,8 +66,16 @@ function isArchivedAccount(account) {
   return String(account?.name || '').startsWith('[ARCHIVED] ')
 }
 
-function getEntryAmount(entry) {
-  return Math.abs(toNumber(entry?.amount))
+function getEntryTypeColor(type) {
+  if (type === 'income') return 'var(--success)'
+  if (type === 'expense') return 'var(--danger)'
+  return 'var(--accent-strong)'
+}
+
+function getMobileTypeClass(type) {
+  if (type === 'income') return 'cashflow-entry-type cashflow-entry-type-income'
+  if (type === 'expense') return 'cashflow-entry-type cashflow-entry-type-expense'
+  return 'cashflow-entry-type'
 }
 
 function getLedgerFinalBalance(ledger) {
@@ -79,20 +88,16 @@ function getLedgerFinalBalance(ledger) {
 }
 
 function getNetForAccount(entries, accountId, range = null) {
-  let income = 0
-  let expense = 0
+  let net = 0
 
   for (const entry of entries || []) {
-    if ((entry.account_id || '') !== accountId) continue
-
     const entryDate = String(entry.entry_date || '')
     if (range && (entryDate < range.startDate || entryDate >= range.endDate)) continue
 
-    if (entry.type === 'income') income += getEntryAmount(entry)
-    if (entry.type === 'expense') expense += getEntryAmount(entry)
+    net += getCashflowBalanceAmountForAccount(entry, accountId)
   }
 
-  return income - expense
+  return net
 }
 
 function buildCashBalanceSummary({ accounts = [], entries = [], ledgers = [], monthKey }) {
@@ -226,9 +231,22 @@ export default function CashflowPage() {
           category,
           category_id,
           description,
+          source_account_id,
+          target_account_id,
+          transfer_group_id,
           account_id,
           created_at,
-          accounts (
+          account:accounts!cashflow_entries_account_id_fkey (
+            id,
+            name,
+            account_type
+          ),
+          source_account:accounts!cashflow_entries_source_account_id_fkey (
+            id,
+            name,
+            account_type
+          ),
+          target_account:accounts!cashflow_entries_target_account_id_fkey (
             id,
             name,
             account_type
@@ -267,7 +285,10 @@ export default function CashflowPage() {
           account_id,
           entry_date,
           type,
-          amount
+          amount,
+          source_account_id,
+          target_account_id,
+          transfer_group_id
         `)
         .eq('user_id', user.id)
 
@@ -617,6 +638,14 @@ export default function CashflowPage() {
           </div>
           <div style={summarySubTextStyle}>Income - expenses for this view</div>
         </div>
+
+        <div style={summaryCardStyle}>
+          <div style={summaryLabelStyle}>Transfers</div>
+          <div style={{ ...summaryValueStyle, color: 'var(--accent-strong)' }}>
+            ${formatMoney(summary.totalTransfers)}
+          </div>
+          <div style={summarySubTextStyle}>Excluded from income, expense, and net</div>
+        </div>
       </div>
 
       <div style={cashExplainerStyle}>
@@ -662,7 +691,7 @@ export default function CashflowPage() {
                           <td
                             style={{
                               ...tdStyle,
-                              color: entry.type === 'income' ? 'var(--success)' : 'var(--danger)'
+                              color: getEntryTypeColor(entry.type)
                             }}
                           >
                             {entry.type}
@@ -680,7 +709,7 @@ export default function CashflowPage() {
                             )}
                           </td>
                           <td style={tdStyle}>
-                            {entry.accounts?.name || (
+                            {entry.account?.name || (
                               <span style={unassignedTextStyle}>Unassigned</span>
                             )}
                           </td>
@@ -721,9 +750,7 @@ export default function CashflowPage() {
                         <div className="cashflow-entry-mobileAmount">
                           <div
                             className={
-                              entry.type === 'income'
-                                ? 'cashflow-entry-type cashflow-entry-type-income'
-                                : 'cashflow-entry-type cashflow-entry-type-expense'
+                              getMobileTypeClass(entry.type)
                             }
                           >
                             {entry.type}
@@ -735,7 +762,7 @@ export default function CashflowPage() {
                       <div className="cashflow-entry-mobileDetail">
                         <span>{getCategoryDisplayName(entry)}</span>
                         <span>
-                          {entry.accounts?.name || (
+                          {entry.account?.name || (
                             <span style={unassignedTextStyle}>Unassigned</span>
                           )}
                         </span>
@@ -823,6 +850,7 @@ export default function CashflowPage() {
               >
                 <option value="expense">Expense</option>
                 <option value="income">Income</option>
+                <option value="transfer">Transfer</option>
               </select>
             </div>
 

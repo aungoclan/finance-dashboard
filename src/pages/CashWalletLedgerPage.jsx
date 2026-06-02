@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatMoney } from '../lib/holdings'
+import { getCashflowBalanceAmountForAccount } from '../lib/cashflowTransfers'
 
 const ARCHIVE_PREFIX = '[ARCHIVED] '
 const RECONCILE_TOLERANCE = 0.01
@@ -87,10 +88,6 @@ function displayName(name) {
     : value || 'Unnamed Account'
 }
 
-function getEntryAmount(entry) {
-  return Math.abs(toNumber(entry?.amount))
-}
-
 function isCashAdjustmentEntry(entry, monthKey) {
   const category = normalize(entry?.category)
   const description = normalize(entry?.description)
@@ -105,20 +102,19 @@ function calculateMovement(entries, accountId, monthKey) {
   const { startDate, endDate } = getMonthRange(monthKey)
   const monthEntries = entries.filter(
     (entry) =>
-      entry.account_id === accountId &&
       entry.entry_date >= startDate &&
-      entry.entry_date < endDate
+      entry.entry_date < endDate &&
+      getCashflowBalanceAmountForAccount(entry, accountId) !== 0
   )
 
   return monthEntries.reduce(
     (acc, entry) => {
-      const amount = getEntryAmount(entry)
-      const type = normalize(entry.type)
+      const movement = getCashflowBalanceAmountForAccount(entry, accountId)
 
-      if (type === 'income') {
-        acc.cashIn += amount
-      } else if (type === 'expense') {
-        acc.cashOut += amount
+      if (movement > 0) {
+        acc.cashIn += movement
+      } else if (movement < 0) {
+        acc.cashOut += Math.abs(movement)
       }
 
       acc.entryCount += 1
@@ -136,27 +132,15 @@ function calculateAllTimeBefore(entries, accountId, monthKey) {
   const { startDate } = getMonthRange(monthKey)
 
   return entries.reduce((sum, entry) => {
-    if (entry.account_id !== accountId || entry.entry_date >= startDate) return sum
+    if (entry.entry_date >= startDate) return sum
 
-    const amount = getEntryAmount(entry)
-    const type = normalize(entry.type)
-
-    if (type === 'income') return sum + amount
-    if (type === 'expense') return sum - amount
-    return sum
+    return sum + getCashflowBalanceAmountForAccount(entry, accountId)
   }, 0)
 }
 
 function calculateAllTimeNet(entries, accountId) {
   return entries.reduce((sum, entry) => {
-    if (entry.account_id !== accountId) return sum
-
-    const amount = getEntryAmount(entry)
-    const type = normalize(entry.type)
-
-    if (type === 'income') return sum + amount
-    if (type === 'expense') return sum - amount
-    return sum
+    return sum + getCashflowBalanceAmountForAccount(entry, accountId)
   }, 0)
 }
 
@@ -218,7 +202,7 @@ export default function CashWalletLedgerPage() {
 
       const { data: entryData, error: entryError } = await supabase
         .from('cashflow_entries')
-        .select('id, user_id, account_id, entry_date, type, amount, category, description, created_at')
+        .select('id, user_id, account_id, entry_date, type, amount, category, description, source_account_id, target_account_id, transfer_group_id, created_at')
         .eq('user_id', user.id)
         .order('entry_date', { ascending: false })
         .order('created_at', { ascending: false })

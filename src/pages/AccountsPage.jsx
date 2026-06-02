@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { calculateHoldings, formatMoney, formatPercent } from '../lib/holdings'
 import { DEFAULT_APP_SETTINGS, loadUserSettings } from '../lib/appSettings'
+import { getCashflowBalanceAmountForAccount, isTransferEntry } from '../lib/cashflowTransfers'
 
 const ACCOUNT_TYPES = [
   {
@@ -70,6 +71,7 @@ const ARCHIVE_PREFIX = '[ARCHIVED] '
 const LARGE_EXPENSE_REVIEW_AMOUNT = 1000
 const DUPLICATE_WINDOW_LIMIT = 8
 const INVESTMENT_INCOME_TYPES = new Set(['dividend', 'interest'])
+const INVESTMENT_CASH_ONLY_TYPES = new Set(['cash_deposit', 'cash_withdrawal'])
 
 const ACCOUNT_TYPE_LABELS = ACCOUNT_TYPES.reduce((map, item) => {
   map[item.value] = item.label
@@ -273,6 +275,7 @@ function getAccountSeed(account) {
     monthlyIncome: 0,
     monthlyExpense: 0,
     monthlyNet: 0,
+    monthlyBalanceNet: 0,
     monthlyBillExpense: 0,
     monthlyBillCount: 0,
     monthlyDebtPaymentExpense: 0,
@@ -282,9 +285,11 @@ function getAccountSeed(account) {
     lastMonthIncome: 0,
     lastMonthExpense: 0,
     lastMonthNet: 0,
+    lastMonthBalanceNet: 0,
     allTimeIncome: 0,
     allTimeExpense: 0,
     allTimeNet: 0,
+    allTimeBalanceNet: 0,
     cashflowCount: 0,
 
     cashLedgerCount: 0,
@@ -343,10 +348,29 @@ function getInvestmentCashMovementAmount(tx) {
 
 function isInternalInvestmentCashMovement(tx, accountRowsById) {
   if (!tx?.cash_sync_enabled || !tx?.funding_account_id) return false
-  if (!['buy', 'sell'].includes(normalize(tx?.type))) return false
+  if (!['buy', 'sell', 'cash_deposit', 'cash_withdrawal'].includes(normalize(tx?.type))) return false
 
   const fundingAccount = accountRowsById.get(tx.funding_account_id)
-  return isInvestmentAccount(fundingAccount?.account_type)
+  return isInvestmentAccount(fundingAccount?.account_type) || INVESTMENT_CASH_ONLY_TYPES.has(normalize(tx?.type))
+}
+
+function getInvestmentCashMovementAccountId(tx) {
+  const type = normalize(tx?.type)
+
+  if (type === 'cash_deposit' || type === 'cash_withdrawal') {
+    return tx?.account_id || 'unassigned'
+  }
+
+  return tx?.funding_account_id || 'unassigned'
+}
+
+function getInvestmentCashMovementDirection(tx) {
+  const type = normalize(tx?.type)
+
+  if (type === 'sell' || type === 'cash_deposit') return 'in'
+  if (type === 'buy' || type === 'cash_withdrawal') return 'out'
+
+  return ''
 }
 
 function findMatchingInvestmentIncomeCashflow(tx, cashflowEntries) {
@@ -449,16 +473,16 @@ function getCashLedgerFinalBalance(row, period = 'current') {
   const hasLedger = period === 'previous' ? row.previousMonthHasLedger : row.currentMonthHasLedger
 
   if (!hasLedger) {
-    if (period === 'previous') return row.lastMonthNet
+    if (period === 'previous') return row.lastMonthBalanceNet
 
     // Bài 62F Mini: if the current Cash Wallet month is not saved yet,
     // carry forward the previous ledger final and apply current month movement.
     // This keeps Accounts aligned with Cash Ledger month-to-month carryover.
     if (row.previousMonthHasLedger) {
-      return toNumber(row.previousMonthFinalCashBalance) + toNumber(row.monthlyNet)
+      return toNumber(row.previousMonthFinalCashBalance) + toNumber(row.monthlyBalanceNet)
     }
 
-    return row.allTimeNet
+    return row.allTimeBalanceNet
   }
 
   const actualValue =
@@ -488,8 +512,8 @@ function getCashLedgerFormulaText(row) {
 
   if (row.previousMonthHasLedger) {
     const opening = toNumber(row.previousMonthFinalCashBalance)
-    const expected = opening + toNumber(row.monthlyIncome) - toNumber(row.monthlyExpense)
-    return `Carryover estimate: ${money(opening)} previous final + ${money(row.monthlyIncome)} cash in - ${money(row.monthlyExpense)} cash out = ${money(expected)} expected. Create this month's Cash Wallet Ledger snapshot to lock it.`
+    const expected = opening + toNumber(row.monthlyBalanceNet)
+    return `Carryover estimate: ${money(opening)} previous final + ${money(row.monthlyBalanceNet)} balance movement = ${money(expected)} expected. Create this month's Cash Wallet Ledger snapshot to lock it.`
   }
 
   return 'No monthly ledger found yet. Fallback is cashflow movement only until you create a Cash Wallet Ledger snapshot.'
@@ -543,6 +567,14 @@ export default function AccountsPage() {
     name: '',
     account_type: 'cash',
     currency: 'USD'
+  })
+  const [transferFormData, setTransferFormData] = useState({
+    mode: 'deposit',
+    transaction_date: new Date().toISOString().split('T')[0],
+    amount: '',
+    investment_account_id: '',
+    cash_account_id: '',
+    note: ''
   })
 
   useEffect(() => {
@@ -628,6 +660,9 @@ export default function AccountsPage() {
           category,
           category_id,
           description,
+          source_account_id,
+          target_account_id,
+          transfer_group_id,
           created_at
         `)
         .eq('user_id', user.id)
@@ -675,6 +710,125 @@ export default function AccountsPage() {
   function handleChange(e) {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  function handleTransferChange(e) {
+    const { name, value } = e.target
+    setTransferFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  function startInvestmentCashTransfer(mode, investmentAccountId = '') {
+    setTransferFormData((prev) => ({
+      ...prev,
+      mode,
+      investment_account_id: investmentAccountId || prev.investment_account_id,
+      amount: '',
+      note: ''
+    }))
+    setMessage('')
+  }
+
+  function resetTransferForm() {
+    setTransferFormData({
+      mode: 'deposit',
+      transaction_date: new Date().toISOString().split('T')[0],
+      amount: '',
+      investment_account_id: '',
+      cash_account_id: '',
+      note: ''
+    })
+  }
+
+  async function handleInvestmentCashTransfer(e) {
+    e.preventDefault()
+    setSaving(true)
+    setMessage('')
+
+    try {
+      const {
+        data: { user },
+        error: userError
+      } = await supabase.auth.getUser()
+
+      if (userError || !user) throw new Error('Unable to get current user')
+
+      const mode = transferFormData.mode === 'withdraw' ? 'withdraw' : 'deposit'
+      const amount = Number(transferFormData.amount)
+      const investmentAccount = accounts.find((account) => account.id === transferFormData.investment_account_id)
+      const cashAccount = accounts.find((account) => account.id === transferFormData.cash_account_id)
+
+      if (!transferFormData.transaction_date) throw new Error('Transfer date is required')
+      if (!investmentAccount || !isInvestmentAccount(investmentAccount.account_type)) {
+        throw new Error('Please select a brokerage, IRA, or crypto account')
+      }
+      if (!cashAccount || !isCashAccount(cashAccount.account_type)) {
+        throw new Error('Please select a Cash Wallet, Checking, Savings, or Business Cash account')
+      }
+      if (!Number.isFinite(amount) || amount <= 0) {
+        throw new Error('Transfer amount must be greater than zero')
+      }
+
+      const transferGroupId =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+      const isWithdraw = mode === 'withdraw'
+      const note = transferFormData.note.trim()
+      const description = isWithdraw
+        ? `Investment Cash Withdrawal: ${investmentAccount.name} -> ${cashAccount.name}${note ? ` · ${note}` : ''}`
+        : `Investment Cash Deposit: ${cashAccount.name} -> ${investmentAccount.name}${note ? ` · ${note}` : ''}`
+
+      const { data: cashflowEntry, error: cashflowError } = await supabase
+        .from('cashflow_entries')
+        .insert({
+          user_id: user.id,
+          account_id: cashAccount.id,
+          entry_date: transferFormData.transaction_date,
+          type: 'transfer',
+          amount,
+          category_id: null,
+          category: null,
+          description,
+          source_account_id: isWithdraw ? investmentAccount.id : cashAccount.id,
+          target_account_id: isWithdraw ? cashAccount.id : investmentAccount.id,
+          transfer_group_id: transferGroupId
+        })
+        .select('id')
+        .single()
+
+      if (cashflowError) throw cashflowError
+
+      const { error: txError } = await supabase.from('investment_transactions').insert({
+        user_id: user.id,
+        account_id: investmentAccount.id,
+        asset_id: null,
+        transaction_date: transferFormData.transaction_date,
+        type: isWithdraw ? 'cash_withdrawal' : 'cash_deposit',
+        quantity: null,
+        unit_price: null,
+        fee: 0,
+        funding_account_id: cashAccount.id,
+        cashflow_entry_id: cashflowEntry?.id || null,
+        cash_sync_enabled: true,
+        cash_sync_direction: isWithdraw ? 'out' : 'in',
+        cash_sync_amount: amount
+      })
+
+      if (txError) throw txError
+
+      setMessage(
+        isWithdraw
+          ? `Investment cash withdrawal saved: ${money(amount)} from ${investmentAccount.name} to ${cashAccount.name}.`
+          : `Investment cash deposit saved: ${money(amount)} from ${cashAccount.name} to ${investmentAccount.name}.`
+      )
+      resetTransferForm()
+      await loadAccounts()
+    } catch (error) {
+      console.error('handleInvestmentCashTransfer error:', error)
+      setMessage(error.message || 'Failed to save investment cash transfer')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleAddAccount(e) {
@@ -974,8 +1128,8 @@ export default function AccountsPage() {
     transactions.forEach((tx) => {
       if (!isInternalInvestmentCashMovement(tx, accountRowsById)) return
 
-      const fundingAccountId = tx.funding_account_id || 'unassigned'
-      const row = map.get(fundingAccountId)
+      const cashAccountId = getInvestmentCashMovementAccountId(tx)
+      const row = map.get(cashAccountId)
       if (!row) return
 
       const amount = getInvestmentCashMovementAmount(tx)
@@ -983,14 +1137,14 @@ export default function AccountsPage() {
 
       const date = tx.transaction_date || ''
       const inThisMonth = date >= startDate && date < endDate
-      const txType = normalize(tx.type)
+      const direction = getInvestmentCashMovementDirection(tx)
 
-      if (txType === 'sell') {
+      if (direction === 'in') {
         row.allTimeInternalInvestmentCashIn += amount
         if (inThisMonth) row.monthlyInternalInvestmentCashIn += amount
       }
 
-      if (txType === 'buy') {
+      if (direction === 'out') {
         row.allTimeInternalInvestmentCashOut += amount
         if (inThisMonth) row.monthlyInternalInvestmentCashOut += amount
       }
@@ -1039,7 +1193,15 @@ export default function AccountsPage() {
     cashflowEntries.forEach((entry) => {
       const accountId = getEntryAccountKey(entry)
       const row = map.get(accountId)
-      if (!row) return
+      const balanceRows = new Set()
+      if (row) balanceRows.add(row)
+
+      if (isTransferEntry(entry)) {
+        const sourceRow = map.get(entry.source_account_id)
+        const targetRow = map.get(entry.target_account_id)
+        if (sourceRow) balanceRows.add(sourceRow)
+        if (targetRow) balanceRows.add(targetRow)
+      }
 
       const amount = getEntryAmount(entry)
       const entryType = normalize(entry.type)
@@ -1047,19 +1209,26 @@ export default function AccountsPage() {
       const inThisMonth = date >= startDate && date < endDate
       const inPreviousMonth = date >= previousStartDate && date < previousEndDate
 
-      if (entryType === 'income') {
+      balanceRows.forEach((balanceRow) => {
+        const movement = getCashflowBalanceAmountForAccount(entry, balanceRow.id)
+        balanceRow.allTimeBalanceNet += movement
+        if (inThisMonth) balanceRow.monthlyBalanceNet += movement
+        if (inPreviousMonth) balanceRow.lastMonthBalanceNet += movement
+      })
+
+      if (row && entryType === 'income') {
         row.allTimeIncome += amount
         if (inThisMonth) row.monthlyIncome += amount
         if (inPreviousMonth) row.lastMonthIncome += amount
       }
 
-      if (entryType === 'expense') {
+      if (row && entryType === 'expense') {
         row.allTimeExpense += amount
         if (inThisMonth) row.monthlyExpense += amount
         if (inPreviousMonth) row.lastMonthExpense += amount
       }
 
-      if (inThisMonth) {
+      if (row && inThisMonth) {
         row.monthlyEntryCount += 1
         monthlyEntries.push(entry)
 
@@ -1083,7 +1252,7 @@ export default function AccountsPage() {
         duplicateMap.set(duplicateKey, list)
       }
 
-      row.cashflowCount += 1
+      if (row) row.cashflowCount += 1
     })
 
     const rows = Array.from(map.values()).map((row) => {
@@ -1137,13 +1306,13 @@ export default function AccountsPage() {
       }
 
       const previousMonthFinalCashBalance =
-        row.account_type === 'cash' ? getCashLedgerFinalBalance(rowWithNets, 'previous') : lastMonthNet
+        row.account_type === 'cash' ? getCashLedgerFinalBalance(rowWithNets, 'previous') : row.lastMonthBalanceNet
       const rowWithLedgerCarryover = {
         ...rowWithNets,
         previousMonthFinalCashBalance
       }
       const currentMonthFinalCashBalance =
-        row.account_type === 'cash' ? getCashLedgerFinalBalance(rowWithLedgerCarryover, 'current') : allTimeNet
+        row.account_type === 'cash' ? getCashLedgerFinalBalance(rowWithLedgerCarryover, 'current') : row.allTimeBalanceNet
 
       return {
         ...rowWithLedgerCarryover,
@@ -1433,6 +1602,16 @@ export default function AccountsPage() {
     [accountRows]
   )
 
+  const investmentTransferAccounts = useMemo(
+    () => accounts.filter((account) => !isArchivedName(account.name) && isInvestmentAccount(account.account_type)),
+    [accounts]
+  )
+
+  const cashTransferAccounts = useMemo(
+    () => accounts.filter((account) => !isArchivedName(account.name) && isCashAccount(account.account_type)),
+    [accounts]
+  )
+
   useEffect(() => {
     setAccountPagerIndex(0)
   }, [searchTerm, typeFilter, groupFilter, controlFilter, showArchived, monthKey])
@@ -1640,8 +1819,8 @@ export default function AccountsPage() {
                       />
                       <Metric
                         label="This Month Movement"
-                        value={money(row.monthlyNet)}
-                        tone={getCashBalanceTone(row.monthlyNet)}
+                        value={money(row.monthlyBalanceNet)}
+                        tone={getCashBalanceTone(row.monthlyBalanceNet)}
                       />
                       <Metric
                         label="Opening Balance"
@@ -1664,6 +1843,105 @@ export default function AccountsPage() {
           </div>
 
         </div>
+      </div>
+
+      <div style={cardStyle}>
+        <div style={sectionHeaderStyle}>
+          <div>
+            <h2 style={{ margin: 0 }}>Investment Cash Transfer</h2>
+            <p style={smallTextStyle}>
+              Move cash between a cash account and available cash inside brokerage, IRA, or crypto accounts. Transfers do not count as income or expense.
+            </p>
+          </div>
+          <span style={pillStyle}>Transfer only</span>
+        </div>
+
+        <form onSubmit={handleInvestmentCashTransfer}>
+          <div style={transferFormGridStyle}>
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Action</label>
+              <select name="mode" value={transferFormData.mode} onChange={handleTransferChange} style={inputStyle}>
+                <option value="deposit">Deposit Cash</option>
+                <option value="withdraw">Withdraw Cash</option>
+              </select>
+            </div>
+
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Date</label>
+              <input
+                type="date"
+                name="transaction_date"
+                value={transferFormData.transaction_date}
+                onChange={handleTransferChange}
+                style={inputStyle}
+              />
+            </div>
+
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Amount</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                name="amount"
+                value={transferFormData.amount}
+                onChange={handleTransferChange}
+                placeholder="50.00"
+                style={inputStyle}
+              />
+            </div>
+
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Investment Account</label>
+              <select
+                name="investment_account_id"
+                value={transferFormData.investment_account_id}
+                onChange={handleTransferChange}
+                style={inputStyle}
+              >
+                <option value="">Select investment account</option>
+                {investmentTransferAccounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {displayName(account.name)} ({typeLabel(account.account_type)})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Cash Account</label>
+              <select
+                name="cash_account_id"
+                value={transferFormData.cash_account_id}
+                onChange={handleTransferChange}
+                style={inputStyle}
+              >
+                <option value="">Select cash account</option>
+                {cashTransferAccounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {displayName(account.name)} ({typeLabel(account.account_type)})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Note</label>
+              <input
+                type="text"
+                name="note"
+                value={transferFormData.note}
+                onChange={handleTransferChange}
+                placeholder="Optional"
+                style={inputStyle}
+              />
+            </div>
+          </div>
+
+          <button type="submit" disabled={saving} style={buttonStyle}>
+            {saving ? 'Saving...' : transferFormData.mode === 'withdraw' ? 'Withdraw Cash' : 'Deposit Cash'}
+          </button>
+        </form>
       </div>
 
         <div style={cardStyle}>
@@ -1787,6 +2065,7 @@ export default function AccountsPage() {
                   onUpdate={handleUpdateAccount}
                   onArchive={handleArchiveAccount}
                   onSafeDelete={handleSafeDeleteAccount}
+                  onStartTransfer={startInvestmentCashTransfer}
                 />
               )}
             </div>
@@ -1999,7 +2278,8 @@ function AccountCard({
   onCancelEdit,
   onUpdate,
   onArchive,
-  onSafeDelete
+  onSafeDelete,
+  onStartTransfer
 }) {
   const isEditing = editingAccountId === account.id
   const canManage = account.id !== 'unassigned'
@@ -2155,7 +2435,7 @@ function AccountCard({
                 <Metric
                   label="Available Investment Cash"
                   value={money(account.allTimeInternalInvestmentCashNet)}
-                  sub="All-time investment-only income + sells - buys"
+                  sub="Investment income + deposits + sells - buys - withdrawals"
                   tone={account.allTimeInternalInvestmentCashNet >= 0 ? 'good' : 'bad'}
                 />
                 <Metric
@@ -2167,7 +2447,7 @@ function AccountCard({
                 <Metric
                   label="This Month Cash Movement"
                   value={money(account.monthlyInternalInvestmentCashNet)}
-                  sub="Investment-only income + sells - buys this month"
+                  sub="Investment-only income + deposits + sells - buys - withdrawals"
                   tone={account.monthlyInternalInvestmentCashNet >= 0 ? 'good' : 'bad'}
                 />
                 <Metric
@@ -2179,6 +2459,7 @@ function AccountCard({
               </>
             )}
             {isCashAccount(account.account_type) && (
+              <>
               <Metric
                 label="Final Cash Balance"
                 value={money(account.currentMonthFinalCashBalance)}
@@ -2195,13 +2476,20 @@ function AccountCard({
                 }
                 tone={getCashBalanceTone(account.currentMonthFinalCashBalance)}
               />
+              <Metric
+                label="Cash Balance Movement"
+                value={money(account.monthlyBalanceNet)}
+                sub="Income/expense plus transfers"
+                tone={getCashBalanceTone(account.monthlyBalanceNet)}
+              />
+              </>
             )}
             <Metric label="Month Income" value={money(account.monthlyIncome)} />
             <Metric label="Month Expense" value={money(account.monthlyExpense)} />
             <Metric
-              label={account.account_type === 'cash' ? 'This Month Movement' : 'Month Net'}
+              label="Month Net"
               value={money(account.monthlyNet)}
-              sub={account.account_type === 'cash' ? 'Cash in - cash out for selected month' : undefined}
+              sub="Income - expense, transfers excluded"
               tone={account.monthlyNet >= 0 ? 'good' : 'bad'}
             />
             {account.account_type === 'cash' ? (
@@ -2274,6 +2562,26 @@ function AccountCard({
 
           {canManage && (
             <div style={actionRowStyle}>
+              {isInvestmentAccount(account.account_type) && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onStartTransfer('deposit', account.id)}
+                    disabled={saving}
+                    style={smallPrimaryButtonStyle}
+                  >
+                    Deposit Cash
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onStartTransfer('withdraw', account.id)}
+                    disabled={saving}
+                    style={smallGhostButtonStyle}
+                  >
+                    Withdraw Cash
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 onClick={() => onStartEdit(account)}
@@ -2832,6 +3140,14 @@ const editGridStyle = {
   gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr) 120px',
   gap: '12px',
   alignItems: 'start'
+}
+
+const transferFormGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+  gap: '12px',
+  alignItems: 'start',
+  marginTop: '18px'
 }
 
 const actionRowStyle = {
